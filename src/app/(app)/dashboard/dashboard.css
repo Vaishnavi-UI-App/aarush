@@ -1,0 +1,264 @@
+.afs-dash {
+  /* Light theme (default) -- matches the rest of the app's light UI. */
+  --dd-page: #eef1f8;
+  --dd-card: #ffffff;
+  --dd-border: rgba(13, 31, 61, 0.08);
+  --dd-ink: var(--afs-navy, #16305c);
+  --dd-ink-secondary: #556;
+  --dd-ink-muted: #8892a6;
+  --dd-grid: #e6e9f2;
+  --dd-icon-bg: rgba(22, 48, 92, 0.06);
+
+  --dd-series-line: #2a78d6;
+  --dd-status-draft: #6b7280;
+  --dd-status-sent: #2a78d6;
+  --dd-status-partial: #b8860b;
+  --dd-status-paid: #0ca30c;
+  --dd-status-overdue: #d03b3b;
+
+  --dd-badge-draft-bg: #e5e7eb;
+  --dd-badge-draft-fg: #374151;
+  --dd-badge-sent-bg: #dbeafe;
+  --dd-badge-sent-fg: #1e40af;
+  --dd-badge-partial-bg: #fef3c7;
+  --dd-badge-partial-fg: #92400e;
+  --dd-badge-paid-bg: #dcfce7;
+  --dd-badge-paid-fg: #14532d;
+  --dd-badge-overdue-bg: #fee2e2;
+  --dd-badge-overdue-fg: #7f1d1d;
+  --dd-badge-cancelled-bg: #f3f4f6;
+  --dd-badge-cancelled-fg: #6b7280;
+
+  background: var(--dd-page);
+  color: var(--dd-ink);
+  margin: -28px -32px;
+  padding: 28px 32px;
+  min-height: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.afs-dash[data-theme="dark"] {
+  /* Dark theme -- deliberately the same navy family as the sidebar so the
+     dashboard reads as one continuous surface rather than two mismatched panels. */
+  --dd-page: #0d1f3d;
+  --dd-card: #16305c;
+  --dd-border: rgba(255, 255, 255, 0.1);
+  --dd-ink: #ffffff;
+  --dd-ink-secondary: #c7d1e6;
+  --dd-ink-muted: #93a1c0;
+  --dd-grid: rgba(255, 255, 255, 0.08);
+  --dd-icon-bg: rgba(255, 255, 255, 0.08);
+
+  --dd-series-line: #3987e5;
+  --dd-status-draft: #93a1c0;
+  --dd-status-sent: #3987e5;
+  --dd-status-partial: #fab219;
+  --dd-status-paid: #0ca30c;
+  --dd-status-overdue: #e66767;
+
+  --dd-badge-draft-bg: rgba(255, 255, 255, 0.12);
+  --dd-badge-draft-fg: #d7d9de;
+  --dd-badge-sent-bg: rgba(57, 135, 229, 0.2);
+  --dd-badge-sent-fg: #8fc0ff;
+  --dd-badge-partial-bg: rgba(250, 178, 25, 0.2);
+  --dd-badge-partial-fg: #ffcf6b;
+  --dd-badge-paid-bg: rgba(12, 163, 12, 0.22);
+  --dd-badge-paid-fg: #7de07d;
+  --dd-badge-overdue-bg: rgba(230, 103, 103, 0.22);
+  --dd-badge-overdue-fg: #ffb3b3;
+  --dd-badge-cancelled-bg: rgba(255, 255, 255, 0.1);
+  --dd-badge-cancelled-fg: #a8b0c2;
+}
+
+.afs-dash .afs-page-title {
+  color: var(--dd-ink);
+}
+
+.afs-dash .afs-page-subtitle {
+  color: var(--dd-ink-secondary);
+}
+
+.dd-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.dd-theme-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--dd-card);
+  border: 1px solid var(--dd-border);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.dd-theme-toggle button {
+  border: none;
+  background: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--dd-ink-secondary);
+}
+
+.dd-theme-toggle button.active {
+  background: var(--afs-gold, #c99a2e);
+  color: #3a2c02;
+}
+
+.dd-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.dd-card {
+  background: var(--dd-card);
+  border: 1px solid var(--dd-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.dd-stat-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.dd-stat-label {
+  font-size: 13px;
+  color: var(--dd-ink-secondary);
+  margin-bottom: 8px;
+}
+
+.dd-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--dd-ink);
+}
+
+.dd-stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--dd-icon-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.dd-panels {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .dd-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dd-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: var(--dd-ink);
+}
+
+.dd-legend {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--dd-ink-secondary);
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.dd-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dd-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.dd-axis-label {
+  font-size: 10px;
+  fill: var(--dd-ink-muted);
+}
+
+.dd-gridline {
+  stroke: var(--dd-grid);
+  stroke-width: 1;
+}
+
+.dd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dd-table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--dd-ink-muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--dd-border);
+}
+
+.dd-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--dd-border);
+  color: var(--dd-ink);
+}
+
+.dd-table tr:hover td {
+  background: rgba(127, 127, 127, 0.06);
+}
+
+.dd-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dd-badge-draft { background: var(--dd-badge-draft-bg); color: var(--dd-badge-draft-fg); }
+.dd-badge-sent { background: var(--dd-badge-sent-bg); color: var(--dd-badge-sent-fg); }
+.dd-badge-partially_paid { background: var(--dd-badge-partial-bg); color: var(--dd-badge-partial-fg); }
+.dd-badge-paid { background: var(--dd-badge-paid-bg); color: var(--dd-badge-paid-fg); }
+.dd-badge-overdue { background: var(--dd-badge-overdue-bg); color: var(--dd-badge-overdue-fg); }
+.dd-badge-cancelled { background: var(--dd-badge-cancelled-bg); color: var(--dd-badge-cancelled-fg); }
+
+.dd-view-link {
+  color: var(--dd-series-line);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dd-empty {
+  color: var(--dd-ink-muted);
+  font-size: 13px;
+  padding: 30px 0;
+  text-align: center;
+}

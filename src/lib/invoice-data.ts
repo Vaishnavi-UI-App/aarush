@@ -1,0 +1,98 @@
+import { InvoiceData } from "./invoice-types";
+
+export const sampleInvoice: InvoiceData = {
+  invoiceNumber: "INV/26-27/439",
+  invoiceDate: "01/Jul/2026",
+  placeOfSupply: "Maharashtra",
+  dateOfSupply: "01/Jul/2026",
+  reverseCharge: "NO",
+  poNumber: "WHATSAPP/VERBAL",
+  poDate: "20/Apr/2026",
+  vehicleNumber: "MH12VF9823",
+  transportationMode: "Road",
+  placeOfSupplySite: "SITE- SHRIRAMPUR",
+  deliveredThrough: "अमर 8999943098",
+
+  seller: {
+    name: "ANKIT ELECTRONICS",
+    addressLines: [
+      "ROOM NO.36, S.No.45 ROOM NO 36, GANESH PARK,",
+      "WAGHJAI NAGAR, HAVELI, Pune, HAVELI,",
+      "Maharashtra, 411046",
+    ],
+    phone: "9579770500",
+    email: "ankitelectronicpune@gmail.com",
+    gstin: "27FMQPS2815J1ZD",
+    stateCode: "27",
+    pan: "FMQPS2815J",
+    altEmail: "profireindia@gmail.com",
+    altMobile: "9588404697",
+    udyam: "UDYAM-MH-26-0131107",
+    logoUrl: "/logo.jpeg",
+  },
+
+  billedTo: {
+    name: "SRPRO TECHNOWORLD LLP",
+    address: "FLAT NO 1 Unnamed Road Pimpri Chinchwad, Pune, Maharashtra, 411061",
+    mobile: "9545519101",
+    email: "None",
+    gstin: "27AESFS0962H1ZJ",
+    stateCode: "27",
+    state: "Maharashtra",
+  },
+
+  shippedTo: {
+    name: "SRPRO TECHNOWORLD LLP",
+    address: "FLAT NO 1 Unnamed Road Pimpri Chinchwad, Pune, Maharashtra, 411061",
+    gstin: "27AESFS0962H1ZJ",
+    stateCode: "27",
+    state: "Maharashtra",
+  },
+
+  items: [
+    { srNo: 1, name: "160 PCD FULL S.S. HYDRANT VALVE", description: "ADAPTOR WITH NICKLE CROME", hsnSac: "84818090", qty: 18, unit: "PCS", rate: 2990.0, taxableValue: 53820.0, cgstRate: 9, cgstAmount: 4843.8, sgstRate: 9, sgstAmount: 4843.8, total: 63507.6 },
+    { srNo: 2, name: "HOSE BOX SINGLE DOOR", hsnSac: "85381010", qty: 5, unit: "NOS", rate: 750.0, taxableValue: 3750.0, cgstRate: 9, cgstAmount: 337.5, sgstRate: 9, sgstAmount: 337.5, total: 4425.0 },
+    { srNo: 3, name: "HOSE BOX DOUBLE DOOR", description: "Dimensions 750*600*250", hsnSac: "84194020", qty: 13, unit: "NOS", rate: 1600.0, taxableValue: 20800.0, cgstRate: 9, cgstAmount: 1872.0, sgstRate: 9, sgstAmount: 1872.0, total: 24544.0 },
+    { srNo: 4, name: "RHINO RRL HOSE PIPE 15 MTR dia. 63mm", description: "WITH (ARMOR SS 202 ISI HEAVY COUPLING, COUPLING Wt. 2.8KG) GI BINDING", hsnSac: "84249000", qty: 31, unit: "NOS", rate: 2650.0, taxableValue: 82150.0, cgstRate: 9, cgstAmount: 7393.5, sgstRate: 9, sgstAmount: 7393.5, total: 96937.0 },
+    { srNo: 5, name: "SS BRANCH PIPE", hsnSac: "73071110", qty: 18, unit: "NOS", rate: 950.0, taxableValue: 17100.0, cgstRate: 9, cgstAmount: 1539.0, sgstRate: 9, sgstAmount: 1539.0, total: 20178.0 },
+    { srNo: 6, name: "HOSE REEL DRUM ISI 20MTR SET SS CLIP", description: "WITH PVC SHUT OFF NOZZLE", hsnSac: "84248990", qty: 5, unit: "NOS", rate: 3050.0, taxableValue: 15250.0, cgstRate: 9, cgstAmount: 1372.5, sgstRate: 9, sgstAmount: 1372.5, total: 17995.0 },
+    { srNo: 7, name: "4 WAY INLET WITH SS METAL NRV", description: "WEIGHT APPROX 23KG", hsnSac: "84818020", qty: 1, unit: "NOS", rate: 5200.0, taxableValue: 5200.0, cgstRate: 9, cgstAmount: 468.0, sgstRate: 9, sgstAmount: 468.0, total: 6136.0 },
+    { srNo: 8, name: "WATER MONITOR 63MM", hsnSac: "84248990", qty: 1, unit: "NOS", rate: 14900.0, taxableValue: 14900.0, cgstRate: 9, cgstAmount: 1341.0, sgstRate: 9, sgstAmount: 1341.0, total: 17582.0 },
+    { srNo: 9, name: "FOAM MONITOR 63mm", hsnSac: "84248990", qty: 2, unit: "NOS", rate: 17900.0, taxableValue: 35800.0, cgstRate: 9, cgstAmount: 3222.0, sgstRate: 9, sgstAmount: 3222.0, total: 42244.0 },
+    { srNo: 10, name: "Afff foam 20 ltrs", description: "20 LTRS CANE", hsnSac: "38130000", qty: 3, unit: "NOS", rate: 1650.0, taxableValue: 4950.0, cgstRate: 9, cgstAmount: 445.5, sgstRate: 9, sgstAmount: 445.5, total: 5841.0 },
+    { srNo: 11, name: "4 KG ABC TYPE FIRE EXTINGUISHER", hsnSac: "84241000", qty: 22, unit: "NOS", rate: 640.0, taxableValue: 14080.0, cgstRate: 9, cgstAmount: 1267.2, sgstRate: 9, sgstAmount: 1267.2, total: 16614.4 },
+    { srNo: 12, name: "4.5 KG CO2 TYPE FIRE EXTINGUISHER", hsnSac: "84241000", qty: 7, unit: "NOS", rate: 3350.0, taxableValue: 23450.0, cgstRate: 9, cgstAmount: 2110.5, sgstRate: 9, sgstAmount: 2110.5, total: 27671.0 },
+    { srNo: 13, name: "9 LTR M/F STORE PRESSURE TYPE FIRE EXTINGUISHER", hsnSac: "84241000", qty: 12, unit: "NOS", rate: 1190.0, taxableValue: 14280.0, cgstRate: 9, cgstAmount: 1285.2, sgstRate: 9, sgstAmount: 1285.2, total: 16850.4 },
+    { srNo: 14, name: "45 LTR FOAM TYPE FIRE EXTINGUISHER", hsnSac: "84241000", qty: 4, unit: "nos", rate: 5410.0, taxableValue: 21640.0, cgstRate: 9, cgstAmount: 1947.6, sgstRate: 9, sgstAmount: 1947.6, total: 25535.2 },
+    { srNo: 15, name: "FIRE BUCKET WITH HANDLE", hsnSac: "73102990", qty: 8, unit: "NOS", rate: 200.0, taxableValue: 1600.0, cgstRate: 9, cgstAmount: 144.0, sgstRate: 9, sgstAmount: 144.0, total: 1888.0 },
+    { srNo: 16, name: "Fire Bucket Stand With Canopy", description: "Suitable for 4 buckets", hsnSac: "84241000", qty: 2, unit: "NOS", rate: 1350.0, taxableValue: 2700.0, cgstRate: 9, cgstAmount: 243.0, sgstRate: 9, sgstAmount: 243.0, total: 3186.0 },
+    { srNo: 17, name: "SMOKE DETECTOR (ABS BODY MAKE- Pro AGNI )", description: "Conventional type smoke detector", hsnSac: "853110", qty: 12, unit: "NOS", rate: 290.0, taxableValue: 3480.0, cgstRate: 9, cgstAmount: 313.2, sgstRate: 9, sgstAmount: 313.2, total: 4106.4 },
+    { srNo: 18, name: "HOOTER AGNI (HEAVY)", hsnSac: "853690", qty: 2, unit: "NOS", rate: 230.0, taxableValue: 460.0, cgstRate: 9, cgstAmount: 41.4, sgstRate: 9, sgstAmount: 41.4, total: 542.8 },
+    { srNo: 19, name: "MCP (ABS BODY MAKE - Pro AGNI )", hsnSac: "853110", qty: 2, unit: "NOS", rate: 120.0, taxableValue: 240.0, cgstRate: 9, cgstAmount: 21.6, sgstRate: 9, sgstAmount: 21.6, total: 283.2 },
+    { srNo: 20, name: "FIRE ALARM PANEL 2 ZONE", hsnSac: "853110", qty: 2, unit: "NOS", rate: 1650.0, taxableValue: 3300.0, cgstRate: 9, cgstAmount: 297.0, sgstRate: 9, sgstAmount: 297.0, total: 3894.0 },
+    { srNo: 21, name: "1.5sqmm 2 cor polycab armored cable FRLS", hsnSac: "85446090", qty: 300, unit: "MTR", rate: 69.0, taxableValue: 20700.0, cgstRate: 9, cgstAmount: 1863.0, sgstRate: 9, sgstAmount: 1863.0, total: 24426.0 },
+    { srNo: 22, name: "Pendent Sprinkler", hsnSac: "84249000", qty: 10, unit: "NOS", rate: 125.0, taxableValue: 1250.0, cgstRate: 9, cgstAmount: 112.5, sgstRate: 9, sgstAmount: 112.5, total: 1475.0 },
+    { srNo: 23, name: "BALL VALVE 25MM", hsnSac: "84819090", qty: 5, unit: "NOS", rate: 410.0, taxableValue: 2050.0, cgstRate: 9, cgstAmount: 184.5, sgstRate: 9, sgstAmount: 184.5, total: 2419.0 },
+  ],
+
+  taxableAmount: 362950.0,
+  totalCgst: 32665.5,
+  totalSgst: 32665.5,
+  grandTotal: 428281.0,
+  amountInWords: "Four Lakh Twenty Eight Thousand Two Hundred Eighty One Rupees Only",
+
+  bank: {
+    accountName: "ANKIT ELECTRONICS",
+    accountNo: "39310400000093",
+    ifsc: "BARB0SATPUN",
+    bankName: "Bank of Baroda",
+    branchName: "SATARA ROAD",
+  },
+
+  terms: [
+    "100% ADVANCE PAYMENT BEFORE DELIVERY.",
+    "GST EXTRA.",
+    "PACKING CHARGES EXTRA.",
+    "TRANSPORT CHARGES EXTRA.",
+  ],
+};
