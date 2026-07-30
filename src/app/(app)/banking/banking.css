@@ -73,6 +73,7 @@
   border: 1px solid #d7dbe6;
   font-size: 13px;
   width: 220px;
+  max-width: 100%;
 }
 
 .bk-share-icons {

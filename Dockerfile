@@ -36,4 +36,5 @@ ENV NODE_ENV=production
 EXPOSE 3000
 ENV PORT=3000
 
-CMD ["npm", "run", "start"]
+RUN chmod +x docker-entrypoint.sh
+ENTRYPOINT ["./docker-entrypoint.sh"]

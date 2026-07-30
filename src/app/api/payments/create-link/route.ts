@@ -22,7 +22,10 @@ export async function POST(request: NextRequest) {
   // Scoped by tenantId from the session -- never trust an invoiceId across tenants.
   const invoice = await prisma.invoice.findFirst({
     where: { id: invoiceId, tenantId: session.tenantId },
-    include: { customer: true, payments: { where: { status: "SUCCESS" } } },
+    include: {
+      customer: true,
+      payments: { orderBy: { createdAt: "desc" } },
+    },
   });
   if (!invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
@@ -31,7 +34,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Invoice is already ${invoice.status.toLowerCase()}` }, { status: 400 });
   }
 
-  const paidSoFar = invoice.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const paidSoFar = invoice.payments
+    .filter((p) => p.status === "SUCCESS")
+    .reduce((sum, p) => sum + Number(p.amount), 0);
   const amountDue = Number(invoice.total) - paidSoFar;
   if (amountDue <= 0) {
     return NextResponse.json({ error: "Nothing due on this invoice" }, { status: 400 });
@@ -42,35 +47,56 @@ export async function POST(request: NextRequest) {
   let paymentLink;
   try {
     const razorpay = getRazorpayClient();
-    paymentLink = await razorpay.paymentLink.create({
-      amount: Math.round(amountDue * 100), // paise
-      currency: "INR",
-      accept_partial: true,
-      description: `Payment for invoice ${invoice.number}`,
-      reference_id: invoice.id,
-      customer: {
-        name: invoice.customer.name,
-        email: invoice.customer.email ?? undefined,
-        contact: invoice.customer.phone ?? undefined,
-      },
-      // We send our own branded email with the invoice PDF attached below, so Razorpay's
-      // own (attachment-less) notifications would just be a confusing duplicate.
-      notify: { sms: !!invoice.customer.phone, email: false },
-      callback_url: `${appBaseUrl}/invoices/${invoice.id}`,
-      callback_method: "get",
-    });
 
-    await prisma.payment.create({
-      data: {
-        tenantId: session.tenantId,
-        customerId: invoice.customerId,
-        invoiceId: invoice.id,
-        amount: amountDue,
-        mode: "RAZORPAY",
-        status: "PENDING",
-        razorpayPaymentLinkId: paymentLink.id,
-      },
-    });
+    // Razorpay rejects a second payment_link.create() with the same reference_id --
+    // reusing invoice.id as the reference_id means retrying (e.g. clicking "email" twice)
+    // would always fail that way. Reuse a still-active link from a prior attempt instead
+    // of erroring out (which previously caused the app to silently fall back to an email
+    // with no payment link at all).
+    const existingPending = invoice.payments.find((p) => p.mode === "RAZORPAY" && p.status === "PENDING" && p.razorpayPaymentLinkId);
+    let reused = false;
+
+    if (existingPending?.razorpayPaymentLinkId) {
+      const existing = await razorpay.paymentLink.fetch(existingPending.razorpayPaymentLinkId);
+      if (existing.status === "created" || existing.status === "partially_paid") {
+        paymentLink = existing;
+        reused = true;
+      }
+    }
+
+    if (!reused) {
+      paymentLink = await razorpay.paymentLink.create({
+        amount: Math.round(amountDue * 100), // paise
+        currency: "INR",
+        accept_partial: true,
+        description: `Payment for invoice ${invoice.number}`,
+        // Expired/cancelled links still occupy their reference_id forever on Razorpay's
+        // side, so a plain retry needs a fresh one rather than colliding with the dead link.
+        reference_id: existingPending ? `${invoice.id}-${Date.now()}` : invoice.id,
+        customer: {
+          name: invoice.customer.name,
+          email: invoice.customer.email ?? undefined,
+          contact: invoice.customer.phone ?? undefined,
+        },
+        // We send our own branded email with the invoice PDF attached below, so Razorpay's
+        // own (attachment-less) notifications would just be a confusing duplicate.
+        notify: { sms: !!invoice.customer.phone, email: false },
+        callback_url: `${appBaseUrl}/invoices/${invoice.id}`,
+        callback_method: "get",
+      });
+
+      await prisma.payment.create({
+        data: {
+          tenantId: session.tenantId,
+          customerId: invoice.customerId,
+          invoiceId: invoice.id,
+          amount: amountDue,
+          mode: "RAZORPAY",
+          status: "PENDING",
+          razorpayPaymentLinkId: paymentLink.id,
+        },
+      });
+    }
   } catch (e) {
     console.error("Failed to create Razorpay payment link:", e);
     const razorpayMessage = extractRazorpayErrorMessage(e);
@@ -78,6 +104,10 @@ export async function POST(request: NextRequest) {
       { error: razorpayMessage ?? "Could not create payment link" },
       { status: razorpayMessage ? 400 : 502 }
     );
+  }
+
+  if (!paymentLink) {
+    return NextResponse.json({ error: "Could not create payment link" }, { status: 502 });
   }
 
   let emailed = false;

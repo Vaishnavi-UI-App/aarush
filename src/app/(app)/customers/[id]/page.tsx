@@ -27,9 +27,11 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
       </p>
 
       <div className="afs-card" style={{ marginBottom: 20, maxWidth: 260 }}>
-        <div style={{ fontSize: 12, color: "#667", marginBottom: 6 }}>Current Due</div>
+        <div style={{ fontSize: 12, color: "#667", marginBottom: 6 }}>
+          {currentDue > 0 ? "Current Due" : currentDue < 0 ? "Advance Balance" : "Current Due"}
+        </div>
         <div style={{ fontSize: 24, fontWeight: 700, color: currentDue > 0 ? "var(--afs-maroon)" : "#14532d" }}>
-          Rs. {currentDue.toFixed(2)}
+          Rs. {Math.abs(currentDue).toFixed(2)}
         </div>
       </div>
 

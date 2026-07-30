@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WhatsAppIcon, MailIcon, DownloadIcon, TrashIcon } from "@/components/icons";
 
 export default function InvoiceRowActions({
   invoiceId,
   invoiceNumber,
+  invoiceStatus,
   total,
   customerPhone,
   customerEmail,
 }: {
   invoiceId: string;
   invoiceNumber: string;
+  invoiceStatus: string;
   total: number;
   customerPhone: string | null;
   customerEmail: string | null;
@@ -20,14 +22,70 @@ export default function InvoiceRowActions({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [waSent, setWaSent] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  async function sendWhatsapp(e: React.MouseEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/send-whatsapp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send WhatsApp message");
+      setWaSent(true);
+    } catch {
+      // Business API not configured (or failed) -- fall back to a manual wa.me share.
+      if (whatsappHref) window.open(whatsappHref, "_blank", "noopener,noreferrer");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function emailInvoice() {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
+      // Any invoice that isn't already paid/cancelled gets a Razorpay payment link
+      // bundled into the email so the customer can pay straight from their inbox.
+      const collectsPayment = invoiceStatus !== "PAID" && invoiceStatus !== "CANCELLED";
+
+      if (collectsPayment) {
+        const res = await fetch("/api/payments/create-link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoiceId }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (!data.emailed) throw new Error(data.emailError || "Payment link created but email failed to send");
+          setNotice("Email sent successfully");
+          return;
+        }
+        // "Nothing due" etc. -- fall through to a plain email instead of failing.
+        if (res.status !== 400) throw new Error(data.error || "Failed to send email");
+      }
+
       const res = await fetch(`/api/invoices/${invoiceId}/send-email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send email");
+      setNotice("Email sent successfully");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to send email");
     } finally {
@@ -39,6 +97,7 @@ export default function InvoiceRowActions({
     if (!window.confirm(`Move invoice ${invoiceNumber} to Archive? You can restore it later.`)) return;
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       const res = await fetch(`/api/invoices/${invoiceId}/archive`, { method: "POST" });
       const data = await res.json();
@@ -53,7 +112,7 @@ export default function InvoiceRowActions({
 
   const whatsappHref = customerPhone
     ? `https://wa.me/91${customerPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
-        `Hi, your invoice ${invoiceNumber} for Rs. ${total.toFixed(2)} is ready. You can view/download it here: ${typeof window !== "undefined" ? window.location.origin : ""}/invoices/${invoiceId}`
+        `Hi, your invoice ${invoiceNumber} for Rs. ${total.toFixed(2)} is ready. You can view/download it here: ${origin}/invoices/${invoiceId}`
       )}`
     : null;
 
@@ -73,7 +132,8 @@ export default function InvoiceRowActions({
         href={whatsappHref ?? undefined}
         target="_blank"
         rel="noopener noreferrer"
-        title={whatsappHref ? "Share on WhatsApp" : "No phone number on file"}
+        onClick={whatsappHref ? sendWhatsapp : undefined}
+        title={waSent ? "Sent via WhatsApp" : whatsappHref ? "Send invoice via WhatsApp" : "No phone number on file"}
       >
         <WhatsAppIcon />
       </a>
@@ -90,6 +150,7 @@ export default function InvoiceRowActions({
         <TrashIcon />
       </button>
       {error && <span style={{ color: "#b91c1c", fontSize: 11 }}>{error}</span>}
+      {notice && <span style={{ color: "#0ca30c", fontSize: 11 }}>{notice}</span>}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SunIcon, MoonIcon } from "@/components/icons";
 
 type Theme = "light" | "dark";
 
@@ -28,10 +29,10 @@ export default function ThemeShell({ children }: { children: React.ReactNode }) 
         </div>
         <div className="dd-theme-toggle">
           <button type="button" className={theme === "light" ? "active" : ""} onClick={() => choose("light")}>
-            ☀ Light
+            <SunIcon /> Light
           </button>
           <button type="button" className={theme === "dark" ? "active" : ""} onClick={() => choose("dark")}>
-            🌙 Dark
+            <MoonIcon /> Dark
           </button>
         </div>
       </div>

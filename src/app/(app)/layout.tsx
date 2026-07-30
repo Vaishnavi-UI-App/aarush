@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "@/lib/session";
+import { cookies } from "next/headers";
+import { getServerSession, SESSION_COOKIE_NAME } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import SidebarNav from "@/components/SidebarNav";
 import "@/app/invoice/invoice-page.css";
@@ -11,7 +12,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/login");
   }
 
-  const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: session.tenantId } });
+  const tenant = await prisma.tenant.findUnique({ where: { id: session.tenantId } });
+  if (!tenant) {
+    (await cookies()).delete(SESSION_COOKIE_NAME);
+    redirect("/login");
+  }
 
   return (
     <div className="afs-shell">

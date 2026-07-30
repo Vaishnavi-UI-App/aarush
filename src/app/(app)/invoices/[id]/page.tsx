@@ -24,6 +24,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
   if (!invoice) notFound();
 
+  const paidSoFar = invoice.payments
+    .filter((p) => p.status === "SUCCESS")
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const amountDue = Number(invoice.total) - paidSoFar;
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
@@ -49,6 +54,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         invoiceId={invoice.id}
         invoiceType={invoice.type}
         status={invoice.status}
+        customerId={invoice.customerId}
+        amountDue={amountDue}
         payments={invoice.payments.map((p) => ({
           id: p.id,
           amount: Number(p.amount),

@@ -38,6 +38,24 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 
+@media (max-width: 900px) {
+  .afs-dash {
+    margin: -20px -16px;
+    margin-top: -64px;
+    padding: 20px 16px;
+    padding-top: 64px;
+  }
+}
+
+@media (max-width: 560px) {
+  .afs-dash {
+    margin: -16px -12px;
+    margin-top: -60px;
+    padding: 16px 12px;
+    padding-top: 60px;
+  }
+}
+
 .afs-dash[data-theme="dark"] {
   /* Dark theme -- deliberately the same navy family as the sidebar so the
      dashboard reads as one continuous surface rather than two mismatched panels. */
@@ -81,6 +99,8 @@
 
 .dd-toolbar {
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 4px;
@@ -96,6 +116,9 @@
 }
 
 .dd-theme-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: none;
   background: none;
   padding: 6px 14px;
@@ -152,7 +175,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  color: var(--dd-ink);
   flex-shrink: 0;
 }
 

@@ -71,6 +71,7 @@ export default async function InvoicesPage() {
                     <InvoiceRowActions
                       invoiceId={inv.id}
                       invoiceNumber={inv.number}
+                      invoiceStatus={inv.status}
                       total={Number(inv.total)}
                       customerPhone={inv.customer.phone}
                       customerEmail={inv.customer.email}

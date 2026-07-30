@@ -5,6 +5,7 @@ import { round2 } from "@/lib/gst-invoice";
 import RevenueTrendChart from "./RevenueTrendChart";
 import InvoiceStatusChart from "./InvoiceStatusChart";
 import ThemeShell from "./ThemeShell";
+import { ReceivableIcon, InvoiceIcon, CustomersIcon, OverdueIcon } from "@/components/icons";
 import "./dashboard.css";
 
 function badgeClass(status: string) {
@@ -35,10 +36,10 @@ export default async function DashboardPage() {
   const overdueCount = invoices.filter((i) => i.status === "OVERDUE").length;
 
   const stats = [
-    { label: "Total Receivable", value: `Rs. ${totalReceivable.toFixed(2)}`, icon: "💰" },
-    { label: "Total Invoiced (all-time)", value: `Rs. ${totalInvoiced.toFixed(2)}`, icon: "🧾" },
-    { label: "Customers", value: customers.toString(), icon: "👥" },
-    { label: "Overdue Invoices", value: overdueCount.toString(), icon: "📋" },
+    { label: "Total Receivable", value: `Rs. ${totalReceivable.toFixed(2)}`, Icon: ReceivableIcon },
+    { label: "Total Invoiced (all-time)", value: `Rs. ${totalInvoiced.toFixed(2)}`, Icon: InvoiceIcon },
+    { label: "Customers", value: customers.toString(), Icon: CustomersIcon },
+    { label: "Overdue Invoices", value: overdueCount.toString(), Icon: OverdueIcon },
   ];
 
   // Last 6 calendar months, oldest first.
@@ -74,7 +75,9 @@ export default async function DashboardPage() {
               <div className="dd-stat-label">{s.label}</div>
               <div className="dd-stat-value">{s.value}</div>
             </div>
-            <div className="dd-stat-icon">{s.icon}</div>
+            <div className="dd-stat-icon">
+              <s.Icon />
+            </div>
           </div>
         ))}
       </div>
