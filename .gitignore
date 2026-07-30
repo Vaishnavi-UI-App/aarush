@@ -42,8 +42,9 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# ad-hoc test output generated while developing the invoice PDF feature
+# ad-hoc test output generated while developing the invoice/purchase PDF features
 /*-invoice-output.pdf
+/*-bill-output.pdf
 
 # local AI coding assistant config/skills (machine-specific, not project config)
 /.claude/

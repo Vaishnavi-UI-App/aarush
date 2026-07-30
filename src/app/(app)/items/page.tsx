@@ -30,6 +30,7 @@ export default async function ItemsPage() {
                 <th>Unit</th>
                 <th>Sale price</th>
                 <th>Tax rate</th>
+                <th>Stock on hand</th>
               </tr>
             </thead>
             <tbody>
@@ -40,6 +41,13 @@ export default async function ItemsPage() {
                   <td>{i.unit}</td>
                   <td>Rs. {Number(i.salePrice).toFixed(2)}</td>
                   <td>{Number(i.taxRate).toFixed(2)}%</td>
+                  <td>
+                    {Number(i.currentStock) <= 0 ? (
+                      <span className="afs-badge afs-badge-overdue">Out of stock</span>
+                    ) : (
+                      `${Number(i.currentStock)} ${i.unit}`
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

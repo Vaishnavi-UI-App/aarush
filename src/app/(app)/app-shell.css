@@ -189,3 +189,50 @@
   border: 1px solid #ccd2e0;
   font-size: 13px;
 }
+
+.afs-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  background: rgba(85, 85, 102, 0.1);
+  color: #556;
+  transition: transform 0.1s ease;
+}
+
+.afs-icon-btn:hover {
+  transform: translateY(-1px);
+}
+
+.afs-icon-btn:disabled,
+.afs-icon-btn.disabled {
+  background: #eee;
+  color: #bbb;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.afs-icon-btn.whatsapp {
+  background: #25d366;
+  color: #fff;
+}
+
+.afs-icon-btn.mail {
+  background: rgba(158, 27, 31, 0.12);
+  color: #9e1b1f;
+}
+
+.afs-icon-btn.danger {
+  background: rgba(208, 59, 59, 0.12);
+  color: #d03b3b;
+}
+
+.afs-icon-btn.success {
+  background: rgba(12, 163, 12, 0.14);
+  color: #0ca30c;
+}

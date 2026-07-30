@@ -131,6 +131,7 @@ model Item {
   salePrice     Decimal  @db.Decimal(14, 2)
   purchasePrice Decimal? @db.Decimal(14, 2)
   taxRate       Decimal  @db.Decimal(5, 2) // e.g. 18.00 for 18%
+  currentStock  Decimal  @default(0) @db.Decimal(12, 3)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -199,6 +200,7 @@ model Invoice {
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  archivedAt DateTime? // soft-delete: archived invoices are hidden from the main list but never destroyed, and can be restored
 
   lines         InvoiceLine[]
   payments      Payment[]
@@ -261,7 +263,8 @@ model Purchase {
   vendorId String
   vendor   Vendor         @relation(fields: [vendorId], references: [id])
 
-  number   String // e.g. "PB/26-27/1"
+  number   String // our internal number, e.g. "PB/26-27/1"
+  vendorBillNumber String? // the vendor's own bill/invoice number, for 3-way matching
   date     DateTime       @default(now())
   dueDate  DateTime?
   status   PurchaseStatus @default(DRAFT)
@@ -275,6 +278,7 @@ model Purchase {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  archivedAt DateTime? // soft-delete: archived bills are hidden from the main list but never destroyed, and can be restored
 
   lines         PurchaseLine[]
   vendorPayments VendorPayment[]

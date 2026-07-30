@@ -20,6 +20,7 @@ export default async function AgeingReportPage() {
       tenantId: session!.tenantId,
       type: "SALE",
       status: { in: ["SENT", "PARTIALLY_PAID", "OVERDUE"] },
+      archivedAt: null,
     },
     include: { customer: { select: { name: true } }, payments: { where: { status: "SUCCESS" } } },
     orderBy: { date: "asc" },

@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
       tenantId: session.tenantId,
       type: "SALE",
       status: { in: ["SENT", "PARTIALLY_PAID", "OVERDUE"] },
+      archivedAt: null,
     },
     include: {
       customer: { select: { id: true, name: true } },

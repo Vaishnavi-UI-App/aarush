@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.pdf
+scripts
+.claude
+.agents
+.windsurf
+skills-lock.json
+docker-compose.yml

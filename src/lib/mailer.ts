@@ -7,9 +7,11 @@ export interface SendMailInput {
   attachments?: { filename: string; content: Buffer }[];
 }
 
-let transport: nodemailer.Transporter | null = null;
+type Transport = ReturnType<typeof nodemailer.createTransport>;
 
-function getTransport(): nodemailer.Transporter {
+let transport: Transport | null = null;
+
+function getTransport(): Transport {
   if (transport) return transport;
 
   const host = process.env.SMTP_HOST;

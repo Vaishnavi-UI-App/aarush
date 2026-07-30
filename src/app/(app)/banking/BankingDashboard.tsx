@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import RecordPaymentModal from "./RecordPaymentModal";
-import { WhatsAppIcon, MailIcon, HistoryIcon } from "./ShareIcons";
+import { WhatsAppIcon, MailIcon, HistoryIcon } from "@/components/icons";
 
 interface UnpaidInvoice {
   id: string;

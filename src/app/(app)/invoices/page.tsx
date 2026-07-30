@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import InvoiceRowActions from "./InvoiceRowActions";
 
 function badgeClass(status: string) {
   return `afs-badge afs-badge-${status.toLowerCase()}`;
@@ -8,11 +9,14 @@ function badgeClass(status: string) {
 
 export default async function InvoicesPage() {
   const session = await getServerSession();
-  const invoices = await prisma.invoice.findMany({
-    where: { tenantId: session!.tenantId },
-    include: { customer: { select: { name: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [invoices, archivedCount] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { tenantId: session!.tenantId, archivedAt: null },
+      include: { customer: { select: { name: true, phone: true, email: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.invoice.count({ where: { tenantId: session!.tenantId, archivedAt: { not: null } } }),
+  ]);
 
   return (
     <div>
@@ -21,7 +25,10 @@ export default async function InvoicesPage() {
           <h1 className="afs-page-title">Invoices</h1>
           <p className="afs-page-subtitle">Sales invoices and proforma quotes</p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <Link href="/invoices/archived" style={{ fontSize: 13 }}>
+            Archive {archivedCount > 0 ? `(${archivedCount})` : ""}
+          </Link>
           <Link href="/invoices/new?type=PROFORMA" className="afs-btn afs-btn-gold">
             + New Proforma
           </Link>
@@ -44,6 +51,7 @@ export default async function InvoicesPage() {
                 <th>Date</th>
                 <th>Total</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -58,6 +66,15 @@ export default async function InvoicesPage() {
                   <td>Rs. {Number(inv.total).toFixed(2)}</td>
                   <td>
                     <span className={badgeClass(inv.status)}>{inv.status.replace("_", " ")}</span>
+                  </td>
+                  <td>
+                    <InvoiceRowActions
+                      invoiceId={inv.id}
+                      invoiceNumber={inv.number}
+                      total={Number(inv.total)}
+                      customerPhone={inv.customer.phone}
+                      customerEmail={inv.customer.email}
+                    />
                   </td>
                 </tr>
               ))}

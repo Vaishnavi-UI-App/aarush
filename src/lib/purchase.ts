@@ -23,13 +23,16 @@ export interface CreatePurchaseBillInput {
   lines: InvoiceLineInput[];
   discount?: number;
   dueDate?: Date;
+  /** The vendor's own bill/invoice number, for 3-way matching against a PO and receipt. */
+  vendorBillNumber?: string;
 }
 
 /** Records a bill received from a vendor. Mirrors createSaleInvoice on the vendor side:
- * one transaction creates the Purchase + lines and posts a debit to the vendor's ledger
- * (debit = what we now owe the vendor). */
+ * one transaction creates the Purchase + lines, posts a debit to the vendor's ledger
+ * (debit = what we now owe the vendor), and increments on-hand stock for any line tied
+ * to a catalog item -- a purchase bill is what actually brings stock into the business. */
 export async function createPurchaseBill(input: CreatePurchaseBillInput) {
-  const { tenantId, vendorId, lines, discount = 0, dueDate } = input;
+  const { tenantId, vendorId, lines, discount = 0, dueDate, vendorBillNumber } = input;
 
   if (lines.length === 0) {
     throw new Error("Purchase bill must have at least one line item");
@@ -87,6 +90,7 @@ export async function createPurchaseBill(input: CreatePurchaseBillInput) {
         tenantId,
         vendorId,
         number,
+        vendorBillNumber,
         date,
         dueDate,
         status: "RECEIVED",
@@ -100,6 +104,17 @@ export async function createPurchaseBill(input: CreatePurchaseBillInput) {
       },
       include: { lines: true },
     });
+
+    // A purchase bill is what actually brings stock into the business -- bump each
+    // catalog item's on-hand quantity by what was received on this bill.
+    for (const line of lines) {
+      if (line.itemId) {
+        await tx.item.update({
+          where: { id: line.itemId },
+          data: { currentStock: { increment: line.qty } },
+        });
+      }
+    }
 
     // Serialize ledger writes per vendor so the running balance never races.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${vendorId}))`;

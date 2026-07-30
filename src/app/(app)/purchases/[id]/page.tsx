@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import PurchaseDetailActions from "./PurchaseDetailActions";
 
 function badgeClass(status: string) {
   return `afs-badge afs-badge-${status.toLowerCase()}`;
@@ -21,9 +22,16 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 className="afs-page-title">{purchase.number}</h1>
-          <p className="afs-page-subtitle">Purchase bill from {purchase.vendor.name}</p>
+          <p className="afs-page-subtitle">
+            Purchase bill from {purchase.vendor.name}
+            {purchase.vendorBillNumber ? ` · Vendor ref: ${purchase.vendorBillNumber}` : ""}
+            {purchase.dueDate ? ` · Due ${new Date(purchase.dueDate).toLocaleDateString("en-IN")}` : ""}
+          </p>
         </div>
-        <span className={badgeClass(purchase.status)}>{purchase.status.replace("_", " ")}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span className={badgeClass(purchase.status)}>{purchase.status.replace("_", " ")}</span>
+          <PurchaseDetailActions purchaseId={purchase.id} archived={!!purchase.archivedAt} />
+        </div>
       </div>
 
       <div className="afs-card" style={{ marginBottom: 20 }}>

@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
+import { puppeteerLaunchOptions } from "@/lib/puppeteer-launch-options";
 
 /** Renders a real, persisted invoice's print view (/print/invoices/[id]) to PDF.
  * That route is session-gated like everywhere else, so the caller's session token
@@ -11,7 +12,7 @@ export async function generateRealInvoicePdf(
 ): Promise<Buffer> {
   const url = new URL(`/print/invoices/${invoiceId}`, origin);
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch(puppeteerLaunchOptions);
   try {
     const page = await browser.newPage();
 

@@ -12,8 +12,10 @@ export async function GET(request: NextRequest) {
     throw e;
   }
 
+  const includeArchived = request.nextUrl.searchParams.get("archived") === "true";
+
   const invoices = await prisma.invoice.findMany({
-    where: { tenantId: session.tenantId },
+    where: { tenantId: session.tenantId, ...(includeArchived ? {} : { archivedAt: null }) },
     include: { customer: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
   });

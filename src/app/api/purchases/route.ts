@@ -9,6 +9,7 @@ interface CreatePurchaseBody {
   lines: InvoiceLineInput[];
   discount?: number;
   dueDate?: string;
+  vendorBillNumber?: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest) {
       lines: body.lines,
       discount: body.discount,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+      vendorBillNumber: body.vendorBillNumber || undefined,
     });
     return NextResponse.json(purchase, { status: 201 });
   } catch (e) {

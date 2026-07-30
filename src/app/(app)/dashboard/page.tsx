@@ -21,7 +21,7 @@ export default async function DashboardPage() {
 
   const [invoices, customers] = await Promise.all([
     prisma.invoice.findMany({
-      where: { tenantId, type: "SALE" },
+      where: { tenantId, type: "SALE", archivedAt: null },
       include: { customer: { select: { name: true } } },
       orderBy: { date: "desc" },
     }),

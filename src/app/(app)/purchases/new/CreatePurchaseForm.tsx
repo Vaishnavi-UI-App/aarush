@@ -50,6 +50,8 @@ export default function CreatePurchaseForm({
   const [vendorId, setVendorId] = useState(defaultVendorId ?? vendors[0]?.id ?? "");
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [discount, setDiscount] = useState("0");
+  const [dueDate, setDueDate] = useState("");
+  const [vendorBillNumber, setVendorBillNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -112,6 +114,8 @@ export default function CreatePurchaseForm({
         body: JSON.stringify({
           vendorId,
           discount: Number(discount) || 0,
+          dueDate: dueDate || undefined,
+          vendorBillNumber: vendorBillNumber || undefined,
           lines: lines.map((l) => ({
             itemId: l.itemId || undefined,
             description: l.description,
@@ -156,6 +160,20 @@ export default function CreatePurchaseForm({
         <div className="afs-form-field">
           <label>Tax treatment</label>
           <input readOnly value={sameState ? "CGST + SGST (same state)" : "IGST (different state)"} />
+        </div>
+      </div>
+      <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>Vendor&apos;s bill number</label>
+          <input
+            placeholder="e.g. their invoice #INV-4521"
+            value={vendorBillNumber}
+            onChange={(e) => setVendorBillNumber(e.target.value)}
+          />
+        </div>
+        <div className="afs-form-field">
+          <label>Due date</label>
+          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </div>
       </div>
 

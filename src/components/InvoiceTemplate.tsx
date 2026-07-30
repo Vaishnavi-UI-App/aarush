@@ -8,10 +8,11 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const { seller, billedTo, shippedTo, items, bank } = invoice;
   const hasIgst = (invoice.totalIgst ?? 0) > 0;
   const summaryColSpan = hasIgst ? 13 : 11;
+  const documentTitle = invoice.documentType === "PROFORMA" ? "PROFORMA INVOICE" : "TAX INVOICE";
 
   return (
     <div className="invoice-page">
-      <div className="title-row">TAX INVOICE</div>
+      <div className="title-row">{documentTitle}</div>
       <div className="original-badge">Original For Recipient</div>
 
       <table className="header-table">

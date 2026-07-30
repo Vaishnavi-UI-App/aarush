@@ -1,7 +1,8 @@
 import puppeteer from "puppeteer";
+import { puppeteerLaunchOptions } from "@/lib/puppeteer-launch-options";
 
 export async function generateInvoicePdf(origin: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch(puppeteerLaunchOptions);
   try {
     const page = await browser.newPage();
     await page.goto(`${origin}/invoice/print`, { waitUntil: "networkidle0" });
