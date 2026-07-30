@@ -1,0 +1,10 @@
+# Override for VPS hosts where nginx (not this repo's Caddy service) is already the
+# shared reverse proxy/TLS terminator for multiple apps. Publishes the app on a host
+# port bound to localhost only, for nginx to proxy_pass to; skip the `caddy` service
+# entirely by not including it in `docker compose up`'s service list.
+#
+# Usage: docker compose -f docker-compose.prod.yml -f docker-compose.prod.shared-nginx.yml up -d --build app postgres
+services:
+  app:
+    ports:
+      - "127.0.0.1:3002:3000"
