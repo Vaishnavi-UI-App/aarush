@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateInvoicePdf } from "@/lib/generate-invoice-pdf";
+import { INTERNAL_ORIGIN } from "@/lib/internal-origin";
 import { sampleInvoice } from "@/lib/invoice-data";
 
 const GRAPH_VERSION = "v20.0";
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const pdfBuffer = await generateInvoicePdf(request.nextUrl.origin);
+  const pdfBuffer = await generateInvoicePdf(INTERNAL_ORIGIN);
   const filename = `${sampleInvoice.invoiceNumber.replace(/\//g, "-")}.pdf`;
 
   const form = new FormData();

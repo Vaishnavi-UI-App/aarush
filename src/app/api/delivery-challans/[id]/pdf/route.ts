@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError, SESSION_COOKIE_NAME } from "@/lib/session";
 import { generateDeliveryChallanPdf } from "@/lib/generate-delivery-challan-pdf";
+import { INTERNAL_ORIGIN } from "@/lib/internal-origin";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const [pdfBuffer, challan] = await Promise.all([
-      generateDeliveryChallanPdf(request.nextUrl.origin, sessionToken, id),
+      generateDeliveryChallanPdf(INTERNAL_ORIGIN, sessionToken, id),
       prisma.deliveryChallan.findFirst({ where: { id, tenantId: session.tenantId }, select: { number: true } }),
     ]);
     const filename = challan ? `${challan.number.replace(/\//g, "-")}.pdf` : `delivery-challan-${id}.pdf`;

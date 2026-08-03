@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateInvoicePdf } from "@/lib/generate-invoice-pdf";
+import { INTERNAL_ORIGIN } from "@/lib/internal-origin";
 import { sampleInvoice } from "@/lib/invoice-data";
 import { sendMail } from "@/lib/mailer";
 
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Recipient email 'to' is required" }, { status: 400 });
   }
 
-  const pdfBuffer = await generateInvoicePdf(request.nextUrl.origin);
+  const pdfBuffer = await generateInvoicePdf(INTERNAL_ORIGIN);
 
   try {
     await sendMail({

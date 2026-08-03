@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { generateInvoicePdf } from "@/lib/generate-invoice-pdf";
+import { INTERNAL_ORIGIN } from "@/lib/internal-origin";
 
-export async function GET(request: NextRequest) {
-  const pdfBuffer = await generateInvoicePdf(request.nextUrl.origin);
+export async function GET() {
+  const pdfBuffer = await generateInvoicePdf(INTERNAL_ORIGIN);
 
   return new NextResponse(new Uint8Array(pdfBuffer), {
     headers: {

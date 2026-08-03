@@ -3,6 +3,7 @@ import { requireSession, SessionError, SESSION_COOKIE_NAME } from "@/lib/session
 import { getRazorpayClient } from "@/lib/razorpay";
 import { prisma } from "@/lib/prisma";
 import { generateRealInvoicePdf } from "@/lib/generate-real-invoice-pdf";
+import { INTERNAL_ORIGIN } from "@/lib/internal-origin";
 import { sendMail } from "@/lib/mailer";
 import { canWrite } from "@/lib/permissions";
 
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
   if (invoice.customer.email) {
     try {
       emailed = await emailInvoiceWithPaymentLink({
-        origin: request.nextUrl.origin,
+        origin: INTERNAL_ORIGIN,
         sessionToken: request.cookies.get(SESSION_COOKIE_NAME)?.value,
         invoiceId: invoice.id,
         invoiceNumber: invoice.number,

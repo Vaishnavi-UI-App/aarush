@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { requireSession, SessionError, SESSION_COOKIE_NAME } from "@/lib/session";
 import { puppeteerLaunchOptions } from "@/lib/puppeteer-launch-options";
+import { INTERNAL_ORIGIN } from "@/lib/internal-origin";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const origin = request.nextUrl.origin;
+  const origin = INTERNAL_ORIGIN;
   const url = new URL(`/print/purchases/${id}`, origin);
   const purchase = await prisma.purchase.findFirst({ where: { id, tenantId: session.tenantId }, select: { number: true } });
 

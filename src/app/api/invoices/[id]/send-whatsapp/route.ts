@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError, SESSION_COOKIE_NAME } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { generateRealInvoicePdf } from "@/lib/generate-real-invoice-pdf";
+import { INTERNAL_ORIGIN } from "@/lib/internal-origin";
 
 const GRAPH_VERSION = "v20.0";
 
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   try {
     const pdfBuffer = await generateRealInvoicePdf(
-      request.nextUrl.origin,
+      INTERNAL_ORIGIN,
       request.cookies.get(SESSION_COOKIE_NAME)?.value,
       id
     );
