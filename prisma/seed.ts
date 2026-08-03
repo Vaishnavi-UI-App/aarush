@@ -15,11 +15,11 @@ async function main() {
     phone: "9999999999", // PLACEHOLDER
     email: "info@aarushfires.com", // PLACEHOLDER
     logoUrl: "/logo.jpeg",
-    bankAccountName: "AARUSH FIRE PROTECTION SYSTEMS PVT LTD", // PLACEHOLDER
-    bankAccountNo: "0000000000000", // PLACEHOLDER
-    bankIfsc: "XXXX0000000", // PLACEHOLDER
-    bankName: "Bank Name", // PLACEHOLDER
-    bankBranch: "Branch Name", // PLACEHOLDER
+    bankAccountName: "AARUSH FIRE PROTECTION SYSTEMS PVT LTD",
+    bankAccountNo: "070110100000616",
+    bankIfsc: "NKGS0000070",
+    bankName: "NKGSB Co-op Bank Ltd",
+    bankBranch: "Pune",
     invoiceTerms: "100% ADVANCE PAYMENT BEFORE DELIVERY.\nGST EXTRA.\nPACKING CHARGES EXTRA.\nTRANSPORT CHARGES EXTRA.",
   };
 

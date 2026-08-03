@@ -19,6 +19,7 @@ const links = [
   { href: "/sites", label: "Sites", financeOnly: true },
   { href: "/track", label: "Track", trackingOnly: true },
   { href: "/settings/users", label: "Settings", ownerOnly: true },
+  { href: "/settings/company", label: "Company Details", ownerOnly: true },
   { href: "/settings/permissions", label: "Permissions", ownerOnly: true },
 ];
 

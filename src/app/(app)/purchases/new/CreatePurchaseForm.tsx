@@ -180,6 +180,7 @@ export default function CreatePurchaseForm({
       <table className="afs-table" style={{ marginTop: 10, marginBottom: 10 }}>
         <thead>
           <tr>
+            <th style={{ width: 28 }}></th>
             <th>Item</th>
             <th>Description</th>
             <th>HSN/SAC</th>
@@ -187,7 +188,6 @@ export default function CreatePurchaseForm({
             <th style={{ width: 100 }}>Rate</th>
             <th style={{ width: 90 }}>Tax %</th>
             <th style={{ width: 100 }}>Taxable</th>
-            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -195,6 +195,18 @@ export default function CreatePurchaseForm({
             const taxable = round2((Number(line.qty) || 0) * (Number(line.rate) || 0));
             return (
               <tr key={idx}>
+                <td>
+                  {lines.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeLine(idx)}
+                      title="Remove line"
+                      style={{ color: "#b91c1c", border: "none", background: "none", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </td>
                 <td>
                   <select value={line.itemId} onChange={(e) => pickItem(idx, e.target.value)}>
                     <option value="">— manual —</option>
@@ -246,13 +258,6 @@ export default function CreatePurchaseForm({
                   />
                 </td>
                 <td>{taxable.toFixed(2)}</td>
-                <td>
-                  {lines.length > 1 && (
-                    <button type="button" onClick={() => removeLine(idx)} style={{ color: "#b91c1c", border: "none", background: "none", cursor: "pointer" }}>
-                      ✕
-                    </button>
-                  )}
-                </td>
               </tr>
             );
           })}
