@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { COMMON_UNITS } from "@/lib/units";
 
 interface Customer {
   id: string;
@@ -39,7 +40,7 @@ export default function CreateInvoiceForm({
   type,
   tenantStateCode,
   customers,
-  items,
+  items: initialItems,
   defaultCustomerId,
 }: {
   type: "SALE" | "PROFORMA";
@@ -50,10 +51,30 @@ export default function CreateInvoiceForm({
 }) {
   const router = useRouter();
   const [customerId, setCustomerId] = useState(defaultCustomerId ?? customers[0]?.id ?? "");
+  const [items, setItems] = useState<Item[]>(initialItems);
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [discount, setDiscount] = useState("0");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [showNewItemForm, setShowNewItemForm] = useState(false);
+  const [newItem, setNewItem] = useState({ name: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
+  const [newItemError, setNewItemError] = useState<string | null>(null);
+  const [savingNewItem, setSavingNewItem] = useState(false);
+
+  const [poNumber, setPoNumber] = useState("");
+  const [poDate, setPoDate] = useState("");
+  const [vehicleNumber, setVehicleNumber] = useState("");
+  const [transportationMode, setTransportationMode] = useState("");
+  const [reverseCharge, setReverseCharge] = useState(false);
+  const [deliveredThrough, setDeliveredThrough] = useState("");
+  const [placeOfSupplySite, setPlaceOfSupplySite] = useState("");
+
+  const [shipToSameAsBilling, setShipToSameAsBilling] = useState(true);
+  const [shipToName, setShipToName] = useState("");
+  const [shipToAddress, setShipToAddress] = useState("");
+  const [shipToGstin, setShipToGstin] = useState("");
+  const [shipToStateCode, setShipToStateCode] = useState("");
 
   const customer = customers.find((c) => c.id === customerId);
   const sameState = customer ? customer.stateCode === tenantStateCode : true;
@@ -83,6 +104,48 @@ export default function CreateInvoiceForm({
 
   function removeLine(index: number) {
     setLines((ls) => ls.filter((_, i) => i !== index));
+  }
+
+  function setNewItemField<K extends keyof typeof newItem>(key: K, value: string) {
+    setNewItem((f) => ({ ...f, [key]: value }));
+  }
+
+  async function addItem() {
+    if (!newItem.name || !newItem.hsnCode || !newItem.unit || newItem.salePrice === "") {
+      setNewItemError("Name, HSN/SAC, Unit and Sale price are required");
+      return;
+    }
+    setSavingNewItem(true);
+    setNewItemError(null);
+    try {
+      const res = await fetch("/api/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newItem,
+          salePrice: Number(newItem.salePrice),
+          taxRate: Number(newItem.taxRate),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create item");
+      const created: Item = {
+        id: data.id,
+        name: data.name,
+        hsnCode: data.hsnCode,
+        unit: data.unit,
+        salePrice: Number(data.salePrice),
+        taxRate: Number(data.taxRate),
+      };
+      setItems((its) => [...its, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewItem({ name: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
+      setShowNewItemForm(false);
+      router.refresh();
+    } catch (e) {
+      setNewItemError(e instanceof Error ? e.message : "Failed to create item");
+    } finally {
+      setSavingNewItem(false);
+    }
   }
 
   const totals = useMemo(() => {
@@ -115,6 +178,18 @@ export default function CreateInvoiceForm({
           customerId,
           type,
           discount: Number(discount) || 0,
+          poNumber: poNumber || undefined,
+          poDate: poDate || undefined,
+          vehicleNumber: vehicleNumber || undefined,
+          transportationMode: transportationMode || undefined,
+          reverseCharge,
+          deliveredThrough: deliveredThrough || undefined,
+          placeOfSupplySite: placeOfSupplySite || undefined,
+          shipToSameAsBilling,
+          shipToName: shipToSameAsBilling ? undefined : shipToName || undefined,
+          shipToAddress: shipToSameAsBilling ? undefined : shipToAddress || undefined,
+          shipToGstin: shipToSameAsBilling ? undefined : shipToGstin || undefined,
+          shipToStateCode: shipToSameAsBilling ? undefined : shipToStateCode || undefined,
           lines: lines.map((l) => ({
             itemId: l.itemId || undefined,
             description: l.description,
@@ -161,6 +236,82 @@ export default function CreateInvoiceForm({
           <input readOnly value={sameState ? "CGST + SGST (same state)" : "IGST (different state)"} />
         </div>
       </div>
+
+      <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>PO Number</label>
+          <input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
+        </div>
+        <div className="afs-form-field">
+          <label>PO Date</label>
+          <input type="date" value={poDate} onChange={(e) => setPoDate(e.target.value)} />
+        </div>
+        <div className="afs-form-field">
+          <label>Reverse Charge</label>
+          <select value={reverseCharge ? "YES" : "NO"} onChange={(e) => setReverseCharge(e.target.value === "YES")}>
+            <option value="NO">NO</option>
+            <option value="YES">YES</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>Vehicle Number</label>
+          <input value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} />
+        </div>
+        <div className="afs-form-field">
+          <label>Transportation Mode</label>
+          <input value={transportationMode} onChange={(e) => setTransportationMode(e.target.value)} />
+        </div>
+        <div className="afs-form-field">
+          <label>Delivered Through</label>
+          <input value={deliveredThrough} onChange={(e) => setDeliveredThrough(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>Place of Supply (site)</label>
+          <input value={placeOfSupplySite} onChange={(e) => setPlaceOfSupplySite(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="afs-form-field" style={{ marginBottom: 10 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 400 }}>
+          <input
+            type="checkbox"
+            checked={shipToSameAsBilling}
+            onChange={(e) => setShipToSameAsBilling(e.target.checked)}
+          />
+          Shipped to same address as billing
+        </label>
+      </div>
+
+      {!shipToSameAsBilling && (
+        <>
+          <div className="afs-form-row">
+            <div className="afs-form-field">
+              <label>Consignee Name</label>
+              <input value={shipToName} onChange={(e) => setShipToName(e.target.value)} />
+            </div>
+            <div className="afs-form-field">
+              <label>Consignee GSTIN</label>
+              <input value={shipToGstin} onChange={(e) => setShipToGstin(e.target.value)} />
+            </div>
+            <div className="afs-form-field">
+              <label>Consignee State code</label>
+              <input value={shipToStateCode} onChange={(e) => setShipToStateCode(e.target.value)} maxLength={2} />
+            </div>
+          </div>
+          <div className="afs-form-row">
+            <div className="afs-form-field">
+              <label>Consignee Address</label>
+              <input value={shipToAddress} onChange={(e) => setShipToAddress(e.target.value)} />
+            </div>
+          </div>
+        </>
+      )}
 
       <table className="afs-table" style={{ marginTop: 10, marginBottom: 10 }}>
         <thead>
@@ -244,9 +395,64 @@ export default function CreateInvoiceForm({
         </tbody>
       </table>
 
-      <button type="button" onClick={addLine} className="afs-btn afs-btn-gold" style={{ marginBottom: 20 }}>
-        + Add line
-      </button>
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        <button type="button" onClick={addLine} className="afs-btn afs-btn-gold">
+          + Add line
+        </button>
+        <button type="button" onClick={() => setShowNewItemForm((v) => !v)} className="afs-btn" style={{ background: "#e5e7eb", color: "#333" }}>
+          + Add Item
+        </button>
+      </div>
+
+      {showNewItemForm && (
+        <div className="afs-card" style={{ background: "#f8f9fd", marginBottom: 20 }}>
+          <div className="afs-form-row">
+            <div className="afs-form-field">
+              <label>Name *</label>
+              <input required value={newItem.name} onChange={(e) => setNewItemField("name", e.target.value)} />
+            </div>
+            <div className="afs-form-field">
+              <label>HSN/SAC *</label>
+              <input required value={newItem.hsnCode} onChange={(e) => setNewItemField("hsnCode", e.target.value)} />
+            </div>
+            <div className="afs-form-field">
+              <label>Unit *</label>
+              <select required value={newItem.unit} onChange={(e) => setNewItemField("unit", e.target.value)}>
+                {COMMON_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="afs-form-field">
+              <label>Sale price *</label>
+              <input
+                required
+                type="number"
+                step="0.01"
+                min="0"
+                value={newItem.salePrice}
+                onChange={(e) => setNewItemField("salePrice", e.target.value)}
+              />
+            </div>
+            <div className="afs-form-field">
+              <label>Tax rate % *</label>
+              <select required value={newItem.taxRate} onChange={(e) => setNewItemField("taxRate", e.target.value)}>
+                {[0, 5, 12, 18, 28].map((r) => (
+                  <option key={r} value={r}>
+                    {r}%
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {newItemError && <div style={{ color: "#b91c1c", fontSize: 13, marginBottom: 10 }}>{newItemError}</div>}
+          <button type="button" onClick={addItem} disabled={savingNewItem} className="afs-btn afs-btn-primary">
+            {savingNewItem ? "Adding…" : "Save Item"}
+          </button>
+        </div>
+      )}
 
       <div className="afs-card" style={{ background: "#f8f9fd", maxWidth: 320, marginLeft: "auto", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>

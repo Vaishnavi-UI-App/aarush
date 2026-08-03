@@ -7,18 +7,45 @@ import { usePathname, useRouter } from "next/navigation";
 const links = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/invoices", label: "Invoices" },
+  { href: "/delivery-challans", label: "Delivery Challans" },
   { href: "/customers", label: "Customers" },
   { href: "/items", label: "Items" },
-  { href: "/purchases", label: "Purchases" },
-  { href: "/vendors", label: "Vendors" },
-  { href: "/banking", label: "Banking" },
-  { href: "/reports/ageing", label: "Ageing Report" },
+  { href: "/purchases", label: "Purchases", financeOnly: true },
+  { href: "/vendors", label: "Vendors", financeOnly: true },
+  { href: "/banking", label: "Banking", financeOnly: true },
+  { href: "/reports/ageing", label: "Ageing Report", financeOnly: true },
+  { href: "/attendance", label: "Attendance" },
+  { href: "/expenses", label: "Expenses" },
+  { href: "/sites", label: "Sites", financeOnly: true },
+  { href: "/track", label: "Track", trackingOnly: true },
+  { href: "/settings/users", label: "Settings", ownerOnly: true },
+  { href: "/settings/permissions", label: "Permissions", ownerOnly: true },
 ];
 
-export default function SidebarNav({ logoUrl, tenantName }: { logoUrl: string; tenantName: string }) {
+export interface SidebarPermissions {
+  finance: boolean;
+  manageUsers: boolean;
+  tracking: boolean;
+}
+
+export default function SidebarNav({
+  logoUrl,
+  tenantName,
+  permissions,
+}: {
+  logoUrl: string;
+  tenantName: string;
+  permissions: SidebarPermissions;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const visibleLinks = links.filter(
+    (link) =>
+      (!link.financeOnly || permissions.finance) &&
+      (!link.ownerOnly || permissions.manageUsers) &&
+      (!link.trackingOnly || permissions.tracking)
+  );
 
   useEffect(() => {
     setOpen(false);
@@ -52,7 +79,7 @@ export default function SidebarNav({ logoUrl, tenantName }: { logoUrl: string; t
           <span>{tenantName}</span>
         </div>
         <nav className="afs-nav">
-          {links.map((link) => (
+          {visibleLinks.map((link) => (
             <Link key={link.href} href={link.href} className={pathname.startsWith(link.href) ? "active" : ""}>
               {link.label}
             </Link>

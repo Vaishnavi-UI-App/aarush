@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError, SESSION_COOKIE_NAME } from "@/lib/session";
 import { generateRealInvoicePdf } from "@/lib/generate-real-invoice-pdf";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -15,11 +16,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
   try {
-    const pdfBuffer = await generateRealInvoicePdf(request.nextUrl.origin, sessionToken, id);
+    const [pdfBuffer, invoice] = await Promise.all([
+      generateRealInvoicePdf(request.nextUrl.origin, sessionToken, id),
+      prisma.invoice.findFirst({ where: { id, tenantId: session.tenantId }, select: { number: true } }),
+    ]);
+    const filename = invoice ? `${invoice.number.replace(/\//g, "-")}.pdf` : `invoice-${id}.pdf`;
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename=invoice-${id}.pdf`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
   } catch {

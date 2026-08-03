@@ -50,6 +50,15 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         <InvoiceTemplate invoice={toInvoiceTemplateData(invoice, tenant)} />
       </div>
 
+      {session!.role === "OWNER" && invoice.conversionNote && (
+        <div className="afs-card" style={{ marginBottom: 20, padding: 16, background: "#fff7e0", border: "1px solid #e6c65c" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#5c4a00", marginBottom: 4 }}>
+            Internal note (visible to owner only)
+          </div>
+          <div style={{ fontSize: 13, color: "#5c4a00", whiteSpace: "pre-wrap" }}>{invoice.conversionNote}</div>
+        </div>
+      )}
+
       <InvoiceDetailActions
         invoiceId={invoice.id}
         invoiceType={invoice.type}

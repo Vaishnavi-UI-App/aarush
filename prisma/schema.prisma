@@ -49,6 +49,16 @@ model Tenant {
   invoiceCounters InvoiceCounter[]
   purchaseCounters PurchaseCounter[]
   bankAccounts BankAccount[]
+  deliveryChallans DeliveryChallan[]
+  deliveryChallanCounters DeliveryChallanCounter[]
+  attendanceRecords AttendanceRecord[]
+  sites            Site[]
+  fundAllocations  FundAllocation[]
+  expenseCategories ExpenseCategory[]
+  orderedByPeople  OrderedByPerson[]
+  expenses         Expense[]
+  locationPings    LocationPing[]
+  rolePermissions  RolePermission[]
 
   @@map("tenants")
 }
@@ -64,13 +74,59 @@ model User {
   id        String   @id @default(uuid())
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String?
   email     String   @unique
   passwordHash String
   role      UserRole @default(SALES_STAFF)
   createdAt DateTime @default(now())
 
+  passwordResetTokens PasswordResetToken[]
+  attendanceRecords   AttendanceRecord[]
+  fundAllocationsAdded FundAllocation[] @relation("FundAllocationsAdded")
+  expensesAdded        Expense[]        @relation("ExpensesAdded")
+  locationPing         LocationPing?
+
   @@index([tenantId])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model AttendanceRecord {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  date     DateTime @db.Date
+
+  checkInAt        DateTime?
+  checkInLat       Decimal?  @db.Decimal(9, 6)
+  checkInLng       Decimal?  @db.Decimal(9, 6)
+  checkInPhotoData String?   @db.Text
+
+  checkOutAt       DateTime?
+  checkOutLat      Decimal?  @db.Decimal(9, 6)
+  checkOutLng      Decimal?  @db.Decimal(9, 6)
+  checkOutPhotoData String?  @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, userId, date])
+  @@index([tenantId, date])
+  @@map("attendance_records")
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +151,7 @@ model Customer {
   invoices      Invoice[]
   payments      Payment[]
   ledgerEntries LedgerEntry[]
+  deliveryChallans DeliveryChallan[]
 
   @@index([tenantId])
   @@map("customers")
@@ -159,6 +216,58 @@ model InvoiceCounter {
 }
 
 // ---------------------------------------------------------------------------
+// Delivery Challans
+// ---------------------------------------------------------------------------
+
+model DeliveryChallanCounter {
+  id            String @id @default(uuid())
+  tenantId      String
+  tenant        Tenant @relation(fields: [tenantId], references: [id])
+  financialYear String // e.g. "26-27"
+  lastSequence  Int    @default(0)
+
+  @@unique([tenantId, financialYear])
+  @@map("delivery_challan_counters")
+}
+
+model DeliveryChallan {
+  id         String    @id @default(uuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  number        String
+  date          DateTime @default(now())
+  toName        String?
+  toAddress     String?
+  poNumber      String?
+  poDate        DateTime?
+  vehicleNumber String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  archivedAt DateTime?
+
+  lines DeliveryChallanLine[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, customerId])
+  @@map("delivery_challans")
+}
+
+model DeliveryChallanLine {
+  id          String          @id @default(uuid())
+  challanId   String
+  challan     DeliveryChallan @relation(fields: [challanId], references: [id])
+  srNo        Int
+  particulars String
+  qty         Decimal         @db.Decimal(12, 3)
+
+  @@map("delivery_challan_lines")
+}
+
+// ---------------------------------------------------------------------------
 // Invoices
 // ---------------------------------------------------------------------------
 
@@ -175,6 +284,7 @@ enum InvoiceStatus {
   PAID
   OVERDUE
   CANCELLED
+  APPROVED
 }
 
 model Invoice {
@@ -198,9 +308,38 @@ model Invoice {
   roundOff   Decimal @db.Decimal(14, 2) @default(0)
   total      Decimal @db.Decimal(14, 2)
 
+  // Dispatch details -- entered per invoice at creation time, since they vary shipment
+  // to shipment (unlike the tenant/customer master data).
+  poNumber           String?
+  poDate             DateTime?
+  vehicleNumber      String?
+  transportationMode String?
+  reverseCharge      Boolean   @default(false)
+  deliveredThrough   String?
+  placeOfSupplySite  String?
+
+  // Consignee (ship-to) details. Defaults to the billing customer's own address, but a
+  // customer may want goods delivered to a different site -- e.g. a head office that's
+  // billed but a job site that receives the goods.
+  shipToSameAsBilling Boolean @default(true)
+  shipToName          String?
+  shipToAddress       String?
+  shipToGstin         String?
+  shipToStateCode     String?
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   archivedAt DateTime? // soft-delete: archived invoices are hidden from the main list but never destroyed, and can be restored
+
+  // Set on a PROFORMA once it's been converted to a real SALE invoice -- lets the
+  // proforma row link forward to what it became instead of just showing "cancelled".
+  convertedToInvoiceId  String?  @unique
+  convertedToInvoice    Invoice? @relation("ProformaConversion", fields: [convertedToInvoiceId], references: [id])
+  convertedFromProforma Invoice? @relation("ProformaConversion")
+
+  // Internal remark entered when converting a proforma to this sale invoice. Never shown
+  // on the printed PDF or in customer emails/WhatsApp -- OWNER-only in the app UI.
+  conversionNote String?
 
   lines         InvoiceLine[]
   payments      Payment[]
@@ -494,4 +633,157 @@ model LedgerEntry {
   @@index([tenantId, customerId, createdAt])
   @@index([tenantId, vendorId, createdAt])
   @@map("ledger_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Expenses -- per-site wallets funding company vs. personal spend
+// ---------------------------------------------------------------------------
+
+model Site {
+  id         String    @id @default(uuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  name       String
+  address    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime? // soft-delete, same convention as Invoice/Purchase/DeliveryChallan
+
+  wallet          SiteWallet?
+  fundAllocations FundAllocation[]
+  expenses        Expense[]
+
+  @@index([tenantId])
+  @@map("sites")
+}
+
+model SiteWallet {
+  id     String @id @default(uuid())
+  siteId String @unique
+  site   Site   @relation(fields: [siteId], references: [id])
+  // No own tenantId -- a 1:1 derived-state child of Site, scoped entirely through it
+  // (same as InvoiceLine having no tenantId of its own).
+
+  companyBalance          Decimal  @db.Decimal(14, 2) @default(0)
+  totalFundsReceived      Decimal  @db.Decimal(14, 2) @default(0)
+  totalCompanySpent       Decimal  @db.Decimal(14, 2) @default(0)
+  totalPersonalSpent      Decimal  @db.Decimal(14, 2) @default(0)
+  totalPersonalReimbursed Decimal  @db.Decimal(14, 2) @default(0)
+  updatedAt               DateTime @updatedAt
+
+  @@map("site_wallets")
+}
+
+model FundAllocation {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  siteId   String
+  site     Site   @relation(fields: [siteId], references: [id])
+
+  amount               Decimal  @db.Decimal(14, 2)
+  reimbursedToPersonal Decimal  @db.Decimal(14, 2) @default(0)
+  addedToBalance       Decimal  @db.Decimal(14, 2) @default(0)
+  note      String?
+  addedById String
+  addedBy   User     @relation("FundAllocationsAdded", fields: [addedById], references: [id])
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, siteId])
+  @@map("fund_allocations")
+}
+
+enum ExpenseFundType {
+  COMPANY
+  PERSONAL
+  SPLIT
+}
+
+model ExpenseCategory {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  name      String
+  createdAt DateTime  @default(now())
+  expenses  Expense[]
+
+  @@unique([tenantId, name])
+  @@map("expense_categories")
+}
+
+model OrderedByPerson {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  name      String
+  createdAt DateTime  @default(now())
+  expenses  Expense[]
+
+  @@unique([tenantId, name])
+  @@map("ordered_by_people")
+}
+
+model Expense {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  siteId   String
+  site     Site   @relation(fields: [siteId], references: [id])
+
+  categoryId  String?
+  category    ExpenseCategory?  @relation(fields: [categoryId], references: [id])
+  orderedById String?
+  orderedBy   OrderedByPerson?  @relation(fields: [orderedById], references: [id])
+
+  amount           Decimal         @db.Decimal(14, 2)
+  companyPaid      Decimal         @db.Decimal(14, 2) @default(0)
+  personalPaid     Decimal         @db.Decimal(14, 2) @default(0)
+  fundType         ExpenseFundType // always server-derived, never client-supplied
+  date             DateTime        @default(now())
+  note             String?
+  receiptPhotoData String?         @db.Text // same data-URL convention as attendance photos
+
+  addedById String
+  addedBy   User     @relation("ExpensesAdded", fields: [addedById], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, siteId])
+  @@index([tenantId, addedById])
+  @@map("expenses")
+}
+
+// ---------------------------------------------------------------------------
+// Live location tracking -- last-known position while the app is open
+// ---------------------------------------------------------------------------
+
+model LocationPing {
+  id       String   @id @default(uuid())
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  userId   String   @unique // one row per user -- latest position only, not a history log
+  user     User     @relation(fields: [userId], references: [id])
+  lat      Decimal  @db.Decimal(9, 6)
+  lng      Decimal  @db.Decimal(9, 6)
+  pingedAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("location_pings")
+}
+
+// ---------------------------------------------------------------------------
+// Configurable per-role permissions -- a row here overrides the hardcoded default
+// in src/lib/permissions.ts; absence of a row means "use the default".
+// ---------------------------------------------------------------------------
+
+model RolePermission {
+  id       String   @id @default(uuid())
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  role     UserRole
+  key      String
+  allowed  Boolean
+
+  @@unique([tenantId, role, key])
+  @@map("role_permissions")
 }

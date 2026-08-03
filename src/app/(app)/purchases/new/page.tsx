@@ -1,9 +1,12 @@
+import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { canAccessFinance } from "@/lib/permissions";
 import CreatePurchaseForm from "./CreatePurchaseForm";
 
 export default async function NewPurchasePage({ searchParams }: { searchParams: Promise<{ vendorId?: string }> }) {
   const session = await getServerSession();
+  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
   const { vendorId } = await searchParams;
 
   const [tenant, vendors, items] = await Promise.all([

@@ -12,7 +12,10 @@ export default async function InvoicesPage() {
   const [invoices, archivedCount] = await Promise.all([
     prisma.invoice.findMany({
       where: { tenantId: session!.tenantId, archivedAt: null },
-      include: { customer: { select: { name: true, phone: true, email: true } } },
+      include: {
+        customer: { select: { name: true, phone: true, email: true } },
+        convertedToInvoice: { select: { id: true, number: true } },
+      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.invoice.count({ where: { tenantId: session!.tenantId, archivedAt: { not: null } } }),
@@ -68,14 +71,21 @@ export default async function InvoicesPage() {
                     <span className={badgeClass(inv.status)}>{inv.status.replace("_", " ")}</span>
                   </td>
                   <td>
-                    <InvoiceRowActions
-                      invoiceId={inv.id}
-                      invoiceNumber={inv.number}
-                      invoiceStatus={inv.status}
-                      total={Number(inv.total)}
-                      customerPhone={inv.customer.phone}
-                      customerEmail={inv.customer.email}
-                    />
+                    {inv.convertedToInvoice ? (
+                      <span style={{ fontSize: 12, color: "#667" }}>
+                        Converted →{" "}
+                        <Link href={`/invoices/${inv.convertedToInvoice.id}`}>{inv.convertedToInvoice.number}</Link>
+                      </span>
+                    ) : (
+                      <InvoiceRowActions
+                        invoiceId={inv.id}
+                        invoiceNumber={inv.number}
+                        invoiceStatus={inv.status}
+                        total={Number(inv.total)}
+                        customerPhone={inv.customer.phone}
+                        customerEmail={inv.customer.email}
+                      />
+                    )}
                   </td>
                 </tr>
               ))}

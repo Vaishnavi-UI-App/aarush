@@ -4,6 +4,7 @@ import { getRazorpayClient } from "@/lib/razorpay";
 import { prisma } from "@/lib/prisma";
 import { generateRealInvoicePdf } from "@/lib/generate-real-invoice-pdf";
 import { sendMail } from "@/lib/mailer";
+import { canWrite } from "@/lib/permissions";
 
 export async function POST(request: NextRequest) {
   let session;
@@ -13,6 +14,7 @@ export async function POST(request: NextRequest) {
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
+  if (!(await canWrite(session.tenantId, session.role))) return NextResponse.json({ error: "View-only access" }, { status: 403 });
 
   const { invoiceId } = await request.json();
   if (!invoiceId) {

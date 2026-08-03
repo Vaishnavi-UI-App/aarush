@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
-import { BillableInvoiceType, createSaleInvoice, InvoiceLineInput } from "@/lib/gst-invoice";
+import { BillableInvoiceType, createSaleInvoice, DispatchDetailsInput, InvoiceLineInput } from "@/lib/gst-invoice";
 import { prisma } from "@/lib/prisma";
+import { canWrite } from "@/lib/permissions";
 
 export async function GET(request: NextRequest) {
   let session;
@@ -23,11 +24,12 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(invoices);
 }
 
-interface CreateInvoiceBody {
+interface CreateInvoiceBody extends Omit<DispatchDetailsInput, "poDate"> {
   customerId: string;
   lines: InvoiceLineInput[];
   discount?: number;
   dueDate?: string;
+  poDate?: string;
   type?: BillableInvoiceType;
 }
 
@@ -39,6 +41,7 @@ export async function POST(request: NextRequest) {
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
+  if (!(await canWrite(session.tenantId, session.role))) return NextResponse.json({ error: "View-only access" }, { status: 403 });
 
   const body: CreateInvoiceBody = await request.json();
 
@@ -64,6 +67,18 @@ export async function POST(request: NextRequest) {
       discount: body.discount,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
       type: body.type,
+      poNumber: body.poNumber,
+      poDate: body.poDate ? new Date(body.poDate) : undefined,
+      vehicleNumber: body.vehicleNumber,
+      transportationMode: body.transportationMode,
+      reverseCharge: body.reverseCharge,
+      deliveredThrough: body.deliveredThrough,
+      placeOfSupplySite: body.placeOfSupplySite,
+      shipToSameAsBilling: body.shipToSameAsBilling,
+      shipToName: body.shipToName,
+      shipToAddress: body.shipToAddress,
+      shipToGstin: body.shipToGstin,
+      shipToStateCode: body.shipToStateCode,
     });
     return NextResponse.json(invoice, { status: 201 });
   } catch (e) {

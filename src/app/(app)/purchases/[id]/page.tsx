@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { canAccessFinance } from "@/lib/permissions";
 import PurchaseDetailActions from "./PurchaseDetailActions";
 
 function badgeClass(status: string) {
@@ -9,6 +10,7 @@ function badgeClass(status: string) {
 
 export default async function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession();
+  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
   const { id } = await params;
 
   const purchase = await prisma.purchase.findFirst({

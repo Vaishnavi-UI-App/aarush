@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { WhatsAppIcon, MailIcon, DownloadIcon, TrashIcon } from "@/components/icons";
+import { WhatsAppIcon, MailIcon, DownloadIcon, TrashIcon, ViewIcon } from "@/components/icons";
 
 export default function InvoiceRowActions({
   invoiceId,
@@ -73,13 +73,13 @@ export default function InvoiceRowActions({
           body: JSON.stringify({ invoiceId }),
         });
         const data = await res.json();
-        if (res.ok) {
-          if (!data.emailed) throw new Error(data.emailError || "Payment link created but email failed to send");
+        if (res.ok && data.emailed) {
           setNotice("Email sent successfully");
           return;
         }
-        // "Nothing due" etc. -- fall through to a plain email instead of failing.
-        if (res.status !== 400) throw new Error(data.error || "Failed to send email");
+        // Payment link couldn't be created (Razorpay not configured, "nothing due", API
+        // error, etc.) or was created but the email failed -- fall through to a plain
+        // PDF email either way instead of leaving the customer with nothing.
       }
 
       const res = await fetch(`/api/invoices/${invoiceId}/send-email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
@@ -118,6 +118,9 @@ export default function InvoiceRowActions({
 
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <a href={`/invoices/${invoiceId}`} className="afs-icon-btn" title="View invoice">
+        <ViewIcon />
+      </a>
       <a
         href={`/api/invoices/${invoiceId}/pdf`}
         target="_blank"

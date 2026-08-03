@@ -12,6 +12,7 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
 
   return (
     <div className="invoice-page">
+      {invoice.watermark && <div className="invoice-watermark">{invoice.watermark}</div>}
       <div className="title-row">{documentTitle}</div>
       <div className="original-badge">Original For Recipient</div>
 

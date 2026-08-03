@@ -1,0 +1,112 @@
+.afs-auth-bg {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(160deg, var(--afs-navy) 0%, var(--afs-navy-dark) 55%, #081326 100%);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.afs-auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  padding: 36px 32px 32px;
+}
+
+.afs-auth-logo {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--afs-gold);
+}
+
+.afs-auth-title {
+  text-align: center;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--afs-navy);
+  margin-bottom: 2px;
+}
+
+.afs-auth-subtitle {
+  text-align: center;
+  font-size: 12.5px;
+  color: #6b7280;
+  margin-bottom: 26px;
+}
+
+.afs-auth-field {
+  margin-bottom: 16px;
+}
+
+.afs-auth-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 5px;
+}
+
+.afs-auth-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.afs-auth-field input:focus {
+  outline: none;
+  border-color: var(--afs-navy);
+  box-shadow: 0 0 0 3px rgba(22, 48, 92, 0.12);
+}
+
+.afs-auth-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+  padding: 11px 20px;
+}
+
+.afs-auth-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  font-size: 12.5px;
+}
+
+.afs-auth-links a {
+  color: var(--afs-navy);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.afs-auth-links a:hover {
+  text-decoration: underline;
+}
+
+.afs-auth-message {
+  margin-bottom: 16px;
+  font-size: 13px;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.afs-auth-message.error {
+  color: #7f1d1d;
+  background: #fde2e2;
+}
+
+.afs-auth-message.success {
+  color: #14532d;
+  background: #dcf5e2;
+}

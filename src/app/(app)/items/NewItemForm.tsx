@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { COMMON_UNITS } from "@/lib/units";
 
 export default function NewItemForm() {
   const router = useRouter();
@@ -51,7 +52,13 @@ export default function NewItemForm() {
         </div>
         <div className="afs-form-field">
           <label>Unit *</label>
-          <input required value={form.unit} onChange={(e) => set("unit", e.target.value)} />
+          <select required value={form.unit} onChange={(e) => set("unit", e.target.value)}>
+            {COMMON_UNITS.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="afs-form-field">
           <label>Sale price *</label>

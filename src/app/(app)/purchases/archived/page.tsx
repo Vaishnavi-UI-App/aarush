@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { canAccessFinance } from "@/lib/permissions";
 import RestorePurchaseButton from "./RestorePurchaseButton";
 
 function badgeClass(status: string) {
@@ -9,6 +11,7 @@ function badgeClass(status: string) {
 
 export default async function ArchivedPurchasesPage() {
   const session = await getServerSession();
+  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
   const purchases = await prisma.purchase.findMany({
     where: { tenantId: session!.tenantId, archivedAt: { not: null } },
     include: { vendor: { select: { name: true } } },

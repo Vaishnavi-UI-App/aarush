@@ -1,9 +1,12 @@
+import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { canAccessFinance } from "@/lib/permissions";
 import NewBankAccountForm from "./NewBankAccountForm";
 
 export default async function BankingPage() {
   const session = await getServerSession();
+  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
   const accounts = await prisma.bankAccount.findMany({
     where: { tenantId: session!.tenantId },
     orderBy: { createdAt: "asc" },

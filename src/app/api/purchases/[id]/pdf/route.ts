@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { requireSession, SessionError, SESSION_COOKIE_NAME } from "@/lib/session";
 import { puppeteerLaunchOptions } from "@/lib/puppeteer-launch-options";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const origin = request.nextUrl.origin;
   const url = new URL(`/print/purchases/${id}`, origin);
+  const purchase = await prisma.purchase.findFirst({ where: { id, tenantId: session.tenantId }, select: { number: true } });
 
   const browser = await puppeteer.launch(puppeteerLaunchOptions);
   try {
@@ -35,10 +37,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       margin: { top: "10mm", bottom: "10mm", left: "8mm", right: "8mm" },
     });
 
+    const filename = purchase ? `${purchase.number.replace(/\//g, "-")}.pdf` : `purchase-${id}.pdf`;
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename=purchase-${id}.pdf`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
   } finally {

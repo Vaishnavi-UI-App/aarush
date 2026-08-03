@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import NewCustomerForm from "./NewCustomerForm";
+import { EditIcon } from "@/components/icons";
 
 export default async function CustomersPage() {
   const session = await getServerSession();
@@ -30,6 +32,7 @@ export default async function CustomersPage() {
                 <th>State code</th>
                 <th>Phone</th>
                 <th>Email</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -42,6 +45,11 @@ export default async function CustomersPage() {
                   <td>{c.stateCode}</td>
                   <td>{c.phone ?? "—"}</td>
                   <td>{c.email ?? "—"}</td>
+                  <td>
+                    <Link href={`/customers/${c.id}/edit`} className="afs-icon-btn" title="Edit customer">
+                      <EditIcon />
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>

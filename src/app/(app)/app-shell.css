@@ -248,6 +248,20 @@
 .afs-badge-paid { background: #dcfce7; color: #14532d; }
 .afs-badge-overdue { background: #fee2e2; color: #7f1d1d; }
 .afs-badge-cancelled { background: #f3f4f6; color: #6b7280; }
+.afs-badge-approved { background: #e0e7ff; color: #3730a3; }
+.afs-badge-company { background: #fbeed9; color: #a3620f; }
+.afs-badge-personal { background: #fbe4e2; color: #a13a3a; }
+.afs-badge-split { background: #f7edd0; color: #8a6d13; }
+
+.afs-row-archived {
+  filter: blur(0.4px) grayscale(70%);
+  opacity: 0.55;
+}
+
+.afs-row-archived:hover {
+  filter: none;
+  opacity: 1;
+}
 
 .afs-form-row {
   display: flex;

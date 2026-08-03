@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { round2 } from "@/lib/gst-invoice";
+import { canAccessFinance } from "@/lib/permissions";
 
 type Bucket = "0-30" | "31-60" | "61-90" | "90+";
 
@@ -14,6 +16,7 @@ function bucketFor(days: number): Bucket {
 
 export default async function AgeingReportPage() {
   const session = await getServerSession();
+  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
 
   const invoices = await prisma.invoice.findMany({
     where: {

@@ -43,7 +43,7 @@ export default async function ArchivedInvoicesPage() {
             </thead>
             <tbody>
               {invoices.map((inv) => (
-                <tr key={inv.id}>
+                <tr key={inv.id} className="afs-row-archived">
                   <td>{inv.number}</td>
                   <td>{inv.type === "PROFORMA" ? "Proforma" : "Sale"}</td>
                   <td>{inv.customer.name}</td>

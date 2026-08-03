@@ -33,6 +33,8 @@ export default function InvoiceDetailActions({
   const [cashAmount, setCashAmount] = useState(amountDue > 0 ? amountDue.toFixed(2) : "");
   const [cashMode, setCashMode] = useState("CASH");
   const [cashReference, setCashReference] = useState("");
+  const [showConvertForm, setShowConvertForm] = useState(false);
+  const [conversionNote, setConversionNote] = useState("");
 
   async function recordManualPayment(e: React.FormEvent) {
     e.preventDefault();
@@ -87,11 +89,16 @@ export default function InvoiceDetailActions({
     }
   }
 
-  async function convertToSale() {
+  async function convertToSale(e: React.FormEvent) {
+    e.preventDefault();
     setBusy(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/invoices/${invoiceId}/convert-to-sale`, { method: "POST" });
+      const res = await fetch(`/api/invoices/${invoiceId}/convert-to-sale`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: conversionNote.trim() || undefined }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to convert proforma");
       router.push(`/invoices/${data.id}`);
@@ -105,8 +112,8 @@ export default function InvoiceDetailActions({
   return (
     <div className="afs-card">
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        {invoiceType === "PROFORMA" && status !== "CANCELLED" && (
-          <button onClick={convertToSale} disabled={busy} className="afs-btn afs-btn-primary">
+        {invoiceType === "PROFORMA" && status !== "CANCELLED" && status !== "APPROVED" && (
+          <button onClick={() => setShowConvertForm((v) => !v)} disabled={busy} className="afs-btn afs-btn-primary">
             Convert to Sale Invoice
           </button>
         )}
@@ -126,6 +133,23 @@ export default function InvoiceDetailActions({
           </span>
         )}
       </div>
+
+      {showConvertForm && (
+        <form onSubmit={convertToSale} style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div className="afs-form-field" style={{ flex: "1 1 320px" }}>
+            <label>Internal note (optional -- visible to OWNER only, never shown to the customer)</label>
+            <textarea
+              rows={2}
+              value={conversionNote}
+              onChange={(e) => setConversionNote(e.target.value)}
+              style={{ width: "100%", resize: "vertical" }}
+            />
+          </div>
+          <button type="submit" disabled={busy} className="afs-btn afs-btn-primary">
+            {busy ? "Converting…" : "Confirm Conversion"}
+          </button>
+        </form>
+      )}
 
       {showCashForm && (
         <form onSubmit={recordManualPayment} style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>

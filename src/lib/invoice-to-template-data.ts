@@ -40,9 +40,14 @@ export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Ten
     invoiceDate: formatDate(new Date(invoice.date)),
     placeOfSupply: stateName(customer.stateCode),
     dateOfSupply: formatDate(new Date(invoice.date)),
-    reverseCharge: "NO",
-    vehicleNumber: undefined,
-    transportationMode: undefined,
+    reverseCharge: invoice.reverseCharge ? "YES" : "NO",
+    watermark: invoice.archivedAt || invoice.status === "CANCELLED" ? "CANCELLED" : undefined,
+    poNumber: invoice.poNumber ?? undefined,
+    poDate: invoice.poDate ? formatDate(new Date(invoice.poDate)) : undefined,
+    vehicleNumber: invoice.vehicleNumber ?? undefined,
+    transportationMode: invoice.transportationMode ?? undefined,
+    deliveredThrough: invoice.deliveredThrough ?? undefined,
+    placeOfSupplySite: invoice.placeOfSupplySite ?? undefined,
 
     seller: {
       name: tenant.name,
@@ -65,13 +70,21 @@ export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Ten
       state: stateName(customer.stateCode),
     },
 
-    shippedTo: {
-      name: customer.name,
-      address: customer.address ?? "",
-      gstin: customer.gstin ?? "",
-      stateCode: customer.stateCode,
-      state: stateName(customer.stateCode),
-    },
+    shippedTo: invoice.shipToSameAsBilling
+      ? {
+          name: customer.name,
+          address: customer.address ?? "",
+          gstin: customer.gstin ?? "",
+          stateCode: customer.stateCode,
+          state: stateName(customer.stateCode),
+        }
+      : {
+          name: invoice.shipToName ?? customer.name,
+          address: invoice.shipToAddress ?? "",
+          gstin: invoice.shipToGstin ?? "",
+          stateCode: invoice.shipToStateCode ?? customer.stateCode,
+          state: stateName(invoice.shipToStateCode ?? customer.stateCode),
+        },
 
     items,
 

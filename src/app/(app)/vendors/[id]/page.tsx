@@ -1,11 +1,13 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { canAccessFinance } from "@/lib/permissions";
 import RecordVendorPaymentForm from "./RecordVendorPaymentForm";
 
 export default async function VendorLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession();
+  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
   const { id } = await params;
 
   const vendor = await prisma.vendor.findFirst({ where: { id, tenantId: session!.tenantId } });

@@ -1,9 +1,12 @@
+import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { canAccessFinance } from "@/lib/permissions";
 import NewVendorForm from "./NewVendorForm";
 
 export default async function VendorsPage() {
   const session = await getServerSession();
+  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
   const vendors = await prisma.vendor.findMany({
     where: { tenantId: session!.tenantId },
     orderBy: { name: "asc" },

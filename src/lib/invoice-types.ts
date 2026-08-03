@@ -63,6 +63,9 @@ export interface InvoiceData {
   transportationMode?: string;
   placeOfSupplySite?: string;
   deliveredThrough?: string;
+  /** Diagonal overlay text shown across the printed document, e.g. "CANCELLED" for an
+   * archived or cancelled invoice. Unset for a normal, live invoice. */
+  watermark?: string;
 
   seller: SellerDetails;
   billedTo: PartyDetails;

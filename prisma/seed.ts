@@ -34,12 +34,15 @@ async function main() {
 
   const owner = await prisma.user.upsert({
     where: { id: "00000000-0000-0000-0000-000000000901" },
-    update: {},
+    update: { email: "aarushfireprotection@gmail.com" },
     create: {
       id: "00000000-0000-0000-0000-000000000901",
       tenantId: tenant.id,
-      email: "owner@aarushfires.example",
-      passwordHash: "dev-seed-not-a-real-hash",
+      name: "Owner",
+      email: "aarushfireprotection@gmail.com",
+      // Not a real hash of anything -- verifyPassword() only accepts "scrypt:..." values,
+      // so this account can't log in until it goes through the forgot-password flow.
+      passwordHash: "unset",
       role: "OWNER",
     },
   });

@@ -3,6 +3,7 @@ import { requireSession, SessionError } from "@/lib/session";
 import { createPurchaseBill } from "@/lib/purchase";
 import { InvoiceLineInput } from "@/lib/gst-invoice";
 import { prisma } from "@/lib/prisma";
+import { canWrite } from "@/lib/permissions";
 
 interface CreatePurchaseBody {
   vendorId: string;
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
+  if (!(await canWrite(session.tenantId, session.role))) return NextResponse.json({ error: "View-only access" }, { status: 403 });
 
   const body: CreatePurchaseBody = await request.json();
 

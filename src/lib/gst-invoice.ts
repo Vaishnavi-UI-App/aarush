@@ -83,7 +83,22 @@ async function nextInvoiceNumber(
   return `${INVOICE_PREFIXES[type](invoicePrefix)}/${fy}/${counter.lastSequence}`;
 }
 
-export interface CreateSaleInvoiceInput {
+export interface DispatchDetailsInput {
+  poNumber?: string;
+  poDate?: Date;
+  vehicleNumber?: string;
+  transportationMode?: string;
+  reverseCharge?: boolean;
+  deliveredThrough?: string;
+  placeOfSupplySite?: string;
+  shipToSameAsBilling?: boolean;
+  shipToName?: string;
+  shipToAddress?: string;
+  shipToGstin?: string;
+  shipToStateCode?: string;
+}
+
+export interface CreateSaleInvoiceInput extends DispatchDetailsInput {
   tenantId: string;
   customerId: string;
   lines: InvoiceLineInput[];
@@ -93,10 +108,32 @@ export interface CreateSaleInvoiceInput {
    * it still shows GST-inclusive pricing to the customer, but is non-GST-liable and
    * never touches the ledger, since it isn't a real debt until converted to a sale. */
   type?: BillableInvoiceType;
+  /** Internal, OWNER-only remark -- never printed or emailed to the customer. */
+  conversionNote?: string;
 }
 
 export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
-  const { tenantId, customerId, lines, discount = 0, dueDate, type = "SALE" } = input;
+  const {
+    tenantId,
+    customerId,
+    lines,
+    discount = 0,
+    dueDate,
+    type = "SALE",
+    poNumber,
+    poDate,
+    vehicleNumber,
+    transportationMode,
+    reverseCharge = false,
+    deliveredThrough,
+    placeOfSupplySite,
+    shipToSameAsBilling = true,
+    shipToName,
+    shipToAddress,
+    shipToGstin,
+    shipToStateCode,
+    conversionNote,
+  } = input;
 
   if (lines.length === 0) {
     throw new Error("Invoice must have at least one line item");
@@ -165,6 +202,19 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
         igst: igstTotal,
         roundOff: 0,
         total,
+        poNumber,
+        poDate,
+        vehicleNumber,
+        transportationMode,
+        reverseCharge,
+        deliveredThrough,
+        placeOfSupplySite,
+        shipToSameAsBilling,
+        shipToName: shipToSameAsBilling ? undefined : shipToName,
+        shipToAddress: shipToSameAsBilling ? undefined : shipToAddress,
+        shipToGstin: shipToSameAsBilling ? undefined : shipToGstin,
+        shipToStateCode: shipToSameAsBilling ? undefined : shipToStateCode,
+        conversionNote,
         lines: { create: lineData },
       },
       include: { lines: true },
@@ -204,38 +254,58 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
 }
 
 /** Converts an accepted PROFORMA into a real SALE invoice (fresh number, posts to the ledger)
- * and marks the original proforma as CANCELLED so it's clear it was superseded. */
-export async function convertProformaToSale(tenantId: string, proformaId: string) {
-  return prisma.$transaction(async (tx) => {
-    const proforma = await tx.invoice.findFirst({
+ * and marks the original proforma as APPROVED, linked to the invoice it became. */
+export async function convertProformaToSale(tenantId: string, proformaId: string, conversionNote?: string) {
+  const proforma = await prisma.$transaction(async (tx) => {
+    const p = await tx.invoice.findFirst({
       where: { id: proformaId, tenantId, type: "PROFORMA" },
       include: { lines: true },
     });
-    if (!proforma) {
+    if (!p) {
       throw new Error("Proforma invoice not found");
     }
-    if (proforma.status === "CANCELLED") {
+    if (p.status === "CANCELLED" || p.status === "APPROVED") {
       throw new Error("This proforma has already been converted or cancelled");
     }
 
-    await tx.invoice.update({ where: { id: proforma.id }, data: { status: "CANCELLED" } });
+    await tx.invoice.update({ where: { id: p.id }, data: { status: "APPROVED" } });
 
-    return proforma;
-  }).then((proforma) =>
-    createSaleInvoice({
-      tenantId,
-      customerId: proforma.customerId,
-      type: "SALE",
-      discount: Number(proforma.discount),
-      dueDate: proforma.dueDate ?? undefined,
-      lines: proforma.lines.map((l) => ({
-        itemId: l.itemId ?? undefined,
-        description: l.description,
-        hsnCode: l.hsnCode,
-        qty: Number(l.qty),
-        rate: Number(l.rate),
-        taxRate: Number(l.taxRate),
-      })),
-    })
-  );
+    return p;
+  });
+
+  const invoice = await createSaleInvoice({
+    tenantId,
+    customerId: proforma.customerId,
+    type: "SALE",
+    discount: Number(proforma.discount),
+    dueDate: proforma.dueDate ?? undefined,
+    poNumber: proforma.poNumber ?? undefined,
+    poDate: proforma.poDate ?? undefined,
+    vehicleNumber: proforma.vehicleNumber ?? undefined,
+    transportationMode: proforma.transportationMode ?? undefined,
+    reverseCharge: proforma.reverseCharge,
+    deliveredThrough: proforma.deliveredThrough ?? undefined,
+    placeOfSupplySite: proforma.placeOfSupplySite ?? undefined,
+    shipToSameAsBilling: proforma.shipToSameAsBilling,
+    shipToName: proforma.shipToName ?? undefined,
+    shipToAddress: proforma.shipToAddress ?? undefined,
+    shipToGstin: proforma.shipToGstin ?? undefined,
+    shipToStateCode: proforma.shipToStateCode ?? undefined,
+    conversionNote: conversionNote?.trim() || undefined,
+    lines: proforma.lines.map((l) => ({
+      itemId: l.itemId ?? undefined,
+      description: l.description,
+      hsnCode: l.hsnCode,
+      qty: Number(l.qty),
+      rate: Number(l.rate),
+      taxRate: Number(l.taxRate),
+    })),
+  });
+
+  await prisma.invoice.update({
+    where: { id: proforma.id },
+    data: { convertedToInvoiceId: invoice.id },
+  });
+
+  return invoice;
 }
