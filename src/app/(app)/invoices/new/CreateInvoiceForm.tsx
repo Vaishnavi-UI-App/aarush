@@ -316,7 +316,7 @@ export default function CreateInvoiceForm({
       <table className="afs-table" style={{ marginTop: 10, marginBottom: 10 }}>
         <thead>
           <tr>
-            <th style={{ width: 28 }}></th>
+            <th style={{ width: 28, position: "sticky", left: 0, background: "#f2f4fa", zIndex: 1 }}></th>
             <th>Item</th>
             <th>Description</th>
             <th>HSN/SAC</th>
@@ -331,7 +331,7 @@ export default function CreateInvoiceForm({
             const taxable = round2((Number(line.qty) || 0) * (Number(line.rate) || 0));
             return (
               <tr key={idx}>
-                <td>
+                <td style={{ position: "sticky", left: 0, background: "#fff", zIndex: 1 }}>
                   {lines.length > 1 && (
                     <button
                       type="button"
