@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canViewAllAttendance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
+import { reconcileStaleOpenDays } from "@/lib/attendance";
 
 export async function GET(request: NextRequest) {
   let session;
@@ -17,9 +18,12 @@ export async function GET(request: NextRequest) {
   const from = params.get("from") || undefined;
   const to = params.get("to") || undefined;
 
-  // Only OWNER can look at anyone else's records -- everyone else is forced to their own,
-  // no matter what userId they pass.
-  const userId = (await canViewAllAttendance(session.tenantId, session.role)) ? requestedUserId : session.userId;
+  // Only a role with allAttendance:view can look at anyone else's records -- everyone
+  // else is forced to their own, no matter what userId they pass.
+  const canSeeAll = await can(session.tenantId, session.roleId, "allAttendance", "view");
+  const userId = canSeeAll ? requestedUserId : session.userId;
+
+  await reconcileStaleOpenDays(session.tenantId, userId);
 
   const records = await prisma.attendanceRecord.findMany({
     where: {
@@ -34,13 +38,17 @@ export async function GET(request: NextRequest) {
           }
         : {}),
     },
-    include: { user: { select: { id: true, name: true, email: true } } },
+    include: {
+      user: { select: { id: true, name: true, email: true, roleRef: { select: { name: true } } } },
+      site: { select: { id: true, name: true } },
+      breaks: { orderBy: { startAt: "asc" } },
+    },
     orderBy: { date: "desc" },
   });
 
   const withHours = records.map((r) => ({
     ...r,
-    hours: r.checkInAt && r.checkOutAt ? (r.checkOutAt.getTime() - r.checkInAt.getTime()) / 3_600_000 : null,
+    hours: r.computedWorkHours != null ? Number(r.computedWorkHours) : r.checkInAt && r.checkOutAt ? (r.checkOutAt.getTime() - r.checkInAt.getTime()) / 3_600_000 : null,
   }));
 
   return NextResponse.json(withHours);

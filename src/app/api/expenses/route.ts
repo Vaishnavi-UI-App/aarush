@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { recordExpense } from "@/lib/site-wallet";
+import { buildExpenseWhere, getRestrictedSiteId } from "@/lib/expense-query";
 
 export async function GET(request: NextRequest) {
   let session;
@@ -21,22 +22,11 @@ export async function GET(request: NextRequest) {
   // Non-finance roles are forced to their own expenses server-side, no matter what
   // addedById/userId they pass in the query string -- same self-scoping proven for
   // /api/attendance.
-  const addedById = (await canAccessFinance(session.tenantId, session.role)) ? undefined : session.userId;
+  const addedById = (await can(session.tenantId, session.roleId, "expenses", "edit")) ? undefined : session.userId;
+  const restrictedSiteId = await getRestrictedSiteId(session.tenantId, session.userId);
 
   const expenses = await prisma.expense.findMany({
-    where: {
-      tenantId: session.tenantId,
-      ...(siteId ? { siteId } : {}),
-      ...(addedById ? { addedById } : {}),
-      ...(from || to
-        ? {
-            date: {
-              ...(from ? { gte: new Date(from) } : {}),
-              ...(to ? { lte: new Date(to) } : {}),
-            },
-          }
-        : {}),
-    },
+    where: buildExpenseWhere({ tenantId: session.tenantId, siteId, from, to, addedById, restrictedSiteId }),
     include: {
       site: { select: { id: true, name: true } },
       category: { select: { id: true, name: true } },
@@ -63,6 +53,11 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   if (!body.siteId || !(body.amount > 0)) {
     return NextResponse.json({ error: "siteId and amount > 0 are required" }, { status: 400 });
+  }
+
+  const restrictedSiteId = await getRestrictedSiteId(session.tenantId, session.userId);
+  if (restrictedSiteId && body.siteId !== restrictedSiteId) {
+    return NextResponse.json({ error: "You can only log expenses for your assigned site" }, { status: 403 });
   }
 
   try {

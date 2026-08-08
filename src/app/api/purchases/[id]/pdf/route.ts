@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer";
 import { requireSession, SessionError, SESSION_COOKIE_NAME } from "@/lib/session";
-import { puppeteerLaunchOptions } from "@/lib/puppeteer-launch-options";
+import { generatePurchasePdf } from "@/lib/generate-purchase-pdf";
 import { INTERNAL_ORIGIN } from "@/lib/internal-origin";
 import { prisma } from "@/lib/prisma";
 
@@ -16,28 +15,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const origin = INTERNAL_ORIGIN;
-  const url = new URL(`/print/purchases/${id}`, origin);
-  const purchase = await prisma.purchase.findFirst({ where: { id, tenantId: session.tenantId }, select: { number: true } });
 
-  const browser = await puppeteer.launch(puppeteerLaunchOptions);
   try {
-    const page = await browser.newPage();
-    if (sessionToken) {
-      await page.setCookie({ name: SESSION_COOKIE_NAME, value: sessionToken, url: origin });
-    }
-
-    const response = await page.goto(url.toString(), { waitUntil: "networkidle0" });
-    if (!response || response.status() === 404) {
-      return NextResponse.json({ error: "Purchase bill not found" }, { status: 404 });
-    }
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "10mm", bottom: "10mm", left: "8mm", right: "8mm" },
-    });
-
+    const [pdfBuffer, purchase] = await Promise.all([
+      generatePurchasePdf(INTERNAL_ORIGIN, sessionToken, id),
+      prisma.purchase.findFirst({ where: { id, tenantId: session.tenantId }, select: { number: true } }),
+    ]);
     const filename = purchase ? `${purchase.number.replace(/\//g, "-")}.pdf` : `purchase-${id}.pdf`;
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
@@ -45,7 +28,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
-  } finally {
-    await browser.close();
+  } catch {
+    return NextResponse.json({ error: "Purchase bill not found" }, { status: 404 });
   }
 }

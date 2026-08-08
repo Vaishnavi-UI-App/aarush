@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canWrite, canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
-  if (!(await canWrite(session.tenantId, session.role)) || !(await canAccessFinance(session.tenantId, session.role))) {
+  if (!(await can(session.tenantId, session.roleId, "sites", "delete"))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

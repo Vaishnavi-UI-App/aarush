@@ -46,6 +46,48 @@ export interface InvoiceLineInput {
   taxRate: number;
 }
 
+/** Shared by invoice create and edit: turns raw line inputs into priced line rows plus
+ * the document-level subtotal/tax totals they roll up to. */
+export function computeInvoiceLines(lines: InvoiceLineInput[], sellerStateCode: string, buyerStateCode: string) {
+  let subtotal = 0;
+  let cgstTotal = 0;
+  let sgstTotal = 0;
+  let igstTotal = 0;
+
+  const lineData = lines.map((line) => {
+    const taxableValue = round2(line.qty * line.rate);
+    const split = calculateTaxSplit(taxableValue, line.taxRate, sellerStateCode, buyerStateCode);
+    const lineTotal = round2(taxableValue + split.cgst + split.sgst + split.igst);
+
+    subtotal += taxableValue;
+    cgstTotal += split.cgst;
+    sgstTotal += split.sgst;
+    igstTotal += split.igst;
+
+    return {
+      itemId: line.itemId,
+      description: line.description,
+      hsnCode: line.hsnCode,
+      qty: line.qty,
+      rate: line.rate,
+      taxableValue,
+      taxRate: line.taxRate,
+      cgstAmount: split.cgst,
+      sgstAmount: split.sgst,
+      igstAmount: split.igst,
+      lineTotal,
+    };
+  });
+
+  return {
+    lineData,
+    subtotal: round2(subtotal),
+    cgstTotal: round2(cgstTotal),
+    sgstTotal: round2(sgstTotal),
+    igstTotal: round2(igstTotal),
+  };
+}
+
 /** Indian financial year label for a date, e.g. 2026-07-01 -> "26-27". */
 export function financialYearLabel(date: Date): string {
   const year = date.getUTCFullYear();
@@ -91,6 +133,10 @@ export interface DispatchDetailsInput {
   reverseCharge?: boolean;
   deliveredThrough?: string;
   placeOfSupplySite?: string;
+  /** The project/job Site (from the Sites feature) this invoice is raised against, e.g. "Pune". */
+  siteId?: string;
+  /** Free text shown on the printed invoice, e.g. "Due on Receipt", "Net 30", "Net 60". */
+  paymentTerms?: string;
   shipToSameAsBilling?: boolean;
   shipToName?: string;
   shipToAddress?: string;
@@ -127,6 +173,8 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
     reverseCharge = false,
     deliveredThrough,
     placeOfSupplySite,
+    siteId,
+    paymentTerms,
     shipToSameAsBilling = true,
     shipToName,
     shipToAddress,
@@ -143,45 +191,17 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
     const [tenant, customer] = await Promise.all([
       tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
       tx.customer.findFirstOrThrow({ where: { id: customerId, tenantId } }),
+      siteId ? tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } }) : Promise.resolve(null),
     ]);
 
     const date = new Date();
     const number = await nextInvoiceNumber(tx, tenantId, tenant.invoicePrefix, type, date);
 
-    let subtotal = 0;
-    let cgstTotal = 0;
-    let sgstTotal = 0;
-    let igstTotal = 0;
-
-    const lineData = lines.map((line) => {
-      const taxableValue = round2(line.qty * line.rate);
-      const split = calculateTaxSplit(taxableValue, line.taxRate, tenant.stateCode, customer.stateCode);
-      const lineTotal = round2(taxableValue + split.cgst + split.sgst + split.igst);
-
-      subtotal += taxableValue;
-      cgstTotal += split.cgst;
-      sgstTotal += split.sgst;
-      igstTotal += split.igst;
-
-      return {
-        itemId: line.itemId,
-        description: line.description,
-        hsnCode: line.hsnCode,
-        qty: line.qty,
-        rate: line.rate,
-        taxableValue,
-        taxRate: line.taxRate,
-        cgstAmount: split.cgst,
-        sgstAmount: split.sgst,
-        igstAmount: split.igst,
-        lineTotal,
-      };
-    });
-
-    subtotal = round2(subtotal);
-    cgstTotal = round2(cgstTotal);
-    sgstTotal = round2(sgstTotal);
-    igstTotal = round2(igstTotal);
+    const { lineData, subtotal, cgstTotal, sgstTotal, igstTotal } = computeInvoiceLines(
+      lines,
+      tenant.stateCode,
+      customer.stateCode
+    );
 
     const discountAmount = round2(discount);
     const total = round2(subtotal - discountAmount + cgstTotal + sgstTotal + igstTotal);
@@ -190,6 +210,7 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
       data: {
         tenantId,
         customerId,
+        siteId,
         type,
         number,
         date,
@@ -209,6 +230,7 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
         reverseCharge,
         deliveredThrough,
         placeOfSupplySite,
+        paymentTerms,
         shipToSameAsBilling,
         shipToName: shipToSameAsBilling ? undefined : shipToName,
         shipToAddress: shipToSameAsBilling ? undefined : shipToAddress,
@@ -253,6 +275,147 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
   });
 }
 
+export interface UpdateSaleInvoiceInput extends DispatchDetailsInput {
+  tenantId: string;
+  invoiceId: string;
+  lines: InvoiceLineInput[];
+  discount?: number;
+  dueDate?: Date;
+}
+
+/** Edits an existing DRAFT/SENT invoice with no successful payment against it yet.
+ * The customer and invoice number never change -- only line items, totals and dispatch
+ * details. For a SALE invoice this also repoints the posted ledger entry at the new
+ * total and replays the running balance forward for every later entry on that
+ * customer's ledger, so the account balance never drifts from what was actually billed. */
+export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
+  const {
+    tenantId,
+    invoiceId,
+    lines,
+    discount = 0,
+    dueDate,
+    poNumber,
+    poDate,
+    vehicleNumber,
+    transportationMode,
+    reverseCharge = false,
+    deliveredThrough,
+    placeOfSupplySite,
+    siteId,
+    paymentTerms,
+    shipToSameAsBilling = true,
+    shipToName,
+    shipToAddress,
+    shipToGstin,
+    shipToStateCode,
+  } = input;
+
+  if (lines.length === 0) {
+    throw new Error("Invoice must have at least one line item");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findFirst({
+      where: { id: invoiceId, tenantId },
+      include: { payments: true },
+    });
+    if (!invoice) {
+      throw new Error("Invoice not found");
+    }
+    if (invoice.type === "CREDIT_NOTE") {
+      throw new Error("Credit notes cannot be edited");
+    }
+    if (invoice.archivedAt) {
+      throw new Error("Archived invoices cannot be edited");
+    }
+    if (invoice.status !== "DRAFT" && invoice.status !== "SENT") {
+      throw new Error("Only draft or sent invoices can be edited");
+    }
+    if (invoice.payments.some((p) => p.status === "SUCCESS")) {
+      throw new Error("Invoices with a recorded payment cannot be edited");
+    }
+
+    const [tenant, customer] = await Promise.all([
+      tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
+      tx.customer.findFirstOrThrow({ where: { id: invoice.customerId, tenantId } }),
+      siteId ? tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } }) : Promise.resolve(null),
+    ]);
+
+    const { lineData, subtotal, cgstTotal, sgstTotal, igstTotal } = computeInvoiceLines(
+      lines,
+      tenant.stateCode,
+      customer.stateCode
+    );
+
+    const discountAmount = round2(discount);
+    const total = round2(subtotal - discountAmount + cgstTotal + sgstTotal + igstTotal);
+
+    await tx.invoiceLine.deleteMany({ where: { invoiceId } });
+
+    const updated = await tx.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        dueDate,
+        subtotal,
+        discount: discountAmount,
+        cgst: cgstTotal,
+        sgst: sgstTotal,
+        igst: igstTotal,
+        total,
+        poNumber,
+        poDate,
+        vehicleNumber,
+        transportationMode,
+        reverseCharge,
+        deliveredThrough,
+        placeOfSupplySite,
+        siteId,
+        paymentTerms,
+        shipToSameAsBilling,
+        shipToName: shipToSameAsBilling ? null : shipToName,
+        shipToAddress: shipToSameAsBilling ? null : shipToAddress,
+        shipToGstin: shipToSameAsBilling ? null : shipToGstin,
+        shipToStateCode: shipToSameAsBilling ? null : shipToStateCode,
+        lines: { create: lineData },
+      },
+      include: { lines: true },
+    });
+
+    if (invoice.type === "SALE") {
+      // Serialize ledger writes per customer so the running balance never races.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${invoice.customerId}))`;
+
+      const entry = await tx.ledgerEntry.findFirst({
+        where: { tenantId, invoiceId, refType: "INVOICE" },
+      });
+
+      if (entry) {
+        const allEntries = await tx.ledgerEntry.findMany({
+          where: { tenantId, customerId: invoice.customerId },
+          orderBy: { createdAt: "asc" },
+        });
+
+        let running = 0;
+        for (const e of allEntries) {
+          const debit = e.id === entry.id ? total : Number(e.debit);
+          const credit = Number(e.credit);
+          running = round2(running + debit - credit);
+          await tx.ledgerEntry.update({
+            where: { id: e.id },
+            data: {
+              ...(e.id === entry.id ? { debit: total } : {}),
+              runningBalance: running,
+            },
+          });
+        }
+      }
+    }
+
+    return updated;
+  });
+}
+
 /** Converts an accepted PROFORMA into a real SALE invoice (fresh number, posts to the ledger)
  * and marks the original proforma as APPROVED, linked to the invoice it became. */
 export async function convertProformaToSale(tenantId: string, proformaId: string, conversionNote?: string) {
@@ -286,6 +449,8 @@ export async function convertProformaToSale(tenantId: string, proformaId: string
     reverseCharge: proforma.reverseCharge,
     deliveredThrough: proforma.deliveredThrough ?? undefined,
     placeOfSupplySite: proforma.placeOfSupplySite ?? undefined,
+    siteId: proforma.siteId ?? undefined,
+    paymentTerms: proforma.paymentTerms ?? undefined,
     shipToSameAsBilling: proforma.shipToSameAsBilling,
     shipToName: proforma.shipToName ?? undefined,
     shipToAddress: proforma.shipToAddress ?? undefined,

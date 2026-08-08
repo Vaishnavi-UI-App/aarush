@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
 import { marksOwnAttendance } from "@/lib/permissions";
-
-// See check-in/route.ts for why this must be UTC-midnight of the local calendar day.
-function startOfToday(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-}
+import { recordPunch, AttendanceError } from "@/lib/attendance";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   let session;
@@ -17,36 +12,39 @@ export async function POST(request: NextRequest) {
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
-  if (!marksOwnAttendance(session.role)) {
+  if (!(await marksOwnAttendance(session.tenantId, session.roleId))) {
     return NextResponse.json({ error: "Owners don't check in -- use the admin view instead" }, { status: 403 });
+  }
+  if (!checkRateLimit(`checkout:${session.userId}`, 5, 60_000)) {
+    return NextResponse.json({ error: "Too many attempts -- wait a moment and try again" }, { status: 429 });
   }
 
   const body = await request.json().catch(() => ({}));
-  const { lat, lng, photo } = body;
+  const { lat, lng, photo, siteId, outsideGeofenceReason } = body;
   if (typeof lat !== "number" || typeof lng !== "number" || typeof photo !== "string" || !photo) {
     return NextResponse.json({ error: "lat, lng, and photo are required" }, { status: 400 });
   }
-
-  const date = startOfToday();
-  const existing = await prisma.attendanceRecord.findUnique({
-    where: { tenantId_userId_date: { tenantId: session.tenantId, userId: session.userId, date } },
-  });
-  if (!existing?.checkInAt) {
-    return NextResponse.json({ error: "You haven't checked in today" }, { status: 409 });
+  if (siteId !== undefined && typeof siteId !== "string") {
+    return NextResponse.json({ error: "siteId must be a string" }, { status: 400 });
   }
-  if (existing.checkOutAt) {
-    return NextResponse.json({ error: "You've already checked out today" }, { status: 409 });
+  if (outsideGeofenceReason !== undefined && typeof outsideGeofenceReason !== "string") {
+    return NextResponse.json({ error: "outsideGeofenceReason must be a string" }, { status: 400 });
   }
 
-  const record = await prisma.attendanceRecord.update({
-    where: { tenantId_userId_date: { tenantId: session.tenantId, userId: session.userId, date } },
-    data: {
-      checkOutAt: new Date(),
-      checkOutLat: lat,
-      checkOutLng: lng,
-      checkOutPhotoData: photo,
-    },
-  });
-
-  return NextResponse.json(record);
+  try {
+    const record = await recordPunch({
+      tenantId: session.tenantId,
+      userId: session.userId,
+      kind: "CHECK_OUT",
+      lat,
+      lng,
+      photo,
+      siteId: siteId || undefined,
+      outsideGeofenceReason: outsideGeofenceReason || undefined,
+    });
+    return NextResponse.json(record);
+  } catch (e) {
+    if (e instanceof AttendanceError) return NextResponse.json({ error: e.message, code: e.code }, { status: e.status });
+    throw e;
+  }
 }

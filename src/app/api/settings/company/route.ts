@@ -11,10 +11,10 @@ export async function PATCH(request: NextRequest) {
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
-  if (!(await canManageUsers(session.tenantId, session.role))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await canManageUsers(session.tenantId, session.roleId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
-  const { name, gstin, pan, stateCode, invoicePrefix, addressLine, phone, email, bankAccountName, bankAccountNo, bankIfsc, bankName, bankBranch, invoiceTerms } = body;
+  const { name, gstin, pan, cinNo, website, stateCode, invoicePrefix, addressLine, phone, email, bankAccountName, bankAccountNo, bankIfsc, bankName, bankBranch, invoiceTerms } = body;
 
   if (!name || !gstin || !stateCode) {
     return NextResponse.json({ error: "name, gstin, and stateCode are required" }, { status: 400 });
@@ -26,6 +26,8 @@ export async function PATCH(request: NextRequest) {
       name,
       gstin,
       pan: pan || null,
+      cinNo: cinNo || null,
+      website: website || null,
       stateCode,
       invoicePrefix: invoicePrefix || "INV",
       addressLine: addressLine || null,

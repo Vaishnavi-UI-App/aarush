@@ -13,7 +13,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
-  if (!(await canManageUsers(session.tenantId, session.role))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await canManageUsers(session.tenantId, session.roleId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
   const user = await prisma.user.findFirst({ where: { id, tenantId: session.tenantId } });

@@ -4,7 +4,7 @@ import { amountInWords } from "@/lib/number-to-words";
 import { stateName } from "@/lib/state-codes";
 
 type InvoiceWithRelations = Prisma.InvoiceGetPayload<{
-  include: { lines: true; customer: true };
+  include: { lines: true; customer: true; site: true };
 }>;
 
 function formatDate(d: Date): string {
@@ -48,6 +48,8 @@ export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Ten
     transportationMode: invoice.transportationMode ?? undefined,
     deliveredThrough: invoice.deliveredThrough ?? undefined,
     placeOfSupplySite: invoice.placeOfSupplySite ?? undefined,
+    site: invoice.site?.name ?? undefined,
+    paymentTerms: invoice.paymentTerms ?? undefined,
 
     seller: {
       name: tenant.name,
@@ -57,6 +59,8 @@ export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Ten
       gstin: tenant.gstin,
       stateCode: tenant.stateCode,
       pan: tenant.pan ?? "",
+      cinNo: tenant.cinNo ?? undefined,
+      website: tenant.website ?? undefined,
       logoUrl: tenant.logoUrl ?? "/logo.jpeg",
     },
 

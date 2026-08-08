@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { createDeliveryChallan, DeliveryChallanLineInput } from "@/lib/delivery-challan";
 import { prisma } from "@/lib/prisma";
-import { canWrite } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 
 export async function GET(request: NextRequest) {
   let session;
@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
 
 interface CreateDeliveryChallanBody {
   customerId?: string;
+  siteId?: string;
   toName?: string;
   toAddress?: string;
   poNumber?: string;
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
-  if (!(await canWrite(session.tenantId, session.role))) return NextResponse.json({ error: "View-only access" }, { status: 403 });
+  if (!(await can(session.tenantId, session.roleId, "deliveryChallans", "add"))) return NextResponse.json({ error: "View-only access" }, { status: 403 });
 
   const body: CreateDeliveryChallanBody = await request.json();
 
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
     const challan = await createDeliveryChallan({
       tenantId: session.tenantId,
       customerId: body.customerId || undefined,
+      siteId: body.siteId || undefined,
       toName: body.toName,
       toAddress: body.toAddress,
       poNumber: body.poNumber,

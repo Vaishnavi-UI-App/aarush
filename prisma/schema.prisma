@@ -15,16 +15,18 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model Tenant {
-  id             String   @id @default(uuid())
-  name           String
-  gstin          String
-  pan            String?
-  stateCode      String // 2-digit GST state code, e.g. "27" for Maharashtra
-  invoicePrefix  String   @default("INV")
-  addressLine    String?
-  phone          String?
-  email          String?
-  logoUrl        String?  @default("/logo.jpeg")
+  id            String  @id @default(uuid())
+  name          String
+  gstin         String
+  pan           String?
+  cinNo         String? // Corporate Identification Number, for a registered company
+  website       String?
+  stateCode     String // 2-digit GST state code, e.g. "27" for Maharashtra
+  invoicePrefix String  @default("INV")
+  addressLine   String?
+  phone         String?
+  email         String?
+  logoUrl       String? @default("/logo.jpeg")
 
   bankAccountName String?
   bankAccountNo   String?
@@ -34,31 +36,34 @@ model Tenant {
 
   invoiceTerms String? // one line per entry, shown as Terms & Conditions on the invoice PDF
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  users        User[]
-  customers    Customer[]
-  vendors      Vendor[]
-  items        Item[]
-  invoices     Invoice[]
-  purchases    Purchase[]
-  payments     Payment[]
-  vendorPayments VendorPayment[]
-  ledgerEntries LedgerEntry[]
-  invoiceCounters InvoiceCounter[]
-  purchaseCounters PurchaseCounter[]
-  bankAccounts BankAccount[]
-  deliveryChallans DeliveryChallan[]
+  users                   User[]
+  customers               Customer[]
+  vendors                 Vendor[]
+  items                   Item[]
+  invoices                Invoice[]
+  purchases               Purchase[]
+  payments                Payment[]
+  vendorPayments          VendorPayment[]
+  ledgerEntries           LedgerEntry[]
+  invoiceCounters         InvoiceCounter[]
+  purchaseCounters        PurchaseCounter[]
+  bankAccounts            BankAccount[]
+  deliveryChallans        DeliveryChallan[]
   deliveryChallanCounters DeliveryChallanCounter[]
-  attendanceRecords AttendanceRecord[]
-  sites            Site[]
-  fundAllocations  FundAllocation[]
-  expenseCategories ExpenseCategory[]
-  orderedByPeople  OrderedByPerson[]
-  expenses         Expense[]
-  locationPings    LocationPing[]
-  rolePermissions  RolePermission[]
+  attendanceRecords       AttendanceRecord[]
+  sites                   Site[]
+  fundAllocations         FundAllocation[]
+  expenseCategories       ExpenseCategory[]
+  orderedByPeople         OrderedByPerson[]
+  expenses                Expense[]
+  locationPings           LocationPing[]
+  rolePermissions         RolePermission[]
+  roles                   Role[]
+  shiftConfigs            ShiftConfig[]
+  attendanceAuditLogs     AttendanceAuditLog[]
 
   @@map("tenants")
 }
@@ -70,23 +75,87 @@ enum UserRole {
   AUDITOR
 }
 
-model User {
-  id        String   @id @default(uuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  name      String?
-  email     String   @unique
-  passwordHash String
-  role      UserRole @default(SALES_STAFF)
-  createdAt DateTime @default(now())
+// ---------------------------------------------------------------------------
+// Custom roles: replaces the fixed UserRole enum with tenant-created roles,
+// each carrying its own View/Add/Edit/Delete grant per page (RolePagePermission).
+// `User.role` (the old enum) is kept around, unused going forward, purely so this
+// migration is additive and reversible -- nothing destructive happens to existing
+// data. Every tenant gets 4 seeded "isSystem" roles (Owner/Accountant/Sales
+// Staff/Auditor) at rollout time, mirroring the old enum's default behavior, so
+// no user ever goes from "has a role" to "has no role" mid-migration.
+// ---------------------------------------------------------------------------
 
-  passwordResetTokens PasswordResetToken[]
-  attendanceRecords   AttendanceRecord[]
-  fundAllocationsAdded FundAllocation[] @relation("FundAllocationsAdded")
-  expensesAdded        Expense[]        @relation("ExpensesAdded")
-  locationPing         LocationPing?
+model Role {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  name     String
+
+  // Seeded roles (Owner/Accountant/Sales Staff/Auditor) -- name is locked, can't be deleted.
+  isSystem Boolean @default(false)
+  // Exactly one per tenant (the seeded Owner role). Always has full access to every page
+  // and can always manage users/roles, regardless of what's stored in RolePagePermission --
+  // a hardcoded safety net so a bad edit can never lock every owner out of their own tenant.
+  isOwner  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  permissions  RolePagePermission[]
+  shiftConfigs ShiftConfig[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+// One row per (role, page) holding that role's 4 action grants for that page.
+// Absence of a row for a page means "no access" (fail closed) -- there's no
+// separate "default" concept like the old RolePermission table had.
+model RolePagePermission {
+  id     String @id @default(uuid())
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+  page   String // see PAGE_KEYS in src/lib/pages.ts
+
+  canView   Boolean @default(false)
+  canAdd    Boolean @default(false)
+  canEdit   Boolean @default(false)
+  canDelete Boolean @default(false)
+
+  @@unique([roleId, page])
+  @@index([roleId])
+  @@map("role_page_permissions")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  name         String?
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(SALES_STAFF) // deprecated -- superseded by roleId, kept for rollback safety only
+  roleId       String?
+  roleRef      Role?    @relation(fields: [roleId], references: [id])
+  // Optional site assignment -- when set, this user's view of expenses (and their
+  // ability to log expenses / add company funds) is restricted to just this site.
+  // Null means unrestricted (sees every site), same as today's behavior.
+  siteId       String?
+  site         Site?    @relation("AssignedSiteUsers", fields: [siteId], references: [id])
+  createdAt    DateTime @default(now())
+
+  passwordResetTokens   PasswordResetToken[]
+  attendanceRecords     AttendanceRecord[]
+  attendanceCorrections AttendanceRecord[]   @relation("AttendanceCorrectedBy")
+  attendanceAuditLogs   AttendanceAuditLog[] @relation("AttendanceAuditEditedBy")
+  fundAllocationsAdded  FundAllocation[]     @relation("FundAllocationsAdded")
+  expensesAdded         Expense[]            @relation("ExpensesAdded")
+  locationPing          LocationPing?
 
   @@index([tenantId])
+  @@index([roleId])
   @@map("users")
 }
 
@@ -103,30 +172,158 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
-model AttendanceRecord {
-  id       String @id @default(uuid())
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LEAVE
+  HOLIDAY
+}
+
+enum PunchKind {
+  CHECK_IN
+  CHECK_OUT
+}
+
+// One row per (tenant, role) -- a null roleId is the tenant's fallback shift, used by
+// any role without its own row. Read by lib/attendance.ts to resolve grace period,
+// half/full-day thresholds, and overtime cutoff for a given check-in/out.
+model ShiftConfig {
+  id       String  @id @default(uuid())
   tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+  roleId   String?
+  role     Role?   @relation(fields: [roleId], references: [id])
+  name     String
+
+  startTime           String // "09:30", 24h local (IST) wall-clock
+  endTime             String // "18:30"
+  gracePeriodMins     Int     @default(10)
+  halfDayThresholdHrs Decimal @default(4) @db.Decimal(4, 2)
+  fullDayThresholdHrs Decimal @default(8) @db.Decimal(4, 2)
+  overtimeAfterHrs    Decimal @default(9) @db.Decimal(4, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attendanceRecords AttendanceRecord[]
+
+  @@unique([tenantId, roleId])
+  @@index([tenantId])
+  @@map("shift_configs")
+}
+
+// One row per (user, calendar day) -- the daily summary/aggregate. Individual
+// check-in/out events live in AttendancePunch (supports forgetting to check out and
+// re-checking in later the same day); this row holds the derived totals and flags.
+model AttendanceRecord {
+  id       String   @id @default(uuid())
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
   userId   String
-  user     User   @relation(fields: [userId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
   date     DateTime @db.Date
 
+  siteId String?
+  site   Site?   @relation(fields: [siteId], references: [id])
+
+  shiftConfigId String?
+  shiftConfig   ShiftConfig? @relation(fields: [shiftConfigId], references: [id], onDelete: SetNull)
+
+  // First check-in / last check-out of the day, kept for fast display -- the full
+  // multi-session log (supports re-checking in after a checkout) is in punches[].
   checkInAt        DateTime?
   checkInLat       Decimal?  @db.Decimal(9, 6)
   checkInLng       Decimal?  @db.Decimal(9, 6)
   checkInPhotoData String?   @db.Text
 
-  checkOutAt       DateTime?
-  checkOutLat      Decimal?  @db.Decimal(9, 6)
-  checkOutLng      Decimal?  @db.Decimal(9, 6)
-  checkOutPhotoData String?  @db.Text
+  checkOutAt        DateTime?
+  checkOutLat       Decimal?  @db.Decimal(9, 6)
+  checkOutLng       Decimal?  @db.Decimal(9, 6)
+  checkOutPhotoData String?   @db.Text
+
+  status            AttendanceStatus @default(PRESENT)
+  computedWorkHours Decimal?         @db.Decimal(5, 2) // sum of all punch pairs, minus breaks
+  breakMinutes      Int              @default(0)
+  overtimeHours     Decimal?         @db.Decimal(5, 2)
+  isLate            Boolean          @default(false)
+  isEarlyDeparture  Boolean          @default(false)
+  // Set when a day is closed automatically (open check-in, never checked out, day has
+  // passed) instead of by the employee -- see reconcileStaleOpenDays in lib/attendance.ts.
+  isAutoClosed      Boolean          @default(false)
+
+  checkInWithinGeofence  Boolean?
+  checkOutWithinGeofence Boolean?
+  outsideGeofenceReason  String?  @db.Text
+
+  isManualEntry    Boolean   @default(false)
+  correctionReason String?   @db.Text
+  correctedById    String?
+  correctedBy      User?     @relation("AttendanceCorrectedBy", fields: [correctedById], references: [id])
+  correctedAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  punches   AttendancePunch[]
+  breaks    AttendanceBreak[]
+  auditLogs AttendanceAuditLog[]
+
   @@unique([tenantId, userId, date])
   @@index([tenantId, date])
   @@map("attendance_records")
+}
+
+model AttendancePunch {
+  id       String           @id @default(uuid())
+  recordId String
+  record   AttendanceRecord @relation(fields: [recordId], references: [id])
+  kind     PunchKind
+  at       DateTime
+
+  lat       Decimal @db.Decimal(9, 6)
+  lng       Decimal @db.Decimal(9, 6)
+  photoData String  @db.Text
+
+  withinGeofence Boolean?
+  distanceMeters Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([recordId])
+  @@map("attendance_punches")
+}
+
+model AttendanceBreak {
+  id       String           @id @default(uuid())
+  recordId String
+  record   AttendanceRecord @relation(fields: [recordId], references: [id])
+  startAt  DateTime
+  endAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([recordId])
+  @@map("attendance_breaks")
+}
+
+// Compliance trail for admin corrections to an AttendanceRecord -- who changed what,
+// when, and why. Written by PATCH /api/attendance/admin/correct/[id], never edited.
+model AttendanceAuditLog {
+  id       String           @id @default(uuid())
+  tenantId String
+  tenant   Tenant           @relation(fields: [tenantId], references: [id])
+  recordId String
+  record   AttendanceRecord @relation(fields: [recordId], references: [id])
+
+  editedById String
+  editedBy   User     @relation("AttendanceAuditEditedBy", fields: [editedById], references: [id])
+  editedAt   DateTime @default(now())
+  reason     String   @db.Text
+  changes    String   @db.Text // JSON: { field: { from, to } }
+
+  @@index([tenantId, recordId])
+  @@map("attendance_audit_logs")
 }
 
 // ---------------------------------------------------------------------------
@@ -148,9 +345,9 @@ model Customer {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  invoices      Invoice[]
-  payments      Payment[]
-  ledgerEntries LedgerEntry[]
+  invoices         Invoice[]
+  payments         Payment[]
+  ledgerEntries    LedgerEntry[]
   deliveryChallans DeliveryChallan[]
 
   @@index([tenantId])
@@ -170,27 +367,28 @@ model Vendor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  purchases     Purchase[]
+  purchases      Purchase[]
   vendorPayments VendorPayment[]
-  ledgerEntries LedgerEntry[]
+  ledgerEntries  LedgerEntry[]
 
   @@index([tenantId])
   @@map("vendors")
 }
 
 model Item {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
   name          String
   hsnCode       String
   unit          String
-  salePrice     Decimal  @db.Decimal(14, 2)
-  purchasePrice Decimal? @db.Decimal(14, 2)
-  taxRate       Decimal  @db.Decimal(5, 2) // e.g. 18.00 for 18%
-  currentStock  Decimal  @default(0) @db.Decimal(12, 3)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  salePrice     Decimal   @db.Decimal(14, 2)
+  purchasePrice Decimal?  @db.Decimal(14, 2)
+  taxRate       Decimal   @db.Decimal(5, 2) // e.g. 18.00 for 18%
+  currentStock  Decimal   @default(0) @db.Decimal(12, 3)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  archivedAt    DateTime? // soft-delete: archived items are hidden from pickers/lists but historical invoice/purchase lines keep their own copied description, so nothing breaks
 
   invoiceLines  InvoiceLine[]
   purchaseLines PurchaseLine[]
@@ -204,12 +402,12 @@ model Item {
 // ---------------------------------------------------------------------------
 
 model InvoiceCounter {
-  id             String      @id @default(uuid())
-  tenantId       String
-  tenant         Tenant      @relation(fields: [tenantId], references: [id])
-  financialYear  String // e.g. "26-27"
-  type           InvoiceType @default(SALE)
-  lastSequence   Int         @default(0)
+  id            String      @id @default(uuid())
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  financialYear String // e.g. "26-27"
+  type          InvoiceType @default(SALE)
+  lastSequence  Int         @default(0)
 
   @@unique([tenantId, financialYear, type])
   @@map("invoice_counters")
@@ -236,23 +434,26 @@ model DeliveryChallan {
   tenant     Tenant    @relation(fields: [tenantId], references: [id])
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id])
+  siteId     String?
+  site       Site?     @relation(fields: [siteId], references: [id])
 
   number        String
-  date          DateTime @default(now())
+  date          DateTime  @default(now())
   toName        String?
   toAddress     String?
   poNumber      String?
   poDate        DateTime?
   vehicleNumber String?
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   archivedAt DateTime?
 
   lines DeliveryChallanLine[]
 
   @@unique([tenantId, number])
   @@index([tenantId, customerId])
+  @@index([tenantId, siteId])
   @@map("delivery_challans")
 }
 
@@ -288,25 +489,29 @@ enum InvoiceStatus {
 }
 
 model Invoice {
-  id         String        @id @default(uuid())
+  id         String   @id @default(uuid())
   tenantId   String
-  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
   customerId String
-  customer   Customer      @relation(fields: [customerId], references: [id])
+  customer   Customer @relation(fields: [customerId], references: [id])
+  siteId     String?
+  site       Site?    @relation(fields: [siteId], references: [id])
 
-  type       InvoiceType   @default(SALE)
-  number     String // fully formatted, e.g. "INV/26-27/439"
-  date       DateTime      @default(now())
-  dueDate    DateTime?
-  status     InvoiceStatus @default(DRAFT)
+  type         InvoiceType   @default(SALE)
+  number       String // fully formatted, e.g. "INV/26-27/439"
+  date         DateTime      @default(now())
+  dueDate      DateTime?
+  status       InvoiceStatus @default(DRAFT)
+  // Free text shown on the printed invoice, e.g. "Due on Receipt", "Net 30", "Net 60".
+  paymentTerms String?
 
-  subtotal   Decimal @db.Decimal(14, 2)
-  discount   Decimal @db.Decimal(14, 2) @default(0)
-  cgst       Decimal @db.Decimal(14, 2) @default(0)
-  sgst       Decimal @db.Decimal(14, 2) @default(0)
-  igst       Decimal @db.Decimal(14, 2) @default(0)
-  roundOff   Decimal @db.Decimal(14, 2) @default(0)
-  total      Decimal @db.Decimal(14, 2)
+  subtotal Decimal @db.Decimal(14, 2)
+  discount Decimal @default(0) @db.Decimal(14, 2)
+  cgst     Decimal @default(0) @db.Decimal(14, 2)
+  sgst     Decimal @default(0) @db.Decimal(14, 2)
+  igst     Decimal @default(0) @db.Decimal(14, 2)
+  roundOff Decimal @default(0) @db.Decimal(14, 2)
+  total    Decimal @db.Decimal(14, 2)
 
   // Dispatch details -- entered per invoice at creation time, since they vary shipment
   // to shipment (unlike the tenant/customer master data).
@@ -327,9 +532,10 @@ model Invoice {
   shipToGstin         String?
   shipToStateCode     String?
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  archivedAt DateTime? // soft-delete: archived invoices are hidden from the main list but never destroyed, and can be restored
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime? // soft-delete: archived invoices are hidden from the main list but never destroyed, and can be restored
+  archiveNote String? // optional reason entered by the user when archiving/deleting
 
   // Set on a PROFORMA once it's been converted to a real SALE invoice -- lets the
   // proforma row link forward to what it became instead of just showing "cancelled".
@@ -347,26 +553,27 @@ model Invoice {
 
   @@unique([tenantId, number])
   @@index([tenantId, customerId])
+  @@index([tenantId, siteId])
   @@map("invoices")
 }
 
 model InvoiceLine {
-  id            String  @id @default(uuid())
-  invoiceId     String
-  invoice       Invoice @relation(fields: [invoiceId], references: [id])
-  itemId        String?
-  item          Item?   @relation(fields: [itemId], references: [id])
+  id        String  @id @default(uuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  itemId    String?
+  item      Item?   @relation(fields: [itemId], references: [id])
 
-  description   String
-  hsnCode       String
-  qty           Decimal @db.Decimal(12, 3)
-  rate          Decimal @db.Decimal(14, 2)
-  taxableValue  Decimal @db.Decimal(14, 2)
-  taxRate       Decimal @db.Decimal(5, 2)
-  cgstAmount    Decimal @db.Decimal(14, 2) @default(0)
-  sgstAmount    Decimal @db.Decimal(14, 2) @default(0)
-  igstAmount    Decimal @db.Decimal(14, 2) @default(0)
-  lineTotal     Decimal @db.Decimal(14, 2)
+  description  String
+  hsnCode      String
+  qty          Decimal @db.Decimal(12, 3)
+  rate         Decimal @db.Decimal(14, 2)
+  taxableValue Decimal @db.Decimal(14, 2)
+  taxRate      Decimal @db.Decimal(5, 2)
+  cgstAmount   Decimal @default(0) @db.Decimal(14, 2)
+  sgstAmount   Decimal @default(0) @db.Decimal(14, 2)
+  igstAmount   Decimal @default(0) @db.Decimal(14, 2)
+  lineTotal    Decimal @db.Decimal(14, 2)
 
   @@index([invoiceId])
   @@map("invoice_lines")
@@ -396,35 +603,39 @@ model PurchaseCounter {
 }
 
 model Purchase {
-  id       String         @id @default(uuid())
+  id       String  @id @default(uuid())
   tenantId String
-  tenant   Tenant         @relation(fields: [tenantId], references: [id])
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
   vendorId String
-  vendor   Vendor         @relation(fields: [vendorId], references: [id])
+  vendor   Vendor  @relation(fields: [vendorId], references: [id])
+  siteId   String?
+  site     Site?   @relation(fields: [siteId], references: [id])
 
-  number   String // our internal number, e.g. "PB/26-27/1"
+  number           String // our internal number, e.g. "PB/26-27/1"
   vendorBillNumber String? // the vendor's own bill/invoice number, for 3-way matching
-  date     DateTime       @default(now())
-  dueDate  DateTime?
-  status   PurchaseStatus @default(DRAFT)
+  date             DateTime       @default(now())
+  dueDate          DateTime?
+  status           PurchaseStatus @default(DRAFT)
 
   subtotal Decimal @db.Decimal(14, 2)
-  discount Decimal @db.Decimal(14, 2) @default(0)
-  cgst     Decimal @db.Decimal(14, 2) @default(0)
-  sgst     Decimal @db.Decimal(14, 2) @default(0)
-  igst     Decimal @db.Decimal(14, 2) @default(0)
+  discount Decimal @default(0) @db.Decimal(14, 2)
+  cgst     Decimal @default(0) @db.Decimal(14, 2)
+  sgst     Decimal @default(0) @db.Decimal(14, 2)
+  igst     Decimal @default(0) @db.Decimal(14, 2)
   total    Decimal @db.Decimal(14, 2)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  archivedAt DateTime? // soft-delete: archived bills are hidden from the main list but never destroyed, and can be restored
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime? // soft-delete: archived bills are hidden from the main list but never destroyed, and can be restored
+  archiveNote String? // optional reason entered by the user when archiving/deleting
 
-  lines         PurchaseLine[]
+  lines          PurchaseLine[]
   vendorPayments VendorPayment[]
-  ledgerEntries LedgerEntry[]
+  ledgerEntries  LedgerEntry[]
 
   @@unique([tenantId, number])
   @@index([tenantId, vendorId])
+  @@index([tenantId, siteId])
   @@map("purchases")
 }
 
@@ -441,9 +652,9 @@ model PurchaseLine {
   rate         Decimal @db.Decimal(14, 2)
   taxableValue Decimal @db.Decimal(14, 2)
   taxRate      Decimal @db.Decimal(5, 2)
-  cgstAmount   Decimal @db.Decimal(14, 2) @default(0)
-  sgstAmount   Decimal @db.Decimal(14, 2) @default(0)
-  igstAmount   Decimal @db.Decimal(14, 2) @default(0)
+  cgstAmount   Decimal @default(0) @db.Decimal(14, 2)
+  sgstAmount   Decimal @default(0) @db.Decimal(14, 2)
+  igstAmount   Decimal @default(0) @db.Decimal(14, 2)
   lineTotal    Decimal @db.Decimal(14, 2)
 
   @@index([purchaseId])
@@ -452,13 +663,13 @@ model PurchaseLine {
 
 // Money we pay OUT to a vendor (distinct from Payment, which is money customers pay us).
 model VendorPayment {
-  id         String        @id @default(uuid())
+  id         String    @id @default(uuid())
   tenantId   String
-  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
   vendorId   String
-  vendor     Vendor        @relation(fields: [vendorId], references: [id])
+  vendor     Vendor    @relation(fields: [vendorId], references: [id])
   purchaseId String?
-  purchase   Purchase?     @relation(fields: [purchaseId], references: [id])
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
 
   amount      Decimal       @db.Decimal(14, 2)
   mode        PaymentMode
@@ -468,7 +679,7 @@ model VendorPayment {
 
   createdAt DateTime @default(now())
 
-  ledgerEntries LedgerEntry[]
+  ledgerEntries   LedgerEntry[]
   bankTransaction BankTransaction?
 
   @@index([tenantId, vendorId])
@@ -487,7 +698,7 @@ model BankAccount {
   accountNo      String
   ifsc           String
   branchName     String?
-  openingBalance Decimal  @db.Decimal(14, 2) @default(0)
+  openingBalance Decimal  @default(0) @db.Decimal(14, 2)
   createdAt      DateTime @default(now())
 
   transactions BankTransaction[]
@@ -516,9 +727,9 @@ model BankTransaction {
   type          BankTransactionType
   matchStatus   BankMatchStatus     @default(UNMATCHED)
 
-  matchedPaymentId String?  @unique
-  matchedPayment   Payment? @relation(fields: [matchedPaymentId], references: [id])
-  matchedVendorPaymentId String? @unique
+  matchedPaymentId       String?        @unique
+  matchedPayment         Payment?       @relation(fields: [matchedPaymentId], references: [id])
+  matchedVendorPaymentId String?        @unique
   matchedVendorPayment   VendorPayment? @relation(fields: [matchedVendorPaymentId], references: [id])
 
   createdAt DateTime @default(now())
@@ -547,19 +758,19 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id         String        @id @default(uuid())
+  id         String   @id @default(uuid())
   tenantId   String
-  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
   customerId String
-  customer   Customer      @relation(fields: [customerId], references: [id])
+  customer   Customer @relation(fields: [customerId], references: [id])
   invoiceId  String?
-  invoice    Invoice?      @relation(fields: [invoiceId], references: [id])
+  invoice    Invoice? @relation(fields: [invoiceId], references: [id])
 
-  amount        Decimal       @db.Decimal(14, 2)
-  mode          PaymentMode
-  status        PaymentStatus @default(PENDING)
-  referenceNo   String?
-  date          DateTime      @default(now())
+  amount      Decimal       @db.Decimal(14, 2)
+  mode        PaymentMode
+  status      PaymentStatus @default(PENDING)
+  referenceNo String?
+  date        DateTime      @default(now())
 
   // Razorpay specific fields
   razorpayPaymentLinkId String? @unique
@@ -569,7 +780,7 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ledgerEntries LedgerEntry[]
+  ledgerEntries   LedgerEntry[]
   bankTransaction BankTransaction?
 
   @@index([tenantId, customerId])
@@ -601,11 +812,11 @@ model LedgerEntry {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  partyType LedgerPartyType
+  partyType  LedgerPartyType
   customerId String?
-  customer   Customer? @relation(fields: [customerId], references: [id])
+  customer   Customer?       @relation(fields: [customerId], references: [id])
   vendorId   String?
-  vendor     Vendor? @relation(fields: [vendorId], references: [id])
+  vendor     Vendor?         @relation(fields: [vendorId], references: [id])
 
   refType         LedgerRefType
   invoiceId       String?
@@ -621,8 +832,8 @@ model LedgerEntry {
   // credit decreases it (payment received). For a vendor: debit increases what we
   // owe the vendor (a bill received), credit decreases it (a payment we made).
   // Either way, runningBalance = SUM(debit) - SUM(credit) for that party.
-  debit  Decimal @db.Decimal(14, 2) @default(0)
-  credit Decimal @db.Decimal(14, 2) @default(0)
+  debit  Decimal @default(0) @db.Decimal(14, 2)
+  credit Decimal @default(0) @db.Decimal(14, 2)
 
   runningBalance Decimal @db.Decimal(14, 2)
 
@@ -649,9 +860,21 @@ model Site {
   updatedAt  DateTime  @updatedAt
   archivedAt DateTime? // soft-delete, same convention as Invoice/Purchase/DeliveryChallan
 
-  wallet          SiteWallet?
-  fundAllocations FundAllocation[]
-  expenses        Expense[]
+  // Optional attendance geofence -- a null radius means "no enforcement", checked in
+  // lib/attendance.ts against the punch's captured lat/lng via the haversine distance.
+  latitude        Decimal? @db.Decimal(9, 6)
+  longitude       Decimal? @db.Decimal(9, 6)
+  geofenceRadiusM Int?
+
+  wallet            SiteWallet?
+  fundAllocations   FundAllocation[]
+  expenses          Expense[]
+  invoices          Invoice[]
+  purchases         Purchase[]
+  deliveryChallans  DeliveryChallan[]
+  attendanceRecords AttendanceRecord[]
+  nearestForPings   LocationPing[]
+  assignedUsers     User[]             @relation("AssignedSiteUsers")
 
   @@index([tenantId])
   @@map("sites")
@@ -664,11 +887,11 @@ model SiteWallet {
   // No own tenantId -- a 1:1 derived-state child of Site, scoped entirely through it
   // (same as InvoiceLine having no tenantId of its own).
 
-  companyBalance          Decimal  @db.Decimal(14, 2) @default(0)
-  totalFundsReceived      Decimal  @db.Decimal(14, 2) @default(0)
-  totalCompanySpent       Decimal  @db.Decimal(14, 2) @default(0)
-  totalPersonalSpent      Decimal  @db.Decimal(14, 2) @default(0)
-  totalPersonalReimbursed Decimal  @db.Decimal(14, 2) @default(0)
+  companyBalance          Decimal  @default(0) @db.Decimal(14, 2)
+  totalFundsReceived      Decimal  @default(0) @db.Decimal(14, 2)
+  totalCompanySpent       Decimal  @default(0) @db.Decimal(14, 2)
+  totalPersonalSpent      Decimal  @default(0) @db.Decimal(14, 2)
+  totalPersonalReimbursed Decimal  @default(0) @db.Decimal(14, 2)
   updatedAt               DateTime @updatedAt
 
   @@map("site_wallets")
@@ -682,13 +905,13 @@ model FundAllocation {
   site     Site   @relation(fields: [siteId], references: [id])
 
   amount               Decimal  @db.Decimal(14, 2)
-  reimbursedToPersonal Decimal  @db.Decimal(14, 2) @default(0)
-  addedToBalance       Decimal  @db.Decimal(14, 2) @default(0)
-  note      String?
-  addedById String
-  addedBy   User     @relation("FundAllocationsAdded", fields: [addedById], references: [id])
-  date      DateTime @default(now())
-  createdAt DateTime @default(now())
+  reimbursedToPersonal Decimal  @default(0) @db.Decimal(14, 2)
+  addedToBalance       Decimal  @default(0) @db.Decimal(14, 2)
+  note                 String?
+  addedById            String
+  addedBy              User     @relation("FundAllocationsAdded", fields: [addedById], references: [id])
+  date                 DateTime @default(now())
+  createdAt            DateTime @default(now())
 
   @@index([tenantId, siteId])
   @@map("fund_allocations")
@@ -732,13 +955,13 @@ model Expense {
   site     Site   @relation(fields: [siteId], references: [id])
 
   categoryId  String?
-  category    ExpenseCategory?  @relation(fields: [categoryId], references: [id])
+  category    ExpenseCategory? @relation(fields: [categoryId], references: [id])
   orderedById String?
-  orderedBy   OrderedByPerson?  @relation(fields: [orderedById], references: [id])
+  orderedBy   OrderedByPerson? @relation(fields: [orderedById], references: [id])
 
   amount           Decimal         @db.Decimal(14, 2)
-  companyPaid      Decimal         @db.Decimal(14, 2) @default(0)
-  personalPaid     Decimal         @db.Decimal(14, 2) @default(0)
+  companyPaid      Decimal         @default(0) @db.Decimal(14, 2)
+  personalPaid     Decimal         @default(0) @db.Decimal(14, 2)
   fundType         ExpenseFundType // always server-derived, never client-supplied
   date             DateTime        @default(now())
   note             String?
@@ -758,14 +981,27 @@ model Expense {
 // ---------------------------------------------------------------------------
 
 model LocationPing {
-  id       String   @id @default(uuid())
+  id       String @id @default(uuid())
   tenantId String
-  tenant   Tenant   @relation(fields: [tenantId], references: [id])
-  userId   String   @unique // one row per user -- latest position only, not a history log
-  user     User     @relation(fields: [userId], references: [id])
-  lat      Decimal  @db.Decimal(9, 6)
-  lng      Decimal  @db.Decimal(9, 6)
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  userId   String @unique // one row per user -- latest position only, not a history log
+  user     User   @relation(fields: [userId], references: [id])
+
+  // Null until the first ping ever lands, or after the user turns sharing off before
+  // ever having pinged -- distinct from "has a position but it's gone stale/offline".
+  lat Decimal? @db.Decimal(9, 6)
+  lng Decimal? @db.Decimal(9, 6)
+
   pingedAt DateTime @default(now())
+
+  // User-controlled consent switch (see LocationPinger) -- a ping is rejected
+  // server-side whenever this is false, so a stray stale client can't keep tracking
+  // someone who has explicitly turned sharing off.
+  sharingEnabled Boolean @default(true)
+
+  nearestSiteId  String?
+  nearestSite    Site?   @relation(fields: [nearestSiteId], references: [id])
+  distanceMeters Int?
 
   @@index([tenantId])
   @@map("location_pings")

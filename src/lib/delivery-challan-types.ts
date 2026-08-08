@@ -12,6 +12,8 @@ export interface DeliveryChallanData {
   vehicleNumber?: string;
   toName?: string;
   toAddress?: string;
+  /** The project/job Site (from the Sites feature) these goods are for, e.g. "Pune". */
+  site?: string;
 
   seller: {
     name: string;

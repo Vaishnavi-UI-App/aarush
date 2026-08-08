@@ -2,7 +2,7 @@ import { Prisma, Tenant } from "@/generated/prisma/client";
 import { DeliveryChallanData, DeliveryChallanLineItem } from "@/lib/delivery-challan-types";
 
 type ChallanWithRelations = Prisma.DeliveryChallanGetPayload<{
-  include: { lines: true; customer: true };
+  include: { lines: true; customer: true; site: true };
 }>;
 
 function formatDate(d: Date): string {
@@ -33,6 +33,7 @@ export function toDeliveryChallanTemplateData(challan: ChallanWithRelations, ten
     vehicleNumber: challan.vehicleNumber ?? undefined,
     toName: challan.toName ?? challan.customer?.name,
     toAddress: challan.toAddress ?? challan.customer?.address ?? undefined,
+    site: challan.site?.name ?? undefined,
 
     seller: {
       name: tenant.name,

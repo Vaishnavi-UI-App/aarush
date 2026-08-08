@@ -10,6 +10,8 @@ export interface DeliveryChallanLineInput {
 export interface CreateDeliveryChallanInput {
   tenantId: string;
   customerId?: string;
+  /** The project/job Site (from the Sites feature) these goods are for, e.g. "Pune". */
+  siteId?: string;
   toName?: string;
   toAddress?: string;
   poNumber?: string;
@@ -34,7 +36,7 @@ async function nextChallanNumber(tx: Prisma.TransactionClient, tenantId: string,
 }
 
 export async function createDeliveryChallan(input: CreateDeliveryChallanInput) {
-  const { tenantId, customerId, toName, toAddress, poNumber, poDate, vehicleNumber, lines } = input;
+  const { tenantId, customerId, siteId, toName, toAddress, poNumber, poDate, vehicleNumber, lines } = input;
 
   if (lines.length === 0) {
     throw new Error("Delivery challan must have at least one line item");
@@ -44,6 +46,9 @@ export async function createDeliveryChallan(input: CreateDeliveryChallanInput) {
     if (customerId) {
       await tx.customer.findFirstOrThrow({ where: { id: customerId, tenantId } });
     }
+    if (siteId) {
+      await tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } });
+    }
 
     const date = new Date();
     const number = await nextChallanNumber(tx, tenantId, date);
@@ -52,6 +57,7 @@ export async function createDeliveryChallan(input: CreateDeliveryChallanInput) {
       data: {
         tenantId,
         customerId,
+        siteId,
         number,
         date,
         toName,

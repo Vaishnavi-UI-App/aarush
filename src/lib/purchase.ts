@@ -25,6 +25,8 @@ export interface CreatePurchaseBillInput {
   dueDate?: Date;
   /** The vendor's own bill/invoice number, for 3-way matching against a PO and receipt. */
   vendorBillNumber?: string;
+  /** The project/job Site (from the Sites feature) this purchase was made for, e.g. "Pune". */
+  siteId?: string;
 }
 
 /** Records a bill received from a vendor. Mirrors createSaleInvoice on the vendor side:
@@ -32,7 +34,7 @@ export interface CreatePurchaseBillInput {
  * (debit = what we now owe the vendor), and increments on-hand stock for any line tied
  * to a catalog item -- a purchase bill is what actually brings stock into the business. */
 export async function createPurchaseBill(input: CreatePurchaseBillInput) {
-  const { tenantId, vendorId, lines, discount = 0, dueDate, vendorBillNumber } = input;
+  const { tenantId, vendorId, lines, discount = 0, dueDate, vendorBillNumber, siteId } = input;
 
   if (lines.length === 0) {
     throw new Error("Purchase bill must have at least one line item");
@@ -42,6 +44,7 @@ export async function createPurchaseBill(input: CreatePurchaseBillInput) {
     const [tenant, vendor] = await Promise.all([
       tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
       tx.vendor.findFirstOrThrow({ where: { id: vendorId, tenantId } }),
+      siteId ? tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } }) : Promise.resolve(null),
     ]);
 
     const date = new Date();
@@ -89,6 +92,7 @@ export async function createPurchaseBill(input: CreatePurchaseBillInput) {
       data: {
         tenantId,
         vendorId,
+        siteId,
         number,
         vendorBillNumber,
         date,

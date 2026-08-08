@@ -2,7 +2,7 @@ import { Prisma, Tenant } from "@/generated/prisma/client";
 import { stateName } from "@/lib/state-codes";
 
 type PurchaseWithRelations = Prisma.PurchaseGetPayload<{
-  include: { lines: true; vendor: true };
+  include: { lines: true; vendor: true; site: true };
 }>;
 
 function formatDate(d: Date): string {
@@ -15,6 +15,7 @@ export interface PurchaseBillViewData {
   date: string;
   dueDate: string | null;
   status: string;
+  site: string | null;
 
   buyer: { name: string; address: string; gstin: string; stateCode: string; logoUrl: string };
   vendor: { name: string; address: string; gstin: string; stateCode: string; state: string };
@@ -50,6 +51,7 @@ export function toPurchaseTemplateData(purchase: PurchaseWithRelations, tenant: 
     date: formatDate(new Date(purchase.date)),
     dueDate: purchase.dueDate ? formatDate(new Date(purchase.dueDate)) : null,
     status: purchase.status,
+    site: purchase.site?.name ?? null,
 
     buyer: {
       name: tenant.name,

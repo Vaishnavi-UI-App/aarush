@@ -1,17 +1,18 @@
 /** Client-only helpers for attendance check-in/out: GPS position and a compressed photo. */
 
-export function getLocation(): Promise<{ lat: number; lng: number }> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("Location isn't available on this device/browser"));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => reject(new Error(err.message || "Could not get your location")),
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
-  });
+import { Geolocation } from "@capacitor/geolocation";
+
+/** Uses the Capacitor Geolocation plugin, which calls through to the native Android
+ * location APIs when running inside the Capacitor shell (more reliable than the browser
+ * API in a WebView) and transparently falls back to navigator.geolocation when running
+ * as a plain web page -- same call site works in both. */
+export async function getLocation(): Promise<{ lat: number; lng: number }> {
+  try {
+    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000 });
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : "Could not get your location");
+  }
 }
 
 const MAX_WIDTH = 640;

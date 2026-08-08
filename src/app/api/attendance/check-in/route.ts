@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
 import { marksOwnAttendance } from "@/lib/permissions";
-
-// A @db.Date column has no timezone, so the value must be constructed at UTC midnight
-// of the server's *local* calendar day -- setHours(0,0,0,0) followed by serialization
-// truncates to the UTC calendar day instead, which is off by one in any timezone ahead
-// of UTC (e.g. IST, UTC+5:30) for hours after local midnight but before UTC midnight.
-function startOfToday(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-}
+import { recordPunch, AttendanceError } from "@/lib/attendance";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   let session;
@@ -20,42 +12,39 @@ export async function POST(request: NextRequest) {
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
-  if (!marksOwnAttendance(session.role)) {
+  if (!(await marksOwnAttendance(session.tenantId, session.roleId))) {
     return NextResponse.json({ error: "Owners don't check in -- use the admin view instead" }, { status: 403 });
+  }
+  if (!checkRateLimit(`checkin:${session.userId}`, 5, 60_000)) {
+    return NextResponse.json({ error: "Too many attempts -- wait a moment and try again" }, { status: 429 });
   }
 
   const body = await request.json().catch(() => ({}));
-  const { lat, lng, photo } = body;
+  const { lat, lng, photo, siteId, outsideGeofenceReason } = body;
   if (typeof lat !== "number" || typeof lng !== "number" || typeof photo !== "string" || !photo) {
     return NextResponse.json({ error: "lat, lng, and photo are required" }, { status: 400 });
   }
-
-  const date = startOfToday();
-  const existing = await prisma.attendanceRecord.findUnique({
-    where: { tenantId_userId_date: { tenantId: session.tenantId, userId: session.userId, date } },
-  });
-  if (existing?.checkInAt) {
-    return NextResponse.json({ error: "You've already checked in today" }, { status: 409 });
+  if (siteId !== undefined && typeof siteId !== "string") {
+    return NextResponse.json({ error: "siteId must be a string" }, { status: 400 });
+  }
+  if (outsideGeofenceReason !== undefined && typeof outsideGeofenceReason !== "string") {
+    return NextResponse.json({ error: "outsideGeofenceReason must be a string" }, { status: 400 });
   }
 
-  const record = await prisma.attendanceRecord.upsert({
-    where: { tenantId_userId_date: { tenantId: session.tenantId, userId: session.userId, date } },
-    create: {
+  try {
+    const record = await recordPunch({
       tenantId: session.tenantId,
       userId: session.userId,
-      date,
-      checkInAt: new Date(),
-      checkInLat: lat,
-      checkInLng: lng,
-      checkInPhotoData: photo,
-    },
-    update: {
-      checkInAt: new Date(),
-      checkInLat: lat,
-      checkInLng: lng,
-      checkInPhotoData: photo,
-    },
-  });
-
-  return NextResponse.json(record, { status: 201 });
+      kind: "CHECK_IN",
+      lat,
+      lng,
+      photo,
+      siteId: siteId || undefined,
+      outsideGeofenceReason: outsideGeofenceReason || undefined,
+    });
+    return NextResponse.json(record, { status: 201 });
+  } catch (e) {
+    if (e instanceof AttendanceError) return NextResponse.json({ error: e.message, code: e.code }, { status: e.status });
+    throw e;
+  }
 }

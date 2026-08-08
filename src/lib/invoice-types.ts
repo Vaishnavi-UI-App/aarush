@@ -34,6 +34,8 @@ export interface SellerDetails {
   gstin: string;
   stateCode: string;
   pan: string;
+  cinNo?: string;
+  website?: string;
   altEmail?: string;
   altMobile?: string;
   udyam?: string;
@@ -63,6 +65,10 @@ export interface InvoiceData {
   transportationMode?: string;
   placeOfSupplySite?: string;
   deliveredThrough?: string;
+  /** The project/job Site (from the Sites feature) this invoice is raised against, e.g. "Pune". */
+  site?: string;
+  /** e.g. "Due on Receipt", "Net 30". */
+  paymentTerms?: string;
   /** Diagonal overlay text shown across the printed document, e.g. "CANCELLED" for an
    * archived or cancelled invoice. Unset for a normal, live invoice. */
   watermark?: string;

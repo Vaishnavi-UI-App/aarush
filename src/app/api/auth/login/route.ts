@@ -13,8 +13,11 @@ export async function POST(request: NextRequest) {
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
+  if (!user.roleId) {
+    return NextResponse.json({ error: "This account has no role assigned. Contact your owner." }, { status: 403 });
+  }
 
-  const token = encodeSession({ userId: user.id, tenantId: user.tenantId, role: user.role });
+  const token = encodeSession({ userId: user.id, tenantId: user.tenantId, roleId: user.roleId });
 
   const res = NextResponse.json({ success: true });
   res.cookies.set(SESSION_COOKIE_NAME, token, {

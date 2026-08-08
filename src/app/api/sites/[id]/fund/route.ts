@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { fundSite } from "@/lib/site-wallet";
+import { getRestrictedSiteId } from "@/lib/expense-query";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -11,12 +12,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
-  if (!(await canAccessFinance(session.tenantId, session.role))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await can(session.tenantId, session.roleId, "sites", "edit"))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
   if (!(body.amount > 0)) {
     return NextResponse.json({ error: "amount > 0 is required" }, { status: 400 });
+  }
+
+  const restrictedSiteId = await getRestrictedSiteId(session.tenantId, session.userId);
+  if (restrictedSiteId && id !== restrictedSiteId) {
+    return NextResponse.json({ error: "You can only fund your assigned site" }, { status: 403 });
   }
 
   try {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { BillableInvoiceType, createSaleInvoice, DispatchDetailsInput, InvoiceLineInput } from "@/lib/gst-invoice";
 import { prisma } from "@/lib/prisma";
-import { canWrite } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 
 export async function GET(request: NextRequest) {
   let session;
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
-  if (!(await canWrite(session.tenantId, session.role))) return NextResponse.json({ error: "View-only access" }, { status: 403 });
+  if (!(await can(session.tenantId, session.roleId, "invoices", "add"))) return NextResponse.json({ error: "View-only access" }, { status: 403 });
 
   const body: CreateInvoiceBody = await request.json();
 
@@ -74,6 +74,8 @@ export async function POST(request: NextRequest) {
       reverseCharge: body.reverseCharge,
       deliveredThrough: body.deliveredThrough,
       placeOfSupplySite: body.placeOfSupplySite,
+      siteId: body.siteId,
+      paymentTerms: body.paymentTerms,
       shipToSameAsBilling: body.shipToSameAsBilling,
       shipToName: body.shipToName,
       shipToAddress: body.shipToAddress,

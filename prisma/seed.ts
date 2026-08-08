@@ -153,6 +153,28 @@ async function main() {
     }),
   ]);
 
+  // Tenant-wide default shift (roleId: null) -- resolveShiftConfig() in lib/attendance.ts
+  // would auto-provision this on first use anyway, but seeding it here means a fresh
+  // tenant's Settings -> Shift Rules screen shows a real, editable row from day one.
+  // Plain findFirst + create/update, not upsert: roleId is part of the compound unique
+  // index, and Prisma's upsert rejects a literal null there.
+  const existingDefaultShift = await prisma.shiftConfig.findFirst({ where: { tenantId: tenant.id, roleId: null } });
+  const defaultShift = existingDefaultShift
+    ? existingDefaultShift
+    : await prisma.shiftConfig.create({
+        data: {
+          tenantId: tenant.id,
+          roleId: null,
+          name: "Default Shift",
+          startTime: "09:30",
+          endTime: "18:30",
+          gracePeriodMins: 10,
+          halfDayThresholdHrs: 4,
+          fullDayThresholdHrs: 8,
+          overtimeAfterHrs: 9,
+        },
+      });
+
   console.log("Seeded:");
   console.log("  tenant:", tenant.name, tenant.id);
   console.log("  owner user:", owner.email, owner.id);
@@ -160,6 +182,7 @@ async function main() {
   console.log("  items:", items.map((i) => `${i.name} @ ${i.taxRate}%`).join(", "));
   console.log("  vendor:", vendor.name, vendor.id);
   console.log("  bank account:", bankAccount.bankName, bankAccount.accountNo);
+  console.log("  default shift:", defaultShift.name, `${defaultShift.startTime}-${defaultShift.endTime}`);
 }
 
 main()

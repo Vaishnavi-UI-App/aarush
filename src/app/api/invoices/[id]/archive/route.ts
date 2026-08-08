@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canWrite } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -11,9 +11,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (e instanceof SessionError) return NextResponse.json({ error: e.message }, { status: 401 });
     throw e;
   }
-  if (!(await canWrite(session.tenantId, session.role))) return NextResponse.json({ error: "View-only access" }, { status: 403 });
+  if (!(await can(session.tenantId, session.roleId, "invoices", "delete"))) return NextResponse.json({ error: "View-only access" }, { status: 403 });
 
   const { id } = await params;
+  const body = await request.json().catch(() => ({}));
+  const note = typeof body?.note === "string" ? body.note.trim() : "";
 
   const invoice = await prisma.invoice.findFirst({ where: { id, tenantId: session.tenantId } });
   if (!invoice) {
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const updated = await prisma.invoice.update({
     where: { id },
-    data: { archivedAt: new Date() },
+    data: { archivedAt: new Date(), archiveNote: note || null },
   });
 
   return NextResponse.json(updated);

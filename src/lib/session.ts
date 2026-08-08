@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 export interface SessionPayload {
   userId: string;
   tenantId: string;
-  role: "OWNER" | "ACCOUNTANT" | "SALES_STAFF" | "AUDITOR";
+  roleId: string;
 }
 
 const COOKIE_NAME = "session";
