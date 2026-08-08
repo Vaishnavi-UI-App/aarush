@@ -32,9 +32,23 @@ async function main() {
     },
   });
 
+  // The custom-roles system fails closed: no roleId means no page access at all
+  // (see src/lib/permissions.ts), so the tenant's Owner role has to exist before
+  // the owner user can do anything -- including see any sidebar link.
+  const ownerRole = await prisma.role.upsert({
+    where: { tenantId_name: { tenantId: tenant.id, name: "Owner" } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      name: "Owner",
+      isSystem: true,
+      isOwner: true,
+    },
+  });
+
   const owner = await prisma.user.upsert({
     where: { id: "00000000-0000-0000-0000-000000000901" },
-    update: { email: "aarushfireprotection@gmail.com" },
+    update: { email: "aarushfireprotection@gmail.com", roleId: ownerRole.id },
     create: {
       id: "00000000-0000-0000-0000-000000000901",
       tenantId: tenant.id,
@@ -44,6 +58,7 @@ async function main() {
       // so this account can't log in until it goes through the forgot-password flow.
       passwordHash: "unset",
       role: "OWNER",
+      roleId: ownerRole.id,
     },
   });
 
