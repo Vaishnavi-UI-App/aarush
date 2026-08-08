@@ -1,33 +1,52 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canManageUsers, PERMISSION_KEYS, resolveDefault, Role } from "@/lib/permissions";
-import PermissionsMatrix from "./PermissionsMatrix";
-
-const ROLES: Role[] = ["OWNER", "ACCOUNTANT", "SALES_STAFF", "AUDITOR"];
+import { canManageUsers, PAGE_KEYS } from "@/lib/permissions";
+import { PageKey, PagePermissionSet } from "@/lib/pages";
+import RolesManager from "./RolesManager";
 
 export default async function SettingsPermissionsPage() {
   const session = await getServerSession();
-  if (!(await canManageUsers(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await canManageUsers(session!.tenantId, session!.roleId))) redirect("/dashboard");
 
-  const overrides = await prisma.rolePermission.findMany({ where: { tenantId: session!.tenantId } });
-  const overrideMap = new Map(overrides.map((o) => [`${o.role}:${o.key}`, o.allowed]));
+  const roles = await prisma.role.findMany({
+    where: { tenantId: session!.tenantId },
+    include: { permissions: true, _count: { select: { users: true } } },
+    orderBy: [{ isSystem: "desc" }, { createdAt: "asc" }],
+  });
 
-  const matrix = ROLES.map((role) => ({
-    role,
-    permissions: PERMISSION_KEYS.map((key) => {
-      const override = overrideMap.get(`${role}:${key}`);
-      return { key, allowed: override ?? resolveDefault(role, key), isOverride: override !== undefined };
-    }),
-  }));
+  const rolesForClient = roles.map((role) => {
+    const permissions = Object.fromEntries(
+      PAGE_KEYS.map((page) => {
+        const row = role.permissions.find((p) => p.page === page);
+        return [
+          page,
+          {
+            canView: role.isOwner || !!row?.canView,
+            canAdd: role.isOwner || !!row?.canAdd,
+            canEdit: role.isOwner || !!row?.canEdit,
+            canDelete: role.isOwner || !!row?.canDelete,
+          },
+        ];
+      })
+    ) as Record<PageKey, PagePermissionSet>;
+    return {
+      id: role.id,
+      name: role.name,
+      isSystem: role.isSystem,
+      isOwner: role.isOwner,
+      userCount: role._count.users,
+      permissions,
+    };
+  });
 
   return (
     <div>
       <h1 className="afs-page-title">Settings — Permissions</h1>
-      <p className="afs-page-subtitle">Control what each role can access. Changes apply immediately, no re-login needed.</p>
+      <p className="afs-page-subtitle">Create roles and control exactly which pages each one can view, add to, edit, or delete from.</p>
 
       <div className="afs-card" style={{ marginTop: 20 }}>
-        <PermissionsMatrix matrix={matrix} />
+        <RolesManager roles={rolesForClient} />
       </div>
     </div>
   );

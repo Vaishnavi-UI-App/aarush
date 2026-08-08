@@ -4,9 +4,15 @@ function money(n: number): string {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Keeps the item table (and so the printed page) at a consistent height whether the
+// bill carries a handful of lines or many -- short bills still fill out the sheet
+// instead of leaving a lot of dead space above the totals.
+const MIN_ITEM_ROWS = 7;
+
 export default function PurchaseBillTemplate({ bill }: { bill: PurchaseBillViewData }) {
   const hasIgst = bill.totalIgst > 0;
   const summaryColSpan = hasIgst ? 11 : 9;
+  const blankRows = Math.max(0, MIN_ITEM_ROWS - bill.items.length);
 
   return (
     <div className="invoice-page">
@@ -37,7 +43,8 @@ export default function PurchaseBillTemplate({ bill }: { bill: PurchaseBillViewD
                     <td><div className="meta-label">Due Date</div><div className="meta-value">{bill.dueDate ?? "—"}</div></td>
                   </tr>
                   <tr>
-                    <td colSpan={2}><div className="meta-label">Status</div><div className="meta-value">{bill.status.replace("_", " ")}</div></td>
+                    <td><div className="meta-label">Status</div><div className="meta-value">{bill.status.replace("_", " ")}</div></td>
+                    <td><div className="meta-label">Site</div><div className="meta-value">{bill.site ?? "—"}</div></td>
                   </tr>
                 </tbody>
               </table>
@@ -107,6 +114,27 @@ export default function PurchaseBillTemplate({ bill }: { bill: PurchaseBillViewD
                 </>
               )}
               <td className="right bold">Rs. {money(item.total)}</td>
+            </tr>
+          ))}
+          {Array.from({ length: blankRows }, (_, i) => (
+            <tr key={`blank-${i}`}>
+              <td>&nbsp;</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              {hasIgst && (
+                <>
+                  <td></td>
+                  <td></td>
+                </>
+              )}
+              <td></td>
             </tr>
           ))}
           <tr>

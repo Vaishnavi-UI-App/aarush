@@ -46,6 +46,12 @@ export default function DeliveryChallanTemplate({ challan }: { challan: Delivery
                 <span className="dc-info-label dc-info-label-right">Date:</span>
                 <span className="dc-info-value">{challan.poDate}</span>
               </div>
+              {challan.site && (
+                <div className="dc-info-row">
+                  <span className="dc-info-label">Site:</span>
+                  <span className="dc-info-value">{challan.site}</span>
+                </div>
+              )}
             </td>
           </tr>
         </tbody>

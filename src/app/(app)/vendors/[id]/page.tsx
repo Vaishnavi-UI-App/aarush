@@ -2,12 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import RecordVendorPaymentForm from "./RecordVendorPaymentForm";
 
 export default async function VendorLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "vendors", "view"))) redirect("/dashboard");
   const { id } = await params;
 
   const vendor = await prisma.vendor.findFirst({ where: { id, tenantId: session!.tenantId } });
@@ -60,12 +60,12 @@ export default async function VendorLedgerPage({ params }: { params: Promise<{ i
             <tbody>
               {entries.map((e) => (
                 <tr key={e.id}>
-                  <td>{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
-                  <td>{e.refType}</td>
-                  <td>{e.description}</td>
-                  <td>{Number(e.debit) > 0 ? Number(e.debit).toFixed(2) : "—"}</td>
-                  <td>{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
-                  <td>{Number(e.runningBalance).toFixed(2)}</td>
+                  <td data-label="Date">{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
+                  <td data-label="Type">{e.refType}</td>
+                  <td data-label="Description">{e.description}</td>
+                  <td data-label="Debit (bill)">{Number(e.debit) > 0 ? Number(e.debit).toFixed(2) : "—"}</td>
+                  <td data-label="Credit (paid)">{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
+                  <td data-label="Balance owed">{Number(e.runningBalance).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

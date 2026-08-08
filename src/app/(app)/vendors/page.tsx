@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import NewVendorForm from "./NewVendorForm";
 
 export default async function VendorsPage() {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "vendors", "view"))) redirect("/dashboard");
   const vendors = await prisma.vendor.findMany({
     where: { tenantId: session!.tenantId },
     orderBy: { name: "asc" },
@@ -38,13 +38,13 @@ export default async function VendorsPage() {
             <tbody>
               {vendors.map((v) => (
                 <tr key={v.id}>
-                  <td>
+                  <td data-label="Name">
                     <a href={`/vendors/${v.id}`}>{v.name}</a>
                   </td>
-                  <td>{v.gstin ?? "—"}</td>
-                  <td>{v.stateCode}</td>
-                  <td>{v.phone ?? "—"}</td>
-                  <td>{v.email ?? "—"}</td>
+                  <td data-label="GSTIN">{v.gstin ?? "—"}</td>
+                  <td data-label="State code">{v.stateCode}</td>
+                  <td data-label="Phone">{v.phone ?? "—"}</td>
+                  <td data-label="Email">{v.email ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { round2 } from "@/lib/gst-invoice";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 
 type Bucket = "0-30" | "31-60" | "61-90" | "90+";
 
@@ -16,7 +16,7 @@ function bucketFor(days: number): Bucket {
 
 export default async function AgeingReportPage() {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "ageing", "view"))) redirect("/dashboard");
 
   const invoices = await prisma.invoice.findMany({
     where: {
@@ -87,18 +87,18 @@ export default async function AgeingReportPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.inv.id}>
-                  <td>
+                  <td data-label="Invoice">
                     <Link href={`/invoices/${r.inv.id}`}>{r.inv.number}</Link>
                   </td>
-                  <td>{r.inv.customer.name}</td>
-                  <td>{new Date(r.inv.date).toLocaleDateString("en-IN")}</td>
-                  <td>{r.days}</td>
-                  <td>
+                  <td data-label="Customer">{r.inv.customer.name}</td>
+                  <td data-label="Date">{new Date(r.inv.date).toLocaleDateString("en-IN")}</td>
+                  <td data-label="Days outstanding">{r.days}</td>
+                  <td data-label="Bucket">
                     <span className="afs-badge" style={{ background: "#f3f4f6", color: bucketColors[r.bucket] }}>
                       {r.bucket}
                     </span>
                   </td>
-                  <td>Rs. {r.due.toFixed(2)}</td>
+                  <td data-label="Due">Rs. {r.due.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

@@ -5,10 +5,10 @@ import NewDeliveryChallanForm from "./NewDeliveryChallanForm";
 export default async function NewDeliveryChallanPage() {
   const session = await getServerSession();
 
-  const customers = await prisma.customer.findMany({
-    where: { tenantId: session!.tenantId },
-    orderBy: { name: "asc" },
-  });
+  const [customers, sites] = await Promise.all([
+    prisma.customer.findMany({ where: { tenantId: session!.tenantId }, orderBy: { name: "asc" } }),
+    prisma.site.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
+  ]);
 
   return (
     <div>
@@ -18,6 +18,7 @@ export default async function NewDeliveryChallanPage() {
       <div className="afs-card">
         <NewDeliveryChallanForm
           customers={customers.map((c) => ({ id: c.id, name: c.name, address: c.address }))}
+          sites={sites.map((s) => ({ id: s.id, name: s.name }))}
         />
       </div>
     </div>

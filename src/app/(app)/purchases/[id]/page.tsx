@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import PurchaseDetailActions from "./PurchaseDetailActions";
 
 function badgeClass(status: string) {
@@ -10,7 +10,7 @@ function badgeClass(status: string) {
 
 export default async function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "purchases", "view"))) redirect("/dashboard");
   const { id } = await params;
 
   const purchase = await prisma.purchase.findFirst({
@@ -21,7 +21,7 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="afs-page-header">
         <div>
           <h1 className="afs-page-title">{purchase.number}</h1>
           <p className="afs-page-subtitle">
@@ -30,9 +30,16 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
             {purchase.dueDate ? ` · Due ${new Date(purchase.dueDate).toLocaleDateString("en-IN")}` : ""}
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="afs-page-header-actions" style={{ alignItems: "center" }}>
           <span className={badgeClass(purchase.status)}>{purchase.status.replace("_", " ")}</span>
-          <PurchaseDetailActions purchaseId={purchase.id} archived={!!purchase.archivedAt} />
+          <PurchaseDetailActions
+            purchaseId={purchase.id}
+            purchaseNumber={purchase.number}
+            total={Number(purchase.total)}
+            vendorPhone={purchase.vendor.phone}
+            vendorEmail={purchase.vendor.email}
+            archived={!!purchase.archivedAt}
+          />
         </div>
       </div>
 
@@ -54,22 +61,22 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
           <tbody>
             {purchase.lines.map((l) => (
               <tr key={l.id}>
-                <td>{l.description}</td>
-                <td>{l.hsnCode}</td>
-                <td>{Number(l.qty)}</td>
-                <td>{Number(l.rate).toFixed(2)}</td>
-                <td>{Number(l.taxableValue).toFixed(2)}</td>
-                <td>{Number(l.cgstAmount).toFixed(2)}</td>
-                <td>{Number(l.sgstAmount).toFixed(2)}</td>
-                <td>{Number(l.igstAmount).toFixed(2)}</td>
-                <td>{Number(l.lineTotal).toFixed(2)}</td>
+                <td data-label="Description">{l.description}</td>
+                <td data-label="HSN">{l.hsnCode}</td>
+                <td data-label="Qty">{Number(l.qty)}</td>
+                <td data-label="Rate">{Number(l.rate).toFixed(2)}</td>
+                <td data-label="Taxable">{Number(l.taxableValue).toFixed(2)}</td>
+                <td data-label="CGST">{Number(l.cgstAmount).toFixed(2)}</td>
+                <td data-label="SGST">{Number(l.sgstAmount).toFixed(2)}</td>
+                <td data-label="IGST">{Number(l.igstAmount).toFixed(2)}</td>
+                <td data-label="Total">{Number(l.lineTotal).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-          <div style={{ minWidth: 260, fontSize: 14 }}>
+          <div style={{ minWidth: 260, maxWidth: "100%", fontSize: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
               <span>Subtotal</span>
               <span>Rs. {Number(purchase.subtotal).toFixed(2)}</span>
@@ -108,9 +115,9 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
             <tbody>
               {purchase.vendorPayments.map((p) => (
                 <tr key={p.id}>
-                  <td>Rs. {Number(p.amount).toFixed(2)}</td>
-                  <td>{p.mode}</td>
-                  <td>{p.referenceNo ?? "—"}</td>
+                  <td data-label="Amount">Rs. {Number(p.amount).toFixed(2)}</td>
+                  <td data-label="Mode">{p.mode}</td>
+                  <td data-label="Reference">{p.referenceNo ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

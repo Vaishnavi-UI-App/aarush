@@ -2,11 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { TrashIcon } from "@/components/icons";
+import { COMMON_UNITS } from "@/lib/units";
 
 interface Vendor {
   id: string;
   name: string;
   stateCode: string;
+}
+
+interface Site {
+  id: string;
+  name: string;
 }
 
 interface Item {
@@ -38,22 +45,31 @@ function round2(n: number): number {
 export default function CreatePurchaseForm({
   tenantStateCode,
   vendors,
-  items,
+  items: initialItems,
   defaultVendorId,
+  sites,
 }: {
   tenantStateCode: string;
   vendors: Vendor[];
   items: Item[];
   defaultVendorId?: string;
+  sites: Site[];
 }) {
   const router = useRouter();
   const [vendorId, setVendorId] = useState(defaultVendorId ?? vendors[0]?.id ?? "");
-  const [lines, setLines] = useState<Line[]>([emptyLine()]);
+  const [items, setItems] = useState<Item[]>(initialItems);
+  const [lines, setLines] = useState<Line[]>([emptyLine(), emptyLine(), emptyLine(), emptyLine()]);
   const [discount, setDiscount] = useState("0");
   const [dueDate, setDueDate] = useState("");
   const [vendorBillNumber, setVendorBillNumber] = useState("");
+  const [siteId, setSiteId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [showNewItemForm, setShowNewItemForm] = useState(false);
+  const [newItem, setNewItem] = useState({ name: "", hsnCode: "", unit: "NOS", purchasePrice: "", taxRate: "18" });
+  const [newItemError, setNewItemError] = useState<string | null>(null);
+  const [savingNewItem, setSavingNewItem] = useState(false);
 
   const vendor = vendors.find((v) => v.id === vendorId);
   const sameState = vendor ? vendor.stateCode === tenantStateCode : true;
@@ -83,6 +99,59 @@ export default function CreatePurchaseForm({
 
   function removeLine(index: number) {
     setLines((ls) => ls.filter((_, i) => i !== index));
+  }
+
+  function setNewItemField<K extends keyof typeof newItem>(key: K, value: string) {
+    setNewItem((f) => ({ ...f, [key]: value }));
+  }
+
+  function cancelNewItem() {
+    setShowNewItemForm(false);
+    setNewItem({ name: "", hsnCode: "", unit: "NOS", purchasePrice: "", taxRate: "18" });
+    setNewItemError(null);
+  }
+
+  async function addItem() {
+    if (!newItem.name || !newItem.hsnCode || !newItem.unit || newItem.purchasePrice === "") {
+      setNewItemError("Name, HSN/SAC, Unit and Purchase price are required");
+      return;
+    }
+    setSavingNewItem(true);
+    setNewItemError(null);
+    try {
+      const res = await fetch("/api/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newItem.name,
+          hsnCode: newItem.hsnCode,
+          unit: newItem.unit,
+          // The catalog requires a sale price too -- default it to the purchase price
+          // just entered so this doesn't block adding the item; adjust the real sale
+          // price later from the Items page.
+          salePrice: Number(newItem.purchasePrice),
+          purchasePrice: Number(newItem.purchasePrice),
+          taxRate: Number(newItem.taxRate),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create item");
+      const created: Item = {
+        id: data.id,
+        name: data.name,
+        hsnCode: data.hsnCode,
+        unit: data.unit,
+        purchasePrice: Number(data.purchasePrice ?? data.salePrice),
+        taxRate: Number(data.taxRate),
+      };
+      setItems((its) => [...its, created].sort((a, b) => a.name.localeCompare(b.name)));
+      cancelNewItem();
+      router.refresh();
+    } catch (e) {
+      setNewItemError(e instanceof Error ? e.message : "Failed to create item");
+    } finally {
+      setSavingNewItem(false);
+    }
   }
 
   const totals = useMemo(() => {
@@ -116,6 +185,7 @@ export default function CreatePurchaseForm({
           discount: Number(discount) || 0,
           dueDate: dueDate || undefined,
           vendorBillNumber: vendorBillNumber || undefined,
+          siteId: siteId || undefined,
           lines: lines.map((l) => ({
             itemId: l.itemId || undefined,
             description: l.description,
@@ -175,12 +245,22 @@ export default function CreatePurchaseForm({
           <label>Due date</label>
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </div>
+        <div className="afs-form-field">
+          <label>Site</label>
+          <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+            <option value="">— none —</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <table className="afs-table" style={{ marginTop: 10, marginBottom: 10 }}>
         <thead>
           <tr>
-            <th style={{ width: 28, position: "sticky", left: 0, background: "#f2f4fa", zIndex: 1 }}></th>
             <th>Item</th>
             <th>Description</th>
             <th>HSN/SAC</th>
@@ -188,6 +268,7 @@ export default function CreatePurchaseForm({
             <th style={{ width: 100 }}>Rate</th>
             <th style={{ width: 90 }}>Tax %</th>
             <th style={{ width: 100 }}>Taxable</th>
+            <th style={{ width: 40, position: "sticky", right: 0, background: "#f2f4fa" }}></th>
           </tr>
         </thead>
         <tbody>
@@ -195,19 +276,7 @@ export default function CreatePurchaseForm({
             const taxable = round2((Number(line.qty) || 0) * (Number(line.rate) || 0));
             return (
               <tr key={idx}>
-                <td style={{ position: "sticky", left: 0, background: "#fff", zIndex: 1 }}>
-                  {lines.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeLine(idx)}
-                      title="Remove line"
-                      style={{ color: "#b91c1c", border: "none", background: "none", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </td>
-                <td>
+                <td data-label="Item">
                   <select value={line.itemId} onChange={(e) => pickItem(idx, e.target.value)}>
                     <option value="">— manual —</option>
                     {items.map((i) => (
@@ -217,17 +286,17 @@ export default function CreatePurchaseForm({
                     ))}
                   </select>
                 </td>
-                <td>
+                <td data-label="Description">
                   <input
                     required
                     value={line.description}
                     onChange={(e) => updateLine(idx, { description: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="HSN/SAC">
                   <input required value={line.hsnCode} onChange={(e) => updateLine(idx, { hsnCode: e.target.value })} />
                 </td>
-                <td>
+                <td data-label="Qty">
                   <input
                     required
                     type="number"
@@ -237,7 +306,7 @@ export default function CreatePurchaseForm({
                     onChange={(e) => updateLine(idx, { qty: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Rate">
                   <input
                     required
                     type="number"
@@ -247,7 +316,7 @@ export default function CreatePurchaseForm({
                     onChange={(e) => updateLine(idx, { rate: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Tax %">
                   <input
                     required
                     type="number"
@@ -257,16 +326,87 @@ export default function CreatePurchaseForm({
                     onChange={(e) => updateLine(idx, { taxRate: e.target.value })}
                   />
                 </td>
-                <td>{taxable.toFixed(2)}</td>
+                <td data-label="Taxable">{taxable.toFixed(2)}</td>
+                <td style={{ position: "sticky", right: 0, background: "#fff", zIndex: 1 }}>
+                  <button
+                    type="button"
+                    onClick={() => removeLine(idx)}
+                    title="Delete line"
+                    className="afs-icon-btn danger"
+                  >
+                    <TrashIcon />
+                  </button>
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
 
-      <button type="button" onClick={addLine} className="afs-btn afs-btn-gold" style={{ marginBottom: 20 }}>
-        + Add line
-      </button>
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        <button type="button" onClick={addLine} className="afs-btn afs-btn-gold">
+          + Add line
+        </button>
+        <button type="button" onClick={() => setShowNewItemForm((v) => !v)} className="afs-btn" style={{ background: "#e5e7eb", color: "#333" }}>
+          + Add Item
+        </button>
+      </div>
+
+      {showNewItemForm && (
+        <div className="afs-card" style={{ background: "#f8f9fd", marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#445" }}>New Item</div>
+            <button type="button" onClick={cancelNewItem} title="Cancel" className="afs-icon-btn danger">
+              <TrashIcon />
+            </button>
+          </div>
+          <div className="afs-form-row">
+            <div className="afs-form-field">
+              <label>Name *</label>
+              <input required value={newItem.name} onChange={(e) => setNewItemField("name", e.target.value)} />
+            </div>
+            <div className="afs-form-field">
+              <label>HSN/SAC *</label>
+              <input required value={newItem.hsnCode} onChange={(e) => setNewItemField("hsnCode", e.target.value)} />
+            </div>
+            <div className="afs-form-field">
+              <label>Unit *</label>
+              <select required value={newItem.unit} onChange={(e) => setNewItemField("unit", e.target.value)}>
+                {COMMON_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="afs-form-field">
+              <label>Purchase price *</label>
+              <input
+                required
+                type="number"
+                step="0.01"
+                min="0"
+                value={newItem.purchasePrice}
+                onChange={(e) => setNewItemField("purchasePrice", e.target.value)}
+              />
+            </div>
+            <div className="afs-form-field">
+              <label>Tax rate % *</label>
+              <select required value={newItem.taxRate} onChange={(e) => setNewItemField("taxRate", e.target.value)}>
+                {[0, 5, 12, 18, 28].map((r) => (
+                  <option key={r} value={r}>
+                    {r}%
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {newItemError && <div style={{ color: "#b91c1c", fontSize: 13, marginBottom: 10 }}>{newItemError}</div>}
+          <button type="button" onClick={addItem} disabled={savingNewItem} className="afs-btn afs-btn-primary">
+            {savingNewItem ? "Adding…" : "Save Item"}
+          </button>
+        </div>
+      )}
 
       <div className="afs-card" style={{ background: "#f8f9fd", maxWidth: 320, marginLeft: "auto", marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>

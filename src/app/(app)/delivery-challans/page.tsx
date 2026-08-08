@@ -13,14 +13,16 @@ export default async function DeliveryChallansPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="afs-page-header">
         <div>
           <h1 className="afs-page-title">Delivery Challans</h1>
           <p className="afs-page-subtitle">Dispatch documents for goods sent to a customer</p>
         </div>
-        <Link href="/delivery-challans/new" className="afs-btn afs-btn-primary">
-          + New Delivery Challan
-        </Link>
+        <div className="afs-page-header-actions">
+          <Link href="/delivery-challans/new" className="afs-btn afs-btn-primary">
+            + New Delivery Challan
+          </Link>
+        </div>
       </div>
 
       <div className="afs-card" style={{ marginTop: 20 }}>
@@ -43,13 +45,13 @@ export default async function DeliveryChallansPage() {
                 const totalQty = c.lines.reduce((sum, l) => sum + Number(l.qty), 0);
                 return (
                   <tr key={c.id}>
-                    <td>
+                    <td data-label="Number">
                       <Link href={`/delivery-challans/${c.id}`}>{c.number}</Link>
                     </td>
-                    <td>{new Date(c.date).toLocaleDateString("en-IN")}</td>
-                    <td>{c.toName ?? c.customer?.name ?? "—"}</td>
-                    <td>{c.vehicleNumber ?? "—"}</td>
-                    <td>{totalQty}</td>
+                    <td data-label="Date">{new Date(c.date).toLocaleDateString("en-IN")}</td>
+                    <td data-label="To">{c.toName ?? c.customer?.name ?? "—"}</td>
+                    <td data-label="Vehicle No.">{c.vehicleNumber ?? "—"}</td>
+                    <td data-label="Total Qty">{totalQty}</td>
                     <td>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <Link href={`/delivery-challans/${c.id}`} className="afs-icon-btn" title="View">

@@ -3,6 +3,12 @@
   font-family: Arial, Helvetica, sans-serif;
   font-size: 11px;
   color: #000;
+  /* This replicates a fixed tax-invoice layout (exact GST column grid, signature
+     blocks, etc.) that can't reflow like a normal responsive page without becoming a
+     different document -- min-width keeps every column legible, and the .afs-card
+     wrapper this renders inside (which already has overflow-x: auto) takes over with
+     a horizontal scroll below that width instead of squeezing text unreadably. */
+  min-width: 850px;
   max-width: 900px;
   margin: 0 auto;
   padding: 16px;
@@ -36,11 +42,32 @@
 }
 
 .original-badge {
-  position: relative;
-  text-align: right;
+  /* Absolutely positioned against .invoice-page (not the old negative-margin trick,
+     which only avoided overlapping the title at exactly the widths it was tuned for)
+     so it can never collide with the title regardless of container width. */
+  position: absolute;
+  top: 8px;
+  right: 16px;
   font-size: 10px;
   font-style: italic;
-  top: -20px;
+}
+
+@media screen and (max-width: 900px) {
+  /* .invoice-page keeps its 850px min-width on screen so the GST table stays legible
+     and scrolls inside .afs-card. But the scroll starts at the left edge, so a
+     centered title / right-anchored badge would render off past the initial
+     360-428px view and be invisible until the user scrolls right. Left-align both so
+     they land inside the part of the document that's on-screen by default. Print
+     output is unaffected since this is a screen-only media query. */
+  .title-row {
+    text-align: left;
+  }
+  .original-badge {
+    position: static;
+    display: block;
+    text-align: left;
+    margin-bottom: 2px;
+  }
 }
 
 table {
@@ -252,6 +279,20 @@ table {
   padding: 6px 8px;
   font-size: 10px;
   line-height: 1.5;
+  vertical-align: top;
+}
+
+.terms-cell {
+  width: 50%;
+}
+
+.terms-sign-cell {
+  width: 50%;
+  text-align: right;
+}
+
+.terms-sign-cell > div {
+  margin-bottom: 4px;
 }
 
 .thank-you-bottom {

@@ -112,11 +112,11 @@ export default async function DashboardPage() {
             <tbody>
               {recentInvoices.map((inv) => (
                 <tr key={inv.id}>
-                  <td>{inv.number}</td>
-                  <td>{inv.customer.name}</td>
-                  <td>{new Date(inv.date).toLocaleDateString("en-IN")}</td>
-                  <td>Rs. {Number(inv.total).toFixed(2)}</td>
-                  <td>
+                  <td data-label="Invoice #">{inv.number}</td>
+                  <td data-label="Customer Name">{inv.customer.name}</td>
+                  <td data-label="Date">{new Date(inv.date).toLocaleDateString("en-IN")}</td>
+                  <td data-label="Total Amount">Rs. {Number(inv.total).toFixed(2)}</td>
+                  <td data-label="Status">
                     <span className={badgeClass(inv.status)}>{inv.status.replace("_", " ")}</span>
                   </td>
                   <td>

@@ -14,7 +14,7 @@ export default async function PrintDeliveryChallanPage({ params }: { params: Pro
   const [challan, tenant] = await Promise.all([
     prisma.deliveryChallan.findFirst({
       where: { id, tenantId: session.tenantId },
-      include: { lines: true, customer: true },
+      include: { lines: true, customer: true, site: true },
     }),
     prisma.tenant.findUniqueOrThrow({ where: { id: session.tenantId } }),
   ]);

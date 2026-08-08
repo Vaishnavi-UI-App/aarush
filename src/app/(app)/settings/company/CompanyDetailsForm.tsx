@@ -7,6 +7,8 @@ interface TenantProfile {
   name: string;
   gstin: string;
   pan: string | null;
+  cinNo: string | null;
+  website: string | null;
   stateCode: string;
   invoicePrefix: string;
   addressLine: string | null;
@@ -26,6 +28,8 @@ export default function CompanyDetailsForm({ tenant }: { tenant: TenantProfile }
     name: tenant.name,
     gstin: tenant.gstin,
     pan: tenant.pan ?? "",
+    cinNo: tenant.cinNo ?? "",
+    website: tenant.website ?? "",
     stateCode: tenant.stateCode,
     invoicePrefix: tenant.invoicePrefix,
     addressLine: tenant.addressLine ?? "",
@@ -82,6 +86,17 @@ export default function CompanyDetailsForm({ tenant }: { tenant: TenantProfile }
         <div className="afs-form-field">
           <label>PAN</label>
           <input value={form.pan} onChange={(e) => set("pan", e.target.value)} />
+        </div>
+      </div>
+
+      <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>CIN No.</label>
+          <input value={form.cinNo} onChange={(e) => set("cinNo", e.target.value)} />
+        </div>
+        <div className="afs-form-field">
+          <label>Website</label>
+          <input value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="e.g. www.example.com" />
         </div>
       </div>
 

@@ -56,6 +56,10 @@
   gap: 10px;
 }
 
+.afs-nav-icon {
+  flex-shrink: 0;
+}
+
 .afs-nav a:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
@@ -115,8 +119,8 @@
     top: 14px;
     left: 14px;
     z-index: 40;
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border-radius: 8px;
     border: none;
     background: var(--afs-navy, #16305c);
@@ -159,6 +163,13 @@
     padding: 20px 16px;
     padding-top: 64px;
   }
+
+  /* Nav rows are ~36-40px tall at the desktop padding -- under the 44px touch
+     target minimum. Full-width vertical list, no horizontal neighbors, so a
+     taller row is free to grow with no overlap risk. */
+  .afs-nav a {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 560px) {
@@ -179,6 +190,25 @@
     min-width: 0;
     flex: 1 1 100%;
   }
+
+  /* Icon-only action buttons (edit/delete/download/view/mail/WhatsApp) are 26px
+     circles sized for a mouse pointer -- below the 44x44px minimum touch target.
+     Keep the visual size intact (a grid of 44px circles would look bulky and
+     unbalanced next to table text) and instead pad the actual hit area out to
+     44x44 using a transparent ::before overlay, centered on the visible circle. */
+  .afs-icon-btn {
+    position: relative;
+  }
+
+  .afs-icon-btn::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
 }
 
 .afs-page-title {
@@ -192,6 +222,37 @@
   font-size: 13px;
   color: #667;
   margin-bottom: 20px;
+}
+
+/* Shared "title block on the left, action buttons on the right" page header --
+   wraps to a stacked layout with full-bleed, evenly sized action buttons on
+   narrow screens instead of squeezing everything into one cramped row. */
+.afs-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.afs-page-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+@media (max-width: 480px) {
+  .afs-page-header-actions {
+    width: 100%;
+  }
+
+  .afs-page-header-actions > a,
+  .afs-page-header-actions > button {
+    flex: 1 1 auto;
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 .afs-card {
@@ -224,6 +285,68 @@
 
 .afs-table tr:hover td {
   background: #f8f9fd;
+}
+
+/* Below this width, every .afs-table turns each row into a stacked card instead of
+   scrolling a cramped grid sideways -- cells rely on a data-label attribute (matching
+   their column header) to show what they are, since the header row itself is hidden. */
+@media (max-width: 640px) {
+  .afs-table thead {
+    display: none;
+  }
+
+  .afs-table,
+  .afs-table tbody,
+  .afs-table tr,
+  .afs-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .afs-table tr {
+    margin-bottom: 12px;
+    border: 1px solid #e2e6f0;
+    border-radius: 10px;
+    padding: 4px 12px;
+    box-shadow: 0 2px 8px rgba(13, 31, 61, 0.06);
+  }
+
+  .afs-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .afs-table td {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f2f7;
+    text-align: right;
+    min-height: 24px;
+  }
+
+  .afs-table td:last-child {
+    border-bottom: none;
+  }
+
+  .afs-table td[data-label]::before {
+    content: attr(data-label);
+    margin-right: auto;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #96a0b4;
+    text-align: left;
+  }
+
+  /* A td with nothing worth labeling (empty action-icon cells, etc.) -- skip the
+     label and just right-align its content instead of showing a blank heading. */
+  .afs-table td:not([data-label]) {
+    justify-content: flex-end;
+  }
 }
 
 .afs-empty {
@@ -338,4 +461,54 @@
 .afs-icon-btn.success {
   background: rgba(12, 163, 12, 0.14);
   color: #0ca30c;
+}
+
+.afs-icon-btn.edit {
+  background: rgba(43, 92, 178, 0.12);
+  color: #2b5cb2;
+}
+
+.afs-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 31, 61, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.afs-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 420px;
+  max-width: 90vw;
+  /* Content-heavy modals (forms with many fields) can otherwise render taller than
+     short viewports (landscape phones, or a shrunk viewport under an on-screen
+     keyboard). Centered by the backdrop with no cap, that clips the title AND the
+     submit button off-screen with no way to scroll to either. Capping height and
+     scrolling internally keeps the whole modal on-screen and everything reachable. */
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 12px 40px rgba(13, 31, 61, 0.25);
+}
+
+.afs-modal h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.afs-modal p {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 14px;
+}
+
+.afs-modal textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
 }

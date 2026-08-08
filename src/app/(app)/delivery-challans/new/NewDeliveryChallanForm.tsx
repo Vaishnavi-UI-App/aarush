@@ -2,11 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { TrashIcon } from "@/components/icons";
 
 interface Customer {
   id: string;
   name: string;
   address: string | null;
+}
+
+interface Site {
+  id: string;
+  name: string;
 }
 
 interface Line {
@@ -18,7 +24,7 @@ function emptyLine(): Line {
   return { particulars: "", qty: "1" };
 }
 
-export default function NewDeliveryChallanForm({ customers }: { customers: Customer[] }) {
+export default function NewDeliveryChallanForm({ customers, sites }: { customers: Customer[]; sites: Site[] }) {
   const router = useRouter();
   const [customerId, setCustomerId] = useState("");
   const [toName, setToName] = useState("");
@@ -26,6 +32,7 @@ export default function NewDeliveryChallanForm({ customers }: { customers: Custo
   const [poNumber, setPoNumber] = useState("");
   const [poDate, setPoDate] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
+  const [siteId, setSiteId] = useState("");
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -61,6 +68,7 @@ export default function NewDeliveryChallanForm({ customers }: { customers: Custo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId: customerId || undefined,
+          siteId: siteId || undefined,
           toName: toName || undefined,
           toAddress: toAddress || undefined,
           poNumber: poNumber || undefined,
@@ -97,6 +105,17 @@ export default function NewDeliveryChallanForm({ customers }: { customers: Custo
           <label>Vehicle Number</label>
           <input value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value)} />
         </div>
+        <div className="afs-form-field">
+          <label>Site</label>
+          <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+            <option value="">— none —</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="afs-form-row">
@@ -126,16 +145,16 @@ export default function NewDeliveryChallanForm({ customers }: { customers: Custo
           <tr>
             <th>Particulars</th>
             <th style={{ width: 120 }}>Qty</th>
-            <th></th>
+            <th style={{ width: 40, position: "sticky", right: 0, background: "#f2f4fa" }}></th>
           </tr>
         </thead>
         <tbody>
           {lines.map((line, idx) => (
             <tr key={idx}>
-              <td>
+              <td data-label="Particulars">
                 <input required value={line.particulars} onChange={(e) => updateLine(idx, { particulars: e.target.value })} />
               </td>
-              <td>
+              <td data-label="Qty">
                 <input
                   required
                   type="number"
@@ -145,12 +164,10 @@ export default function NewDeliveryChallanForm({ customers }: { customers: Custo
                   onChange={(e) => updateLine(idx, { qty: e.target.value })}
                 />
               </td>
-              <td>
-                {lines.length > 1 && (
-                  <button type="button" onClick={() => removeLine(idx)} style={{ color: "#b91c1c", border: "none", background: "none", cursor: "pointer" }}>
-                    ✕
-                  </button>
-                )}
+              <td style={{ position: "sticky", right: 0, background: "#fff", zIndex: 1 }}>
+                <button type="button" onClick={() => removeLine(idx)} title="Delete line" className="afs-icon-btn danger">
+                  <TrashIcon />
+                </button>
               </td>
             </tr>
           ))}

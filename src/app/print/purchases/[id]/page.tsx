@@ -14,7 +14,7 @@ export default async function PrintPurchasePage({ params }: { params: Promise<{ 
   const [purchase, tenant] = await Promise.all([
     prisma.purchase.findFirst({
       where: { id, tenantId: session.tenantId },
-      include: { lines: true, vendor: true },
+      include: { lines: true, vendor: true, site: true },
     }),
     prisma.tenant.findUniqueOrThrow({ where: { id: session.tenantId } }),
   ]);

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
+import PurchaseRowActions from "./PurchaseRowActions";
 
 function badgeClass(status: string) {
   return `afs-badge afs-badge-${status.toLowerCase()}`;
@@ -10,7 +11,7 @@ function badgeClass(status: string) {
 
 export default async function PurchasesPage() {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "purchases", "view"))) redirect("/dashboard");
 
   const [purchases, archivedCount] = await Promise.all([
     prisma.purchase.findMany({
@@ -23,12 +24,12 @@ export default async function PurchasesPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="afs-page-header">
         <div>
           <h1 className="afs-page-title">Purchases</h1>
           <p className="afs-page-subtitle">Bills received from vendors</p>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="afs-page-header-actions">
           <Link href="/purchases/archived" style={{ fontSize: 13 }}>
             Archive {archivedCount > 0 ? `(${archivedCount})` : ""}
           </Link>
@@ -52,21 +53,25 @@ export default async function PurchasesPage() {
                 <th>Due</th>
                 <th>Total</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {purchases.map((p) => (
                 <tr key={p.id}>
-                  <td>
+                  <td data-label="Number">
                     <Link href={`/purchases/${p.id}`}>{p.number}</Link>
                   </td>
-                  <td>{p.vendorBillNumber ?? "—"}</td>
-                  <td>{p.vendor.name}</td>
-                  <td>{new Date(p.date).toLocaleDateString("en-IN")}</td>
-                  <td>{p.dueDate ? new Date(p.dueDate).toLocaleDateString("en-IN") : "—"}</td>
-                  <td>Rs. {Number(p.total).toFixed(2)}</td>
-                  <td>
+                  <td data-label="Vendor ref">{p.vendorBillNumber ?? "—"}</td>
+                  <td data-label="Vendor">{p.vendor.name}</td>
+                  <td data-label="Date">{new Date(p.date).toLocaleDateString("en-IN")}</td>
+                  <td data-label="Due">{p.dueDate ? new Date(p.dueDate).toLocaleDateString("en-IN") : "—"}</td>
+                  <td data-label="Total">Rs. {Number(p.total).toFixed(2)}</td>
+                  <td data-label="Status">
                     <span className={badgeClass(p.status)}>{p.status.replace("_", " ")}</span>
+                  </td>
+                  <td>
+                    <PurchaseRowActions purchaseId={p.id} />
                   </td>
                 </tr>
               ))}

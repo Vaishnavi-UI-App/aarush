@@ -38,20 +38,24 @@ export default async function ArchivedInvoicesPage() {
                 <th>Total</th>
                 <th>Status</th>
                 <th>Archived</th>
+                <th>Reason</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {invoices.map((inv) => (
                 <tr key={inv.id} className="afs-row-archived">
-                  <td>{inv.number}</td>
-                  <td>{inv.type === "PROFORMA" ? "Proforma" : "Sale"}</td>
-                  <td>{inv.customer.name}</td>
-                  <td>Rs. {Number(inv.total).toFixed(2)}</td>
-                  <td>
+                  <td data-label="Number">{inv.number}</td>
+                  <td data-label="Type">{inv.type === "PROFORMA" ? "Proforma" : "Sale"}</td>
+                  <td data-label="Customer">{inv.customer.name}</td>
+                  <td data-label="Total">Rs. {Number(inv.total).toFixed(2)}</td>
+                  <td data-label="Status">
                     <span className={badgeClass(inv.status)}>{inv.status.replace("_", " ")}</span>
                   </td>
-                  <td>{inv.archivedAt ? new Date(inv.archivedAt).toLocaleDateString("en-IN") : "—"}</td>
+                  <td data-label="Archived">{inv.archivedAt ? new Date(inv.archivedAt).toLocaleDateString("en-IN") : "—"}</td>
+                  <td data-label="Reason" style={{ fontSize: 12, color: "#667" }}>
+                    {inv.archiveNote || "—"}
+                  </td>
                   <td>
                     <RestoreInvoiceButton invoiceId={inv.id} />
                   </td>

@@ -57,18 +57,18 @@ export default function TransactionRow({
 
   return (
     <tr>
-      <td>{new Date(transaction.date).toLocaleDateString("en-IN")}</td>
-      <td>{transaction.description}</td>
-      <td>{transaction.type}</td>
-      <td>Rs. {transaction.amount.toFixed(2)}</td>
-      <td>
+      <td data-label="Date">{new Date(transaction.date).toLocaleDateString("en-IN")}</td>
+      <td data-label="Description">{transaction.description}</td>
+      <td data-label="Type">{transaction.type}</td>
+      <td data-label="Amount">Rs. {transaction.amount.toFixed(2)}</td>
+      <td data-label="Match">
         {transaction.matchStatus === "MATCHED" ? (
           <span className="afs-badge afs-badge-paid">Matched: {transaction.matchedLabel}</span>
         ) : options.length === 0 ? (
           <span style={{ fontSize: 12, color: "#889" }}>No unmatched payments</span>
         ) : (
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <select value={selected} onChange={(e) => setSelected(e.target.value)} style={{ fontSize: 12 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", maxWidth: "100%" }}>
+            <select value={selected} onChange={(e) => setSelected(e.target.value)} style={{ fontSize: 12, maxWidth: "100%" }}>
               <option value="">Select payment…</option>
               {options.map((o) => (
                 <option key={o.id} value={o.id}>

@@ -4,10 +4,16 @@ function money(n: number): string {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Keeps the item table (and so the printed page) at a consistent height whether the
+// invoice carries a handful of lines or many -- short invoices still fill out the sheet
+// instead of leaving a lot of dead space above the totals.
+const MIN_ITEM_ROWS = 7;
+
 export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const { seller, billedTo, shippedTo, items, bank } = invoice;
   const hasIgst = (invoice.totalIgst ?? 0) > 0;
   const summaryColSpan = hasIgst ? 13 : 11;
+  const blankRows = Math.max(0, MIN_ITEM_ROWS - items.length);
   const documentTitle = invoice.documentType === "PROFORMA" ? "PROFORMA INVOICE" : "TAX INVOICE";
 
   return (
@@ -30,6 +36,8 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
                   <div>&#9742; {seller.phone} &#9993; {seller.email}</div>
                   <div>GSTIN : <b>{seller.gstin}</b> <span className="state-badge">State Code : {seller.stateCode}</span></div>
                   <div>PAN : <b>{seller.pan}</b></div>
+                  {seller.cinNo && <div>CIN : <b>{seller.cinNo}</b></div>}
+                  {seller.website && <div>Website : {seller.website}</div>}
                   {seller.altEmail && <div>Email : {seller.altEmail}</div>}
                   {seller.altMobile && <div>MOBILE NO : {seller.altMobile}</div>}
                   {seller.udyam && (
@@ -63,6 +71,10 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
                   <tr>
                     <td><div className="meta-label">Place Of Supply</div><div className="meta-value">{invoice.placeOfSupplySite}</div></td>
                     <td colSpan={2}><div className="meta-label">DELIVERD THREW</div><div className="meta-value">{invoice.deliveredThrough}</div></td>
+                  </tr>
+                  <tr>
+                    <td><div className="meta-label">Site</div><div className="meta-value">{invoice.site}</div></td>
+                    <td colSpan={2}><div className="meta-label">Payment Terms</div><div className="meta-value">{invoice.paymentTerms}</div></td>
                   </tr>
                 </tbody>
               </table>
@@ -148,6 +160,28 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
               <td className="right bold">Rs. {money(item.total)}</td>
             </tr>
           ))}
+          {Array.from({ length: blankRows }, (_, i) => (
+            <tr key={`blank-${i}`}>
+              <td>&nbsp;</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              {hasIgst && (
+                <>
+                  <td></td>
+                  <td></td>
+                </>
+              )}
+              <td></td>
+            </tr>
+          ))}
           <tr>
             <td colSpan={summaryColSpan} className="right bold">Taxable Amount</td>
             <td className="right bold">Rs. {money(invoice.taxableAmount)}</td>
@@ -213,17 +247,22 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
       <table className="terms-table">
         <tbody>
           <tr>
-            <td>
+            <td className="terms-cell">
               <div className="bold">Terms And Conditions</div>
               {invoice.terms.map((t, i) => (
                 <div key={i}>{t}</div>
               ))}
             </td>
+            <td className="terms-sign-cell">
+              <div>Received the above goods in good condition.</div>
+              <div className="sign-space" />
+              <div className="right">Receiver&apos;s Signature</div>
+            </td>
           </tr>
         </tbody>
       </table>
 
-      <div className="thank-you-bottom">Thankyou for your business</div>
+      <div className="thank-you-bottom">This is a computer-generated invoice and does not require a signature.</div>
     </div>
   );
 }

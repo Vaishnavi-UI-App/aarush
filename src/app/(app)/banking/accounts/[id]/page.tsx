@@ -1,13 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import NewTransactionForm from "./NewTransactionForm";
 import TransactionRow from "./TransactionRow";
 
 export default async function BankAccountPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "banking", "view"))) redirect("/dashboard");
   const { id } = await params;
 
   const account = await prisma.bankAccount.findFirst({ where: { id, tenantId: session!.tenantId } });

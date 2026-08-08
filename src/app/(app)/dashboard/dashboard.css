@@ -118,10 +118,12 @@
 .dd-theme-toggle button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   border: none;
   background: none;
   padding: 6px 14px;
+  min-height: 44px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
@@ -146,6 +148,7 @@
   border: 1px solid var(--dd-border);
   border-radius: 12px;
   padding: 18px 20px;
+  overflow-x: auto;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -284,4 +287,53 @@
   font-size: 13px;
   padding: 30px 0;
   text-align: center;
+}
+
+@media (max-width: 640px) {
+  /* .dd-table is its own styling (separate from the shared .afs-table), so it
+     needs the same card-stack conversion -- otherwise Status/View silently
+     scroll off-screen with no indication there's more to see. */
+  .dd-table thead {
+    display: none;
+  }
+  .dd-table,
+  .dd-table tbody,
+  .dd-table tr,
+  .dd-table td {
+    display: block;
+    width: 100%;
+  }
+  .dd-table tr {
+    margin-bottom: 12px;
+    border: 1px solid var(--dd-border);
+    border-radius: 10px;
+    padding: 4px 12px;
+  }
+  .dd-table tr:last-child {
+    margin-bottom: 0;
+  }
+  .dd-table td {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--dd-border);
+    text-align: right;
+    min-height: 24px;
+  }
+  .dd-table td:last-child {
+    border-bottom: none;
+  }
+  .dd-table td[data-label]::before {
+    content: attr(data-label);
+    margin-right: auto;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--dd-ink-muted);
+    text-align: left;
+  }
 }

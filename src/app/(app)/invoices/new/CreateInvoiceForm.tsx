@@ -3,12 +3,20 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { COMMON_UNITS } from "@/lib/units";
+import { TrashIcon } from "@/components/icons";
 
 interface Customer {
   id: string;
   name: string;
   stateCode: string;
 }
+
+interface Site {
+  id: string;
+  name: string;
+}
+
+const PAYMENT_TERMS_OPTIONS = ["Due on Receipt", "Net 15", "Net 30", "Net 45", "Net 60", "Net 90"];
 
 interface Item {
   id: string;
@@ -36,24 +44,52 @@ function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+export interface InvoiceFormInitialValues {
+  lines: Line[];
+  discount: string;
+  poNumber: string;
+  poDate: string;
+  vehicleNumber: string;
+  transportationMode: string;
+  reverseCharge: boolean;
+  deliveredThrough: string;
+  placeOfSupplySite: string;
+  siteId: string;
+  paymentTerms: string;
+  shipToSameAsBilling: boolean;
+  shipToName: string;
+  shipToAddress: string;
+  shipToGstin: string;
+  shipToStateCode: string;
+}
+
 export default function CreateInvoiceForm({
   type,
   tenantStateCode,
   customers,
   items: initialItems,
   defaultCustomerId,
+  editInvoiceId,
+  initialValues,
+  sites,
 }: {
   type: "SALE" | "PROFORMA";
   tenantStateCode: string;
   customers: Customer[];
   items: Item[];
   defaultCustomerId?: string;
+  /** When set, the form edits this existing invoice (PATCH) instead of creating a new one.
+   * The customer can't be changed on edit -- it's already posted to that customer's ledger. */
+  editInvoiceId?: string;
+  initialValues?: InvoiceFormInitialValues;
+  sites: Site[];
 }) {
   const router = useRouter();
+  const isEdit = !!editInvoiceId;
   const [customerId, setCustomerId] = useState(defaultCustomerId ?? customers[0]?.id ?? "");
   const [items, setItems] = useState<Item[]>(initialItems);
-  const [lines, setLines] = useState<Line[]>([emptyLine()]);
-  const [discount, setDiscount] = useState("0");
+  const [lines, setLines] = useState<Line[]>(initialValues?.lines ?? [emptyLine()]);
+  const [discount, setDiscount] = useState(initialValues?.discount ?? "0");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -62,19 +98,21 @@ export default function CreateInvoiceForm({
   const [newItemError, setNewItemError] = useState<string | null>(null);
   const [savingNewItem, setSavingNewItem] = useState(false);
 
-  const [poNumber, setPoNumber] = useState("");
-  const [poDate, setPoDate] = useState("");
-  const [vehicleNumber, setVehicleNumber] = useState("");
-  const [transportationMode, setTransportationMode] = useState("");
-  const [reverseCharge, setReverseCharge] = useState(false);
-  const [deliveredThrough, setDeliveredThrough] = useState("");
-  const [placeOfSupplySite, setPlaceOfSupplySite] = useState("");
+  const [poNumber, setPoNumber] = useState(initialValues?.poNumber ?? "");
+  const [poDate, setPoDate] = useState(initialValues?.poDate ?? "");
+  const [vehicleNumber, setVehicleNumber] = useState(initialValues?.vehicleNumber ?? "");
+  const [transportationMode, setTransportationMode] = useState(initialValues?.transportationMode ?? "");
+  const [reverseCharge, setReverseCharge] = useState(initialValues?.reverseCharge ?? false);
+  const [deliveredThrough, setDeliveredThrough] = useState(initialValues?.deliveredThrough ?? "");
+  const [placeOfSupplySite, setPlaceOfSupplySite] = useState(initialValues?.placeOfSupplySite ?? "");
+  const [siteId, setSiteId] = useState(initialValues?.siteId ?? "");
+  const [paymentTerms, setPaymentTerms] = useState(initialValues?.paymentTerms ?? "");
 
-  const [shipToSameAsBilling, setShipToSameAsBilling] = useState(true);
-  const [shipToName, setShipToName] = useState("");
-  const [shipToAddress, setShipToAddress] = useState("");
-  const [shipToGstin, setShipToGstin] = useState("");
-  const [shipToStateCode, setShipToStateCode] = useState("");
+  const [shipToSameAsBilling, setShipToSameAsBilling] = useState(initialValues?.shipToSameAsBilling ?? true);
+  const [shipToName, setShipToName] = useState(initialValues?.shipToName ?? "");
+  const [shipToAddress, setShipToAddress] = useState(initialValues?.shipToAddress ?? "");
+  const [shipToGstin, setShipToGstin] = useState(initialValues?.shipToGstin ?? "");
+  const [shipToStateCode, setShipToStateCode] = useState(initialValues?.shipToStateCode ?? "");
 
   const customer = customers.find((c) => c.id === customerId);
   const sameState = customer ? customer.stateCode === tenantStateCode : true;
@@ -108,6 +146,12 @@ export default function CreateInvoiceForm({
 
   function setNewItemField<K extends keyof typeof newItem>(key: K, value: string) {
     setNewItem((f) => ({ ...f, [key]: value }));
+  }
+
+  function cancelNewItem() {
+    setShowNewItemForm(false);
+    setNewItem({ name: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
+    setNewItemError(null);
   }
 
   async function addItem() {
@@ -171,40 +215,47 @@ export default function CreateInvoiceForm({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/invoices", {
-        method: "POST",
+      const body: Record<string, unknown> = {
+        discount: Number(discount) || 0,
+        poNumber: poNumber || undefined,
+        poDate: poDate || undefined,
+        vehicleNumber: vehicleNumber || undefined,
+        transportationMode: transportationMode || undefined,
+        reverseCharge,
+        deliveredThrough: deliveredThrough || undefined,
+        placeOfSupplySite: placeOfSupplySite || undefined,
+        siteId: siteId || undefined,
+        paymentTerms: paymentTerms || undefined,
+        shipToSameAsBilling,
+        shipToName: shipToSameAsBilling ? undefined : shipToName || undefined,
+        shipToAddress: shipToSameAsBilling ? undefined : shipToAddress || undefined,
+        shipToGstin: shipToSameAsBilling ? undefined : shipToGstin || undefined,
+        shipToStateCode: shipToSameAsBilling ? undefined : shipToStateCode || undefined,
+        lines: lines.map((l) => ({
+          itemId: l.itemId || undefined,
+          description: l.description,
+          hsnCode: l.hsnCode,
+          qty: Number(l.qty),
+          rate: Number(l.rate),
+          taxRate: Number(l.taxRate),
+        })),
+      };
+      if (!isEdit) {
+        body.customerId = customerId;
+        body.type = type;
+      }
+
+      const res = await fetch(isEdit ? `/api/invoices/${editInvoiceId}` : "/api/invoices", {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerId,
-          type,
-          discount: Number(discount) || 0,
-          poNumber: poNumber || undefined,
-          poDate: poDate || undefined,
-          vehicleNumber: vehicleNumber || undefined,
-          transportationMode: transportationMode || undefined,
-          reverseCharge,
-          deliveredThrough: deliveredThrough || undefined,
-          placeOfSupplySite: placeOfSupplySite || undefined,
-          shipToSameAsBilling,
-          shipToName: shipToSameAsBilling ? undefined : shipToName || undefined,
-          shipToAddress: shipToSameAsBilling ? undefined : shipToAddress || undefined,
-          shipToGstin: shipToSameAsBilling ? undefined : shipToGstin || undefined,
-          shipToStateCode: shipToSameAsBilling ? undefined : shipToStateCode || undefined,
-          lines: lines.map((l) => ({
-            itemId: l.itemId || undefined,
-            description: l.description,
-            hsnCode: l.hsnCode,
-            qty: Number(l.qty),
-            rate: Number(l.rate),
-            taxRate: Number(l.taxRate),
-          })),
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create invoice");
-      router.push(`/invoices/${data.id}`);
+      if (!res.ok) throw new Error(data.error || `Failed to ${isEdit ? "update" : "create"} invoice`);
+      router.push(`/invoices/${isEdit ? editInvoiceId : data.id}`);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create invoice");
+      setError(err instanceof Error ? err.message : `Failed to ${isEdit ? "update" : "create"} invoice`);
     } finally {
       setSaving(false);
     }
@@ -219,13 +270,17 @@ export default function CreateInvoiceForm({
       <div className="afs-form-row">
         <div className="afs-form-field">
           <label>Customer *</label>
-          <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} required>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} (state {c.stateCode})
-              </option>
-            ))}
-          </select>
+          {isEdit ? (
+            <input readOnly value={customers.find((c) => c.id === customerId)?.name ?? ""} title="Customer can't be changed once an invoice is raised" />
+          ) : (
+            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} required>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} (state {c.stateCode})
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="afs-form-field">
           <label>Discount (Rs.)</label>
@@ -275,6 +330,31 @@ export default function CreateInvoiceForm({
           <label>Place of Supply (site)</label>
           <input value={placeOfSupplySite} onChange={(e) => setPlaceOfSupplySite(e.target.value)} />
         </div>
+        <div className="afs-form-field">
+          <label>Site</label>
+          <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+            <option value="">— none —</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="afs-form-field">
+          <label>Payment Terms</label>
+          <input
+            list="payment-terms-options"
+            value={paymentTerms}
+            onChange={(e) => setPaymentTerms(e.target.value)}
+            placeholder="e.g. Net 30"
+          />
+          <datalist id="payment-terms-options">
+            {PAYMENT_TERMS_OPTIONS.map((t) => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
+        </div>
       </div>
 
       <div className="afs-form-field" style={{ marginBottom: 10 }}>
@@ -316,7 +396,6 @@ export default function CreateInvoiceForm({
       <table className="afs-table" style={{ marginTop: 10, marginBottom: 10 }}>
         <thead>
           <tr>
-            <th style={{ width: 28, position: "sticky", left: 0, background: "#f2f4fa", zIndex: 1 }}></th>
             <th>Item</th>
             <th>Description</th>
             <th>HSN/SAC</th>
@@ -324,6 +403,7 @@ export default function CreateInvoiceForm({
             <th style={{ width: 100 }}>Rate</th>
             <th style={{ width: 90 }}>Tax %</th>
             <th style={{ width: 100 }}>Taxable</th>
+            <th style={{ width: 40, position: "sticky", right: 0, background: "#f2f4fa" }}></th>
           </tr>
         </thead>
         <tbody>
@@ -331,19 +411,7 @@ export default function CreateInvoiceForm({
             const taxable = round2((Number(line.qty) || 0) * (Number(line.rate) || 0));
             return (
               <tr key={idx}>
-                <td style={{ position: "sticky", left: 0, background: "#fff", zIndex: 1 }}>
-                  {lines.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeLine(idx)}
-                      title="Remove line"
-                      style={{ color: "#b91c1c", border: "none", background: "none", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </td>
-                <td>
+                <td data-label="Item">
                   <select value={line.itemId} onChange={(e) => pickItem(idx, e.target.value)}>
                     <option value="">— manual —</option>
                     {items.map((i) => (
@@ -353,17 +421,17 @@ export default function CreateInvoiceForm({
                     ))}
                   </select>
                 </td>
-                <td>
+                <td data-label="Description">
                   <input
                     required
                     value={line.description}
                     onChange={(e) => updateLine(idx, { description: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="HSN/SAC">
                   <input required value={line.hsnCode} onChange={(e) => updateLine(idx, { hsnCode: e.target.value })} />
                 </td>
-                <td>
+                <td data-label="Qty">
                   <input
                     required
                     type="number"
@@ -373,7 +441,7 @@ export default function CreateInvoiceForm({
                     onChange={(e) => updateLine(idx, { qty: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Rate">
                   <input
                     required
                     type="number"
@@ -383,7 +451,7 @@ export default function CreateInvoiceForm({
                     onChange={(e) => updateLine(idx, { rate: e.target.value })}
                   />
                 </td>
-                <td>
+                <td data-label="Tax %">
                   <input
                     required
                     type="number"
@@ -393,7 +461,17 @@ export default function CreateInvoiceForm({
                     onChange={(e) => updateLine(idx, { taxRate: e.target.value })}
                   />
                 </td>
-                <td>{taxable.toFixed(2)}</td>
+                <td data-label="Taxable">{taxable.toFixed(2)}</td>
+                <td style={{ position: "sticky", right: 0, background: "#fff", zIndex: 1 }}>
+                  <button
+                    type="button"
+                    onClick={() => removeLine(idx)}
+                    title="Delete line"
+                    className="afs-icon-btn danger"
+                  >
+                    <TrashIcon />
+                  </button>
+                </td>
               </tr>
             );
           })}
@@ -411,6 +489,12 @@ export default function CreateInvoiceForm({
 
       {showNewItemForm && (
         <div className="afs-card" style={{ background: "#f8f9fd", marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#445" }}>New Item</div>
+            <button type="button" onClick={cancelNewItem} title="Cancel" className="afs-icon-btn danger">
+              <TrashIcon />
+            </button>
+          </div>
           <div className="afs-form-row">
             <div className="afs-form-field">
               <label>Name *</label>
@@ -481,7 +565,15 @@ export default function CreateInvoiceForm({
       {error && <div style={{ color: "#b91c1c", fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
       <button type="submit" disabled={saving} className="afs-btn afs-btn-primary">
-        {saving ? "Creating…" : type === "PROFORMA" ? "Create Proforma Invoice" : "Create Sale Invoice"}
+        {isEdit
+          ? saving
+            ? "Saving…"
+            : "Save Changes"
+          : saving
+            ? "Creating…"
+            : type === "PROFORMA"
+              ? "Create Proforma Invoice"
+              : "Create Sale Invoice"}
       </button>
     </form>
   );

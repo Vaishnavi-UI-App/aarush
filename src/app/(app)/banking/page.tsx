@@ -2,13 +2,13 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { round2 } from "@/lib/gst-invoice";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import BankingDashboard from "./BankingDashboard";
 import "./banking.css";
 
 export default async function BankingPage() {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "banking", "view"))) redirect("/dashboard");
   const tenantId = session!.tenantId;
 
   const customers = await prisma.customer.findMany({

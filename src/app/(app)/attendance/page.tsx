@@ -1,69 +1,84 @@
+import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canViewAllAttendance } from "@/lib/permissions";
-import AttendanceAdminView from "./AttendanceAdminView";
-import AttendanceCheckInOut from "./AttendanceCheckInOut";
-
-// See src/app/api/attendance/check-in/route.ts for why this must be UTC-midnight of the
-// local calendar day, not a local setHours(0,0,0,0) Date serialized as-is.
-function startOfToday(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-}
-
-function serializeRecord(r: {
-  id: string;
-  date: Date;
-  checkInAt: Date | null;
-  checkOutAt: Date | null;
-}) {
-  return {
-    id: r.id,
-    date: r.date.toISOString(),
-    checkInAt: r.checkInAt ? r.checkInAt.toISOString() : null,
-    checkOutAt: r.checkOutAt ? r.checkOutAt.toISOString() : null,
-    hours: r.checkInAt && r.checkOutAt ? (r.checkOutAt.getTime() - r.checkInAt.getTime()) / 3_600_000 : null,
-  };
-}
+import { can, marksOwnAttendance } from "@/lib/permissions";
+import { attendanceDateBucket, reconcileStaleOpenDays } from "@/lib/attendance";
+import AttendanceTabs from "./AttendanceTabs";
+import "./attendance.css";
 
 export default async function AttendancePage() {
   const session = await getServerSession();
+  const tenantId = session!.tenantId;
+  const userId = session!.userId;
 
-  if (await canViewAllAttendance(session!.tenantId, session!.role)) {
-    const staff = await prisma.user.findMany({
-      where: { tenantId: session!.tenantId, role: { not: "OWNER" } },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, email: true },
-    });
-
-    return (
-      <div>
-        <h1 className="afs-page-title">Attendance</h1>
-        <p className="afs-page-subtitle">Everyone&apos;s check-in / check-out history, with location and photo</p>
-        <div style={{ marginTop: 20 }}>
-          <AttendanceAdminView staff={staff} />
-        </div>
-      </div>
-    );
-  }
-
-  const [records, today] = await Promise.all([
-    prisma.attendanceRecord.findMany({
-      where: { tenantId: session!.tenantId, userId: session!.userId },
-      orderBy: { date: "desc" },
-      take: 30,
-    }),
-    prisma.attendanceRecord.findUnique({
-      where: { tenantId_userId_date: { tenantId: session!.tenantId, userId: session!.userId, date: startOfToday() } },
-    }),
+  const [canCheckIn, canViewAll] = await Promise.all([
+    marksOwnAttendance(tenantId, session!.roleId),
+    can(tenantId, session!.roleId, "allAttendance", "view"),
   ]);
+  if (!canCheckIn && !canViewAll) redirect("/dashboard");
+
+  const [mine, staff] = await Promise.all([
+    canCheckIn
+      ? (async () => {
+          await reconcileStaleOpenDays(tenantId, userId);
+          const [records, today, sites] = await Promise.all([
+            prisma.attendanceRecord.findMany({ where: { tenantId, userId }, orderBy: { date: "desc" }, take: 30 }),
+            prisma.attendanceRecord.findUnique({
+              where: { tenantId_userId_date: { tenantId, userId, date: attendanceDateBucket() } },
+              include: { punches: { orderBy: { at: "asc" } }, breaks: { orderBy: { startAt: "asc" } } },
+            }),
+            prisma.site.findMany({ where: { tenantId, archivedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+          ]);
+          return { records, today, sites };
+        })()
+      : Promise.resolve({ records: [], today: null, sites: [] }),
+    canViewAll
+      ? prisma.user.findMany({
+          where: { tenantId, roleRef: { isOwner: false } },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true, email: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const recordsDto = mine.records.map((r) => ({
+    id: r.id,
+    date: r.date.toISOString(),
+    status: r.status,
+    computedWorkHours: r.computedWorkHours != null ? Number(r.computedWorkHours) : null,
+    overtimeHours: r.overtimeHours != null ? Number(r.overtimeHours) : null,
+    isLate: r.isLate,
+    isAutoClosed: r.isAutoClosed,
+    checkInAt: r.checkInAt ? r.checkInAt.toISOString() : null,
+    checkOutAt: r.checkOutAt ? r.checkOutAt.toISOString() : null,
+  }));
+
+  const todayDto = mine.today
+    ? {
+        id: mine.today.id,
+        status: mine.today.status,
+        isLate: mine.today.isLate,
+        siteId: mine.today.siteId,
+        punches: mine.today.punches.map((p) => ({
+          id: p.id,
+          kind: p.kind,
+          at: p.at.toISOString(),
+          withinGeofence: p.withinGeofence,
+          distanceMeters: p.distanceMeters,
+          photoData: p.photoData,
+        })),
+        breaks: mine.today.breaks.map((b) => ({ id: b.id, startAt: b.startAt.toISOString(), endAt: b.endAt ? b.endAt.toISOString() : null })),
+      }
+    : undefined;
 
   return (
     <div>
       <h1 className="afs-page-title">Attendance</h1>
-      <p className="afs-page-subtitle">Check in when you start, check out when you finish</p>
+      <p className="afs-page-subtitle">
+        {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+      </p>
       <div style={{ marginTop: 20 }}>
-        <AttendanceCheckInOut records={records.map(serializeRecord)} today={today ? serializeRecord(today) : undefined} />
+        <AttendanceTabs canCheckIn={canCheckIn} canViewAll={canViewAll} today={todayDto} records={recordsDto} sites={mine.sites} staff={staff} />
       </div>
     </div>
   );

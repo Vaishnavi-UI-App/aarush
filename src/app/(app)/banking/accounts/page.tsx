@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import NewBankAccountForm from "./NewBankAccountForm";
 
 export default async function BankingPage() {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "banking", "view"))) redirect("/dashboard");
   const accounts = await prisma.bankAccount.findMany({
     where: { tenantId: session!.tenantId },
     orderBy: { createdAt: "asc" },
@@ -42,12 +42,12 @@ export default async function BankingPage() {
             <tbody>
               {accounts.map((a) => (
                 <tr key={a.id}>
-                  <td>
+                  <td data-label="Bank">
                     <a href={`/banking/accounts/${a.id}`}>{a.bankName}</a>
                   </td>
-                  <td>{a.accountNo}</td>
-                  <td>{a.ifsc}</td>
-                  <td>{a.branchName ?? "—"}</td>
+                  <td data-label="Account No.">{a.accountNo}</td>
+                  <td data-label="IFSC">{a.ifsc}</td>
+                  <td data-label="Branch">{a.branchName ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

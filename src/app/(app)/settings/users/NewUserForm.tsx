@@ -3,11 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const ROLES = ["ACCOUNTANT", "SALES_STAFF", "AUDITOR", "OWNER"] as const;
+interface RoleOption {
+  id: string;
+  name: string;
+}
 
-export default function NewUserForm() {
+interface SiteOption {
+  id: string;
+  name: string;
+}
+
+export default function NewUserForm({ roles, sites }: { roles: RoleOption[]; sites: SiteOption[] }) {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", email: "", role: "SALES_STAFF" as (typeof ROLES)[number] });
+  const [form, setForm] = useState({ name: "", email: "", roleId: roles[0]?.id ?? "", siteId: "" });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -34,13 +42,17 @@ export default function NewUserForm() {
           ? `Login details sent to ${form.email}.`
           : `User created, but the email failed to send. Share these manually: email ${form.email}, password ${data.password} -- or use "Resend invite" below once the email issue is fixed.`
       );
-      setForm({ name: "", email: "", role: "SALES_STAFF" });
+      setForm({ name: "", email: "", roleId: roles[0]?.id ?? "", siteId: "" });
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to add user");
     } finally {
       setSaving(false);
     }
+  }
+
+  if (roles.length === 0) {
+    return <div className="afs-empty">Create a role first (Settings — Permissions) before adding a user.</div>;
   }
 
   return (
@@ -56,10 +68,21 @@ export default function NewUserForm() {
         </div>
         <div className="afs-form-field">
           <label>Role *</label>
-          <select value={form.role} onChange={(e) => set("role", e.target.value as (typeof ROLES)[number])}>
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r.replace("_", " ")}
+          <select value={form.roleId} onChange={(e) => set("roleId", e.target.value)}>
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="afs-form-field">
+          <label>Assigned site</label>
+          <select value={form.siteId} onChange={(e) => set("siteId", e.target.value)}>
+            <option value="">All sites (unrestricted)</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
               </option>
             ))}
           </select>

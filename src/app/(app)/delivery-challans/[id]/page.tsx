@@ -12,7 +12,7 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
   const [challan, tenant] = await Promise.all([
     prisma.deliveryChallan.findFirst({
       where: { id, tenantId: session!.tenantId },
-      include: { lines: true, customer: true },
+      include: { lines: true, customer: true, site: true },
     }),
     prisma.tenant.findUniqueOrThrow({ where: { id: session!.tenantId } }),
   ]);
@@ -21,14 +21,16 @@ export default async function DeliveryChallanDetailPage({ params }: { params: Pr
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+      <div className="afs-page-header" style={{ marginBottom: 16 }}>
         <div>
           <h1 className="afs-page-title">{challan.number}</h1>
           <p className="afs-page-subtitle">Delivery challan for {challan.toName ?? challan.customer?.name ?? "—"}</p>
         </div>
-        <a href={`/api/delivery-challans/${challan.id}/pdf`} target="_blank" rel="noopener noreferrer" className="afs-btn afs-btn-primary">
-          ⬇ Download PDF
-        </a>
+        <div className="afs-page-header-actions">
+          <a href={`/api/delivery-challans/${challan.id}/pdf`} target="_blank" rel="noopener noreferrer" className="afs-btn afs-btn-primary">
+            ⬇ Download PDF
+          </a>
+        </div>
       </div>
 
       <div className="afs-card" style={{ padding: 20 }}>

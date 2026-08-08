@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import RestorePurchaseButton from "./RestorePurchaseButton";
 
 function badgeClass(status: string) {
@@ -11,7 +11,7 @@ function badgeClass(status: string) {
 
 export default async function ArchivedPurchasesPage() {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "purchases", "view"))) redirect("/dashboard");
   const purchases = await prisma.purchase.findMany({
     where: { tenantId: session!.tenantId, archivedAt: { not: null } },
     include: { vendor: { select: { name: true } } },
@@ -40,19 +40,21 @@ export default async function ArchivedPurchasesPage() {
                 <th>Total</th>
                 <th>Status</th>
                 <th>Archived</th>
+                <th>Reason</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {purchases.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.number}</td>
-                  <td>{p.vendor.name}</td>
-                  <td>Rs. {Number(p.total).toFixed(2)}</td>
-                  <td>
+                  <td data-label="Number">{p.number}</td>
+                  <td data-label="Vendor">{p.vendor.name}</td>
+                  <td data-label="Total">Rs. {Number(p.total).toFixed(2)}</td>
+                  <td data-label="Status">
                     <span className={badgeClass(p.status)}>{p.status.replace("_", " ")}</span>
                   </td>
-                  <td>{p.archivedAt ? new Date(p.archivedAt).toLocaleDateString("en-IN") : "—"}</td>
+                  <td data-label="Archived">{p.archivedAt ? new Date(p.archivedAt).toLocaleDateString("en-IN") : "—"}</td>
+                  <td data-label="Reason" style={{ fontSize: 12, color: "#667" }}>{p.archiveNote || "—"}</td>
                   <td>
                     <RestorePurchaseButton purchaseId={p.id} />
                   </td>

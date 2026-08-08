@@ -38,13 +38,13 @@ export default async function CustomersPage() {
             <tbody>
               {customers.map((c) => (
                 <tr key={c.id}>
-                  <td>
+                  <td data-label="Name">
                     <a href={`/customers/${c.id}`}>{c.name}</a>
                   </td>
-                  <td>{c.gstin ?? "—"}</td>
-                  <td>{c.stateCode}</td>
-                  <td>{c.phone ?? "—"}</td>
-                  <td>{c.email ?? "—"}</td>
+                  <td data-label="GSTIN">{c.gstin ?? "—"}</td>
+                  <td data-label="State code">{c.stateCode}</td>
+                  <td data-label="Phone">{c.phone ?? "—"}</td>
+                  <td data-label="Email">{c.email ?? "—"}</td>
                   <td>
                     <Link href={`/customers/${c.id}/edit`} className="afs-icon-btn" title="Edit customer">
                       <EditIcon />

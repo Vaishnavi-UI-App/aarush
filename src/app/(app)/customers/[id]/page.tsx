@@ -20,11 +20,28 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
 
   return (
     <div>
-      <h1 className="afs-page-title">{customer.name}</h1>
-      <p className="afs-page-subtitle">
-        {customer.gstin ?? "No GSTIN"} · State {customer.stateCode} ·{" "}
-        <Link href={`/invoices/new?customerId=${customer.id}`}>+ New invoice for this customer</Link>
-      </p>
+      <div className="afs-page-header">
+        <div>
+          <h1 className="afs-page-title">{customer.name}</h1>
+          <p className="afs-page-subtitle">
+            {customer.gstin ?? "No GSTIN"} · State {customer.stateCode} ·{" "}
+            <Link href={`/invoices/new?customerId=${customer.id}`}>+ New invoice for this customer</Link>
+          </p>
+        </div>
+        <div className="afs-page-header-actions">
+          <a href={`/api/customers/${customer.id}/statement/export`} className="afs-btn" style={{ background: "#e5e7eb", color: "#333" }}>
+            ⬇ Excel (CSV)
+          </a>
+          <a
+            href={`/api/customers/${customer.id}/statement/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="afs-btn afs-btn-primary"
+          >
+            ⬇ PDF Statement
+          </a>
+        </div>
+      </div>
 
       <div className="afs-card" style={{ marginBottom: 20, maxWidth: 260 }}>
         <div style={{ fontSize: 12, color: "#667", marginBottom: 6 }}>
@@ -53,12 +70,12 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
             <tbody>
               {entries.map((e) => (
                 <tr key={e.id}>
-                  <td>{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
-                  <td>{e.refType}</td>
-                  <td>{e.invoice ? <Link href={`/invoices/${e.invoiceId}`}>{e.description}</Link> : e.description}</td>
-                  <td>{Number(e.debit) > 0 ? Number(e.debit).toFixed(2) : "—"}</td>
-                  <td>{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
-                  <td>{Number(e.runningBalance).toFixed(2)}</td>
+                  <td data-label="Date">{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
+                  <td data-label="Type">{e.refType}</td>
+                  <td data-label="Description">{e.invoice ? <Link href={`/invoices/${e.invoiceId}`}>{e.description}</Link> : e.description}</td>
+                  <td data-label="Debit">{Number(e.debit) > 0 ? Number(e.debit).toFixed(2) : "—"}</td>
+                  <td data-label="Credit">{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
+                  <td data-label="Balance">{Number(e.runningBalance).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

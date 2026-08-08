@@ -2,12 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import NewSiteForm from "./NewSiteForm";
 
 export default async function SitesPage() {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "sites", "view"))) redirect("/dashboard");
 
   const sites = await prisma.site.findMany({
     where: { tenantId: session!.tenantId, archivedAt: null },
@@ -44,12 +44,12 @@ export default async function SitesPage() {
                   : 0;
                 return (
                   <tr key={s.id}>
-                    <td>
+                    <td data-label="Site">
                       <Link href={`/sites/${s.id}`}>{s.name}</Link>
                     </td>
-                    <td>{s.address || "—"}</td>
-                    <td>Rs. {Number(s.wallet?.companyBalance ?? 0).toFixed(2)}</td>
-                    <td>{pending > 0 ? `Rs. ${pending.toFixed(2)}` : "—"}</td>
+                    <td data-label="Address">{s.address || "—"}</td>
+                    <td data-label="Company balance">Rs. {Number(s.wallet?.companyBalance ?? 0).toFixed(2)}</td>
+                    <td data-label="Pending reimbursement">{pending > 0 ? `Rs. ${pending.toFixed(2)}` : "—"}</td>
                   </tr>
                 );
               })}

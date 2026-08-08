@@ -1,62 +1,114 @@
 import { notFound, redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { canAccessFinance } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
+import { BankIcon, ArrowUpIcon, ArrowDownIcon, HelpCircleIcon } from "@/components/icons";
 import FundSiteForm from "./FundSiteForm";
+import SiteHistoryTable, { HistoryEntry } from "./SiteHistoryTable";
+import "./site-detail.css";
 
 export default async function SiteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession();
-  if (!(await canAccessFinance(session!.tenantId, session!.role))) redirect("/dashboard");
+  if (!(await can(session!.tenantId, session!.roleId, "sites", "view"))) redirect("/dashboard");
   const { id } = await params;
 
-  const site = await prisma.site.findFirst({
-    where: { id, tenantId: session!.tenantId },
-    include: {
-      wallet: true,
-      fundAllocations: { orderBy: { createdAt: "desc" }, include: { addedBy: { select: { name: true, email: true } } } },
-      expenses: {
-        orderBy: { date: "desc" },
-        include: { category: true, orderedBy: true, addedBy: { select: { name: true, email: true } } },
+  const [site, canEditFund, canDeleteFund, canEditExpense, canDeleteExpense, categories, orderedByPeople] = await Promise.all([
+    prisma.site.findFirst({
+      where: { id, tenantId: session!.tenantId },
+      include: {
+        wallet: true,
+        fundAllocations: { orderBy: { createdAt: "desc" }, include: { addedBy: { select: { name: true, email: true } } } },
+        expenses: {
+          orderBy: { date: "desc" },
+          include: { category: true, orderedBy: true, addedBy: { select: { name: true, email: true } } },
+        },
       },
-    },
-  });
+    }),
+    can(session!.tenantId, session!.roleId, "sites", "edit"),
+    can(session!.tenantId, session!.roleId, "sites", "delete"),
+    can(session!.tenantId, session!.roleId, "expenses", "edit"),
+    can(session!.tenantId, session!.roleId, "expenses", "delete"),
+    prisma.expenseCategory.findMany({ where: { tenantId: session!.tenantId }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.orderedByPerson.findMany({ where: { tenantId: session!.tenantId }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  ]);
   if (!site) notFound();
 
   const wallet = site.wallet;
   const pending = wallet ? Number(wallet.totalPersonalSpent) - Number(wallet.totalPersonalReimbursed) : 0;
 
   // Merge fund allocations and expenses into one chronological timeline.
-  const timeline = [
-    ...site.fundAllocations.map((f) => ({ kind: "fund" as const, at: f.createdAt, item: f })),
-    ...site.expenses.map((e) => ({ kind: "expense" as const, at: e.date, item: e })),
-  ].sort((a, b) => b.at.getTime() - a.at.getTime());
+  const entries: HistoryEntry[] = [
+    ...site.fundAllocations.map(
+      (f): HistoryEntry => ({
+        kind: "fund",
+        id: f.id,
+        at: f.createdAt.toISOString(),
+        amount: f.amount.toString(),
+        note: f.note,
+        reimbursedToPersonal: Number(f.reimbursedToPersonal),
+        addedByName: f.addedBy.name || f.addedBy.email,
+      })
+    ),
+    ...site.expenses.map(
+      (e): HistoryEntry => ({
+        kind: "expense",
+        id: e.id,
+        at: e.date.toISOString(),
+        date: e.date.toISOString(),
+        amount: e.amount.toString(),
+        note: e.note,
+        fundType: e.fundType,
+        category: e.category ? { id: e.category.id, name: e.category.name } : null,
+        orderedBy: e.orderedBy ? { id: e.orderedBy.id, name: e.orderedBy.name } : null,
+        addedByName: e.addedBy.name || e.addedBy.email,
+      })
+    ),
+  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 
   return (
     <div>
       <h1 className="afs-page-title">{site.name}</h1>
       <p className="afs-page-subtitle">{site.address || "No address on file"}</p>
 
-      <div className="afs-card" style={{ marginTop: 20, marginBottom: 20, display: "flex", gap: 24, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>Company balance</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>Rs. {Number(wallet?.companyBalance ?? 0).toFixed(2)}</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>Total funds received</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>Rs. {Number(wallet?.totalFundsReceived ?? 0).toFixed(2)}</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>Total spent</div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>
-            Rs. {(Number(wallet?.totalCompanySpent ?? 0) + Number(wallet?.totalPersonalSpent ?? 0)).toFixed(2)}
-          </div>
-        </div>
-        {pending > 0 && (
+      <div className="sd-stat-grid">
+        <div className="sd-stat-card">
           <div>
-            <div style={{ fontSize: 12, color: "#9e1b1f" }}>Pending reimbursement</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#9e1b1f" }}>Rs. {pending.toFixed(2)}</div>
+            <div className="sd-stat-label">Company balance</div>
+            <div className="sd-stat-value">Rs. {Number(wallet?.companyBalance ?? 0).toFixed(2)}</div>
           </div>
-        )}
+          <div className="sd-stat-icon sd-stat-icon-blue">
+            <BankIcon />
+          </div>
+        </div>
+        <div className="sd-stat-card">
+          <div>
+            <div className="sd-stat-label">Total funds received</div>
+            <div className="sd-stat-value">Rs. {Number(wallet?.totalFundsReceived ?? 0).toFixed(2)}</div>
+          </div>
+          <div className="sd-stat-icon sd-stat-icon-green">
+            <ArrowUpIcon />
+          </div>
+        </div>
+        <div className="sd-stat-card">
+          <div>
+            <div className="sd-stat-label">Total spent</div>
+            <div className="sd-stat-value">
+              Rs. {(Number(wallet?.totalCompanySpent ?? 0) + Number(wallet?.totalPersonalSpent ?? 0)).toFixed(2)}
+            </div>
+          </div>
+          <div className="sd-stat-icon sd-stat-icon-rose">
+            <ArrowDownIcon />
+          </div>
+        </div>
+        <div className="sd-stat-card">
+          <div>
+            <div className="sd-stat-label">Pending reimbursement</div>
+            <div className={`sd-stat-value${pending > 0 ? " sd-stat-value-red" : ""}`}>Rs. {pending.toFixed(2)}</div>
+          </div>
+          <div className="sd-stat-icon sd-stat-icon-amber">
+            <HelpCircleIcon />
+          </div>
+        </div>
       </div>
 
       <div className="afs-card" style={{ marginBottom: 20 }}>
@@ -64,60 +116,17 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       <div className="afs-card">
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>History</div>
-        {timeline.length === 0 ? (
-          <div className="afs-empty">No activity yet.</div>
-        ) : (
-          <table className="afs-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Detail</th>
-                <th>Amount</th>
-                <th>By</th>
-              </tr>
-            </thead>
-            <tbody>
-              {timeline.map((entry) =>
-                entry.kind === "fund" ? (
-                  <tr key={`fund-${entry.item.id}`}>
-                    <td>{new Date(entry.at).toLocaleString("en-IN")}</td>
-                    <td>Funds added</td>
-                    <td>
-                      {entry.item.note || "—"}
-                      {Number(entry.item.reimbursedToPersonal) > 0 && (
-                        <span style={{ color: "#9e1b1f", fontSize: 12 }}>
-                          {" "}
-                          (Rs. {Number(entry.item.reimbursedToPersonal).toFixed(2)} reimbursed)
-                        </span>
-                      )}
-                    </td>
-                    <td>Rs. {Number(entry.item.amount).toFixed(2)}</td>
-                    <td>{entry.item.addedBy.name || entry.item.addedBy.email}</td>
-                  </tr>
-                ) : (
-                  <tr key={`expense-${entry.item.id}`}>
-                    <td>{new Date(entry.at).toLocaleDateString("en-IN")}</td>
-                    <td>
-                      Expense
-                      <span className={`afs-badge afs-badge-${entry.item.fundType.toLowerCase()}`} style={{ marginLeft: 6 }}>
-                        {entry.item.fundType}
-                      </span>
-                    </td>
-                    <td>
-                      {entry.item.category?.name || "Uncategorized"}
-                      {entry.item.orderedBy ? ` · ordered by ${entry.item.orderedBy.name}` : ""}
-                      {entry.item.note ? ` · ${entry.item.note}` : ""}
-                    </td>
-                    <td>Rs. {Number(entry.item.amount).toFixed(2)}</td>
-                    <td>{entry.item.addedBy.name || entry.item.addedBy.email}</td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
-        )}
+        <div className="sd-history-title">History</div>
+        <SiteHistoryTable
+          siteId={site.id}
+          entries={entries}
+          canEditFund={canEditFund}
+          canDeleteFund={canDeleteFund}
+          canEditExpense={canEditExpense}
+          canDeleteExpense={canDeleteExpense}
+          categories={categories}
+          orderedByPeople={orderedByPeople}
+        />
       </div>
     </div>
   );

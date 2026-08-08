@@ -1,0 +1,171 @@
+.sd-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.sd-stat-card {
+  background: #fff;
+  border: 1px solid #e6e9f2;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  box-shadow: 0 4px 16px rgba(13, 31, 61, 0.05);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.sd-stat-card:hover {
+  box-shadow: 0 8px 24px rgba(13, 31, 61, 0.1);
+  transform: translateY(-1px);
+}
+
+.sd-stat-label {
+  font-size: 12.5px;
+  color: #6b7280;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.sd-stat-value {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--afs-navy, #16305c);
+  letter-spacing: -0.01em;
+}
+
+.sd-stat-value-red {
+  color: #d0342c;
+}
+
+.sd-stat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sd-stat-icon-blue { background: #e3ecfd; color: #2a5fd6; }
+.sd-stat-icon-green { background: #e1f7e8; color: #189a4b; }
+.sd-stat-icon-rose { background: #fbe4e2; color: #d0342c; }
+.sd-stat-icon-amber { background: #fdf1dc; color: #c9860e; }
+
+.sd-history-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--afs-navy, #16305c);
+  margin-bottom: 14px;
+}
+
+.sd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.sd-table th {
+  text-align: left;
+  padding: 10px 16px;
+  color: #96a0b4;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #eceef4;
+}
+
+.sd-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid #f1f2f7;
+  color: #2c344a;
+  vertical-align: middle;
+}
+
+.sd-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.sd-table tbody tr:hover td {
+  background: #f7f9fd;
+}
+
+.sd-table td.sd-amount {
+  text-align: right;
+  font-weight: 700;
+  color: var(--afs-navy, #16305c);
+  white-space: nowrap;
+}
+
+.sd-type-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sd-type-fund {
+  color: #189a4b;
+  font-weight: 600;
+}
+
+.sd-muted {
+  color: #adb4c2;
+}
+
+@media (max-width: 640px) {
+  /* .sd-table has its own styling (unlike the shared .afs-table) so it needs its own
+     copy of the card-stack conversion -- otherwise its Detail/Amount/By/Actions
+     columns silently scroll off-screen with zero indication there's more to see. */
+  .sd-table thead {
+    display: none;
+  }
+  .sd-table,
+  .sd-table tbody,
+  .sd-table tr,
+  .sd-table td {
+    display: block;
+    width: 100%;
+  }
+  .sd-table tr {
+    margin-bottom: 12px;
+    border: 1px solid #e2e6f0;
+    border-radius: 10px;
+    padding: 4px 12px;
+    box-shadow: 0 2px 8px rgba(13, 31, 61, 0.06);
+  }
+  .sd-table tr:last-child {
+    margin-bottom: 0;
+  }
+  .sd-table td {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f2f7;
+    text-align: right;
+    min-height: 24px;
+  }
+  .sd-table td:last-child {
+    border-bottom: none;
+  }
+  .sd-table td[data-label]::before {
+    content: attr(data-label);
+    margin-right: auto;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #96a0b4;
+    text-align: left;
+  }
+  .sd-table td.sd-amount {
+    justify-content: flex-end;
+  }
+}

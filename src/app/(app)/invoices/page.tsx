@@ -13,7 +13,7 @@ export default async function InvoicesPage() {
     prisma.invoice.findMany({
       where: { tenantId: session!.tenantId, archivedAt: null },
       include: {
-        customer: { select: { name: true, phone: true, email: true } },
+        customer: { select: { name: true } },
         convertedToInvoice: { select: { id: true, number: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -23,12 +23,12 @@ export default async function InvoicesPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="afs-page-header">
         <div>
           <h1 className="afs-page-title">Invoices</h1>
           <p className="afs-page-subtitle">Sales invoices and proforma quotes</p>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="afs-page-header-actions">
           <Link href="/invoices/archived" style={{ fontSize: 13 }}>
             Archive {archivedCount > 0 ? `(${archivedCount})` : ""}
           </Link>
@@ -60,14 +60,14 @@ export default async function InvoicesPage() {
             <tbody>
               {invoices.map((inv) => (
                 <tr key={inv.id}>
-                  <td>
+                  <td data-label="Number">
                     <Link href={`/invoices/${inv.id}`}>{inv.number}</Link>
                   </td>
-                  <td>{inv.type === "PROFORMA" ? "Proforma" : "Sale"}</td>
-                  <td>{inv.customer.name}</td>
-                  <td>{new Date(inv.date).toLocaleDateString("en-IN")}</td>
-                  <td>Rs. {Number(inv.total).toFixed(2)}</td>
-                  <td>
+                  <td data-label="Type">{inv.type === "PROFORMA" ? "Proforma" : "Sale"}</td>
+                  <td data-label="Customer">{inv.customer.name}</td>
+                  <td data-label="Date">{new Date(inv.date).toLocaleDateString("en-IN")}</td>
+                  <td data-label="Total">Rs. {Number(inv.total).toFixed(2)}</td>
+                  <td data-label="Status">
                     <span className={badgeClass(inv.status)}>{inv.status.replace("_", " ")}</span>
                   </td>
                   <td>
@@ -77,14 +77,7 @@ export default async function InvoicesPage() {
                         <Link href={`/invoices/${inv.convertedToInvoice.id}`}>{inv.convertedToInvoice.number}</Link>
                       </span>
                     ) : (
-                      <InvoiceRowActions
-                        invoiceId={inv.id}
-                        invoiceNumber={inv.number}
-                        invoiceStatus={inv.status}
-                        total={Number(inv.total)}
-                        customerPhone={inv.customer.phone}
-                        customerEmail={inv.customer.email}
-                      />
+                      <InvoiceRowActions invoiceId={inv.id} />
                     )}
                   </td>
                 </tr>

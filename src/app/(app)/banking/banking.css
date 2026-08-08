@@ -97,6 +97,24 @@
   transform: translateY(-1px);
 }
 
+@media (max-width: 560px) {
+  /* Same 44x44 touch-target expansion as .afs-icon-btn -- keeps the 28px visual
+     circle intact but pads the actual tappable hit area out via a pseudo overlay. */
+  .bk-icon-btn {
+    position: relative;
+  }
+
+  .bk-icon-btn::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+
 .bk-icon-btn.whatsapp {
   background: #25d366;
   color: #fff;
@@ -134,5 +152,10 @@
   padding: 24px;
   width: 380px;
   max-width: 90vw;
+  /* Same fix as .afs-modal: this form has 5 fields, tall enough to exceed short
+     viewports and get clipped top/bottom with the submit button unreachable. */
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: 0 12px 40px rgba(13, 31, 61, 0.25);
 }

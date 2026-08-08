@@ -10,10 +10,11 @@ export default async function NewInvoicePage({
   const session = await getServerSession();
   const { type, customerId } = await searchParams;
 
-  const [tenant, customers, items] = await Promise.all([
+  const [tenant, customers, items, sites] = await Promise.all([
     prisma.tenant.findUniqueOrThrow({ where: { id: session!.tenantId } }),
     prisma.customer.findMany({ where: { tenantId: session!.tenantId }, orderBy: { name: "asc" } }),
-    prisma.item.findMany({ where: { tenantId: session!.tenantId }, orderBy: { name: "asc" } }),
+    prisma.item.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
+    prisma.site.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
   ]);
 
   const invoiceType = type === "PROFORMA" ? "PROFORMA" : "SALE";
@@ -41,6 +42,7 @@ export default async function NewInvoicePage({
             taxRate: Number(i.taxRate),
           }))}
           defaultCustomerId={customerId}
+          sites={sites.map((s) => ({ id: s.id, name: s.name }))}
         />
       </div>
     </div>

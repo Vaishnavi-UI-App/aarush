@@ -125,7 +125,7 @@ export default function BankingDashboard({ rows, totals }: { rows: CustomerRow[]
       </div>
 
       <div className="afs-card">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
           <div style={{ fontWeight: 700 }}>Customer Ledger</div>
           <input
             className="bk-search"
@@ -164,11 +164,11 @@ export default function BankingDashboard({ rows, totals }: { rows: CustomerRow[]
 
                 return (
                   <tr key={r.id}>
-                    <td>{r.name}</td>
-                    <td>{money(r.billed)}</td>
-                    <td style={{ color: "#0ca30c" }}>{money(r.paid)}</td>
-                    <td style={{ color: r.due > 0 ? "#d03b3b" : "#889" }}>{r.due > 0 ? money(r.due) : "—"}</td>
-                    <td>{r.advance > 0 ? money(r.advance) : "—"}</td>
+                    <td data-label="Customer">{r.name}</td>
+                    <td data-label="Billed">{money(r.billed)}</td>
+                    <td data-label="Paid" style={{ color: "#0ca30c" }}>{money(r.paid)}</td>
+                    <td data-label="Due" style={{ color: r.due > 0 ? "#d03b3b" : "#889" }}>{r.due > 0 ? money(r.due) : "—"}</td>
+                    <td data-label="Advance">{r.advance > 0 ? money(r.advance) : "—"}</td>
                     <td>
                       <div className="bk-share-icons">
                         <a
