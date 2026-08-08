@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
-import { recordCustomerPayment } from "@/lib/customer-payment";
+import { recordCustomerPayment, recordCustomerPaymentAllocations } from "@/lib/customer-payment";
 import { can } from "@/lib/permissions";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -15,6 +15,36 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { id: customerId } = await params;
   const body = await request.json();
+
+  // A single payment split across several invoices (or a general/unapplied credit
+  // when an entry omits invoiceId) -- e.g. clearing two older bills and putting the
+  // rest toward a third, all from one amount the customer handed over.
+  if (Array.isArray(body.allocations)) {
+    if (body.allocations.length === 0 || !body.mode) {
+      return NextResponse.json({ error: "At least one allocation and mode are required" }, { status: 400 });
+    }
+    for (const a of body.allocations) {
+      if (!(a.amount > 0)) {
+        return NextResponse.json({ error: "Each allocation amount must be greater than zero" }, { status: 400 });
+      }
+    }
+    try {
+      const payments = await recordCustomerPaymentAllocations(
+        session.tenantId,
+        customerId,
+        body.mode,
+        body.referenceNo || undefined,
+        body.allocations.map((a: { invoiceId?: string; amount: number }) => ({
+          invoiceId: a.invoiceId || undefined,
+          amount: a.amount,
+        }))
+      );
+      return NextResponse.json(payments, { status: 201 });
+    } catch (e) {
+      console.error("Failed to record customer payment allocations:", e);
+      return NextResponse.json({ error: "Could not record payment" }, { status: 400 });
+    }
+  }
 
   if (!(body.amount > 0) || !body.mode) {
     return NextResponse.json({ error: "amount > 0 and mode are required" }, { status: 400 });
