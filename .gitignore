@@ -52,3 +52,14 @@ next-env.d.ts
 /.agents/
 /.windsurf/
 skills-lock.json
+
+# Capacitor Android -- build output and machine-specific config, not source
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml
