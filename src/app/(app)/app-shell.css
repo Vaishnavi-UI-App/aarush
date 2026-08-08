@@ -143,6 +143,7 @@
     inset: 0;
     background: rgba(13, 31, 61, 0.45);
     z-index: 20;
+    isolation: isolate;
   }
 
   .afs-sidebar {
@@ -153,6 +154,7 @@
     transform: translateX(-100%);
     transition: transform 0.2s ease;
     z-index: 30;
+    isolation: isolate;
     /* Brand header + up to 15 nav links (each 44px tall) + footer easily exceeds
        phone screen height. Without this, the sign-out button in the footer sits
        below the fold with no way to reach it. Let the nav list scroll while the

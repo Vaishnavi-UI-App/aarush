@@ -66,5 +66,23 @@ export default function TrackMap({ staff }: { staff: StaffPoint[] }) {
     };
   }, [staff]);
 
-  return <div ref={containerRef} style={{ width: "100%", height: 420, borderRadius: 12, overflow: "hidden" }} />;
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: 420,
+        borderRadius: 12,
+        overflow: "hidden",
+        // Leaflet's tile/control panes use z-index up to 1000 internally, which
+        // should stay contained to their own stacking context -- but some WebViews
+        // (seen on Android) don't reliably isolate that from GPU-composited
+        // position:fixed overlays like the sidebar, letting the map render on top
+        // regardless of DOM z-index. `isolation` forces a real stacking context.
+        position: "relative",
+        isolation: "isolate",
+        zIndex: 0,
+      }}
+    />
+  );
 }

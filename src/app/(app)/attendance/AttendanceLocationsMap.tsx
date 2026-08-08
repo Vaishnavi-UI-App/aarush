@@ -70,5 +70,21 @@ export default function AttendanceLocationsMap({ points }: { points: AttendanceP
     };
   }, [points]);
 
-  return <div ref={containerRef} style={{ width: "100%", height: 360, borderRadius: 12, overflow: "hidden" }} />;
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: 360,
+        borderRadius: 12,
+        overflow: "hidden",
+        // See TrackMap.tsx -- forces a real stacking context so Leaflet's internal
+        // panes/controls can't render above position:fixed overlays like the
+        // sidebar in WebViews that don't isolate it correctly on their own.
+        position: "relative",
+        isolation: "isolate",
+        zIndex: 0,
+      }}
+    />
+  );
 }
