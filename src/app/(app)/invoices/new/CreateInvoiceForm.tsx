@@ -65,6 +65,7 @@ export interface InvoiceFormInitialValues {
 
 export default function CreateInvoiceForm({
   type,
+  isServiceInvoice = false,
   tenantStateCode,
   customers,
   items: initialItems,
@@ -74,6 +75,9 @@ export default function CreateInvoiceForm({
   sites,
 }: {
   type: "SALE" | "PROFORMA";
+  /** SALE only: same form/behavior as any other sale invoice, just prints "Service Tax
+   * Invoice" instead of "Tax Invoice" -- see NewInvoicePage's ?service=1 query param. */
+  isServiceInvoice?: boolean;
   tenantStateCode: string;
   customers: Customer[];
   items: Item[];
@@ -243,6 +247,7 @@ export default function CreateInvoiceForm({
       if (!isEdit) {
         body.customerId = customerId;
         body.type = type;
+        body.isServiceInvoice = isServiceInvoice;
       }
 
       const res = await fetch(isEdit ? `/api/invoices/${editInvoiceId}` : "/api/invoices", {
@@ -573,7 +578,9 @@ export default function CreateInvoiceForm({
             ? "Creating…"
             : type === "PROFORMA"
               ? "Create Proforma Invoice"
-              : "Create Sale Invoice"}
+              : isServiceInvoice
+                ? "Create Service Tax Invoice"
+                : "Create Sale Invoice"}
       </button>
     </form>
   );

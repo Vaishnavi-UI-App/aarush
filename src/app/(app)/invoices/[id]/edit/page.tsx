@@ -59,7 +59,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     <div>
       <h1 className="afs-page-title">Edit {invoice.number}</h1>
       <p className="afs-page-subtitle">
-        {invoice.type === "PROFORMA" ? "Proforma Invoice" : "Sale Invoice"} for {invoice.customer.name}
+        {invoice.type === "PROFORMA" ? "Proforma Invoice" : invoice.isServiceInvoice ? "Service Tax Invoice" : "Sale Invoice"} for{" "}
+        {invoice.customer.name}
       </p>
 
       <div className="afs-card">

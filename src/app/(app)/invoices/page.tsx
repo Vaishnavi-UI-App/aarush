@@ -38,6 +38,9 @@ export default async function InvoicesPage() {
           <Link href="/invoices/new" className="afs-btn afs-btn-primary">
             + New Sale Invoice
           </Link>
+          <Link href="/invoices/new?service=1" className="afs-btn afs-btn-primary">
+            + New Service Tax Invoice
+          </Link>
         </div>
       </div>
 
@@ -63,7 +66,7 @@ export default async function InvoicesPage() {
                   <td data-label="Number">
                     <Link href={`/invoices/${inv.id}`}>{inv.number}</Link>
                   </td>
-                  <td data-label="Type">{inv.type === "PROFORMA" ? "Proforma" : "Sale"}</td>
+                  <td data-label="Type">{inv.type === "PROFORMA" ? "Proforma" : inv.isServiceInvoice ? "Service" : "Sale"}</td>
                   <td data-label="Customer">{inv.customer.name}</td>
                   <td data-label="Date">{new Date(inv.date).toLocaleDateString("en-IN")}</td>
                   <td data-label="Total">Rs. {Number(inv.total).toFixed(2)}</td>

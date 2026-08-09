@@ -36,6 +36,7 @@ export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Ten
 
   return {
     documentType: invoice.type === "PROFORMA" ? "PROFORMA" : "SALE",
+    isServiceInvoice: invoice.isServiceInvoice,
     invoiceNumber: invoice.number,
     invoiceDate: formatDate(new Date(invoice.date)),
     placeOfSupply: stateName(customer.stateCode),

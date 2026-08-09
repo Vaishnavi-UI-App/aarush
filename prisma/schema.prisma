@@ -505,6 +505,10 @@ model Invoice {
   status       InvoiceStatus @default(DRAFT)
   // Free text shown on the printed invoice, e.g. "Due on Receipt", "Net 30", "Net 60".
   paymentTerms String?
+  // A SALE invoice for services rather than goods -- same numbering series, same GST/
+  // ledger treatment as any other SALE invoice, purely a printed-heading distinction
+  // ("Service Tax Invoice" vs "Tax Invoice") for the business's own record-keeping.
+  isServiceInvoice Boolean @default(false)
 
   subtotal Decimal @db.Decimal(14, 2)
   discount Decimal @default(0) @db.Decimal(14, 2)

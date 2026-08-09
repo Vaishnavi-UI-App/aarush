@@ -31,6 +31,7 @@ interface CreateInvoiceBody extends Omit<DispatchDetailsInput, "poDate"> {
   dueDate?: string;
   poDate?: string;
   type?: BillableInvoiceType;
+  isServiceInvoice?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
       discount: body.discount,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
       type: body.type,
+      isServiceInvoice: body.isServiceInvoice,
       poNumber: body.poNumber,
       poDate: body.poDate ? new Date(body.poDate) : undefined,
       vehicleNumber: body.vehicleNumber,

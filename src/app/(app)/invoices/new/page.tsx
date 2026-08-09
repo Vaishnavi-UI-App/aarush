@@ -5,10 +5,10 @@ import CreateInvoiceForm from "./CreateInvoiceForm";
 export default async function NewInvoicePage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; customerId?: string }>;
+  searchParams: Promise<{ type?: string; customerId?: string; service?: string }>;
 }) {
   const session = await getServerSession();
-  const { type, customerId } = await searchParams;
+  const { type, customerId, service } = await searchParams;
 
   const [tenant, customers, items, sites] = await Promise.all([
     prisma.tenant.findUniqueOrThrow({ where: { id: session!.tenantId } }),
@@ -18,10 +18,15 @@ export default async function NewInvoicePage({
   ]);
 
   const invoiceType = type === "PROFORMA" ? "PROFORMA" : "SALE";
+  // Service invoices are a SALE variant (same numbering/ledger behavior), not a
+  // separate document type -- the flag only changes the printed heading.
+  const isServiceInvoice = invoiceType === "SALE" && service === "1";
 
   return (
     <div>
-      <h1 className="afs-page-title">{invoiceType === "PROFORMA" ? "New Proforma Invoice" : "New Sale Invoice"}</h1>
+      <h1 className="afs-page-title">
+        {invoiceType === "PROFORMA" ? "New Proforma Invoice" : isServiceInvoice ? "New Service Tax Invoice" : "New Sale Invoice"}
+      </h1>
       <p className="afs-page-subtitle">
         {invoiceType === "PROFORMA"
           ? "A quote for the customer to accept -- doesn't post to the ledger until converted to a sale invoice."
@@ -31,6 +36,7 @@ export default async function NewInvoicePage({
       <div className="afs-card">
         <CreateInvoiceForm
           type={invoiceType}
+          isServiceInvoice={isServiceInvoice}
           tenantStateCode={tenant.stateCode}
           customers={customers.map((c) => ({ id: c.id, name: c.name, stateCode: c.stateCode }))}
           items={items.map((i) => ({

@@ -51,7 +51,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       id
     );
 
-    const docLabel = invoice.type === "PROFORMA" ? "Proforma Invoice" : "Tax Invoice";
+    const docLabel = invoice.type === "PROFORMA" ? "Proforma Invoice" : invoice.isServiceInvoice ? "Service Tax Invoice" : "Tax Invoice";
     const filename = `${invoice.number.replace(/\//g, "-")}.pdf`;
 
     const form = new FormData();

@@ -154,6 +154,9 @@ export interface CreateSaleInvoiceInput extends DispatchDetailsInput {
    * it still shows GST-inclusive pricing to the customer, but is non-GST-liable and
    * never touches the ledger, since it isn't a real debt until converted to a sale. */
   type?: BillableInvoiceType;
+  /** SALE-only: same numbering series and ledger treatment as any other sale invoice --
+   * just prints "Service Tax Invoice" instead of "Tax Invoice". */
+  isServiceInvoice?: boolean;
   /** Internal, OWNER-only remark -- never printed or emailed to the customer. */
   conversionNote?: string;
 }
@@ -166,6 +169,7 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
     discount = 0,
     dueDate,
     type = "SALE",
+    isServiceInvoice = false,
     poNumber,
     poDate,
     vehicleNumber,
@@ -212,6 +216,7 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
         customerId,
         siteId,
         type,
+        isServiceInvoice: type === "SALE" ? isServiceInvoice : false,
         number,
         date,
         dueDate,
