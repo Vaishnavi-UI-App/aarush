@@ -15,6 +15,21 @@
   background: #fff;
 }
 
+.invoice-logo-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 300px;
+  transform: translate(-50%, -50%);
+  opacity: 0.08;
+  z-index: 0;
+  pointer-events: none;
+  object-fit: contain;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
 .invoice-watermark {
   position: absolute;
   top: 45%;
@@ -170,6 +185,19 @@ table {
   padding: 4px 6px;
 }
 
+/* The repeated letterhead/party-details row carries its own bordered nested tables
+   (.header-table / .parties-table), so it doesn't need the items-table cell's own
+   border/padding doubling up around them. */
+.header-repeat-cell {
+  border: none;
+  padding: 0;
+}
+
+.repeat-header-row {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 .items-table tr {
   break-inside: avoid;
   page-break-inside: avoid;
@@ -208,6 +236,7 @@ table {
 
 .items-table .right {
   text-align: right;
+  white-space: nowrap;
 }
 
 .items-table .bold {
@@ -238,6 +267,7 @@ table {
   width: 20%;
   font-weight: bold;
   text-align: right;
+  white-space: nowrap;
 }
 
 .bank-sign-table td {

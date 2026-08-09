@@ -11,56 +11,63 @@ export default function DeliveryChallanTemplate({ challan }: { challan: Delivery
 
   return (
     <div className="dc-page">
-      <div className="dc-header">
-        <img src={seller.logoUrl} alt={`${seller.name} logo`} className="dc-logo" />
-        <div className="dc-header-text">
-          <div className="dc-company-name">{seller.name}</div>
-          <div className="dc-tagline">{seller.tagline}</div>
-        </div>
-      </div>
-
-      <div className="dc-gstin-row">
-        <div className="dc-gstin-box">GSTIN: {seller.gstin}</div>
-      </div>
-
-      <div className="dc-title">DELIVERY CHALLAN</div>
-
-      <table className="dc-meta-table">
-        <tbody>
-          <tr>
-            <td className="dc-to-cell">
-              <div className="dc-to-label">To:</div>
-              <div className="dc-to-value">{challan.toName}</div>
-              <div className="dc-to-value">{challan.toAddress}</div>
-            </td>
-            <td className="dc-info-cell">
-              <div className="dc-info-row">
-                <span className="dc-info-label">Challan No:</span>
-                <span className="dc-info-value">{challan.challanNumber}</span>
-                <span className="dc-info-label dc-info-label-right">Date:</span>
-                <span className="dc-info-value">{challan.date}</span>
-              </div>
-              <div className="dc-info-row">
-                <span className="dc-info-label">P.O. No:</span>
-                <span className="dc-info-value">{challan.poNumber}</span>
-                <span className="dc-info-label dc-info-label-right">Date:</span>
-                <span className="dc-info-value">{challan.poDate}</span>
-              </div>
-              {challan.site && (
-                <div className="dc-info-row">
-                  <span className="dc-info-label">Site:</span>
-                  <span className="dc-info-value">{challan.site}</span>
-                </div>
-              )}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
       <div className="dc-items-wrapper">
         <img src={seller.logoUrl} alt="" aria-hidden="true" className="dc-watermark" />
         <table className="dc-items-table">
+          {/* The letterhead + To/challan-meta block lives in <thead> (rather than as
+              standalone elements before this table) so it repeats at the top of every
+              printed page for challans long enough to spill onto a second page -- only a
+              table's own <thead> repeats across print page breaks. */}
           <thead>
+            <tr className="dc-repeat-header-row">
+              <td colSpan={4} className="dc-header-repeat-cell">
+                <div className="dc-header">
+                  <img src={seller.logoUrl} alt={`${seller.name} logo`} className="dc-logo" />
+                  <div className="dc-header-text">
+                    <div className="dc-company-name">{seller.name}</div>
+                    <div className="dc-tagline">{seller.tagline}</div>
+                  </div>
+                </div>
+
+                <div className="dc-gstin-row">
+                  <div className="dc-gstin-box">GSTIN: {seller.gstin}</div>
+                </div>
+
+                <div className="dc-title">DELIVERY CHALLAN</div>
+
+                <table className="dc-meta-table">
+                  <tbody>
+                    <tr>
+                      <td className="dc-to-cell">
+                        <div className="dc-to-label">To:</div>
+                        <div className="dc-to-value">{challan.toName}</div>
+                        <div className="dc-to-value">{challan.toAddress}</div>
+                      </td>
+                      <td className="dc-info-cell">
+                        <div className="dc-info-row">
+                          <span className="dc-info-label">Challan No:</span>
+                          <span className="dc-info-value">{challan.challanNumber}</span>
+                          <span className="dc-info-label dc-info-label-right">Date:</span>
+                          <span className="dc-info-value">{challan.date}</span>
+                        </div>
+                        <div className="dc-info-row">
+                          <span className="dc-info-label">P.O. No:</span>
+                          <span className="dc-info-value">{challan.poNumber}</span>
+                          <span className="dc-info-label dc-info-label-right">Date:</span>
+                          <span className="dc-info-value">{challan.poDate}</span>
+                        </div>
+                        {challan.site && (
+                          <div className="dc-info-row">
+                            <span className="dc-info-label">Site:</span>
+                            <span className="dc-info-value">{challan.site}</span>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
             <tr>
               <th className="dc-col-sr">Sr. No.</th>
               <th>Particulars</th>
