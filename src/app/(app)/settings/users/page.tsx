@@ -12,7 +12,7 @@ export default async function SettingsUsersPage() {
 
   const [users, roles, sites] = await Promise.all([
     prisma.user.findMany({
-      where: { tenantId: session!.tenantId },
+      where: { tenantId: session!.tenantId, archivedAt: null },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -64,7 +64,7 @@ export default async function SettingsUsersPage() {
               <th>Role</th>
               <th>Site</th>
               <th>Added</th>
-              <th></th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>

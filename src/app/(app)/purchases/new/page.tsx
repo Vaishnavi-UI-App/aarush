@@ -11,7 +11,7 @@ export default async function NewPurchasePage({ searchParams }: { searchParams: 
 
   const [tenant, vendors, items, sites] = await Promise.all([
     prisma.tenant.findUniqueOrThrow({ where: { id: session!.tenantId } }),
-    prisma.vendor.findMany({ where: { tenantId: session!.tenantId }, orderBy: { name: "asc" } }),
+    prisma.vendor.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
     prisma.item.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
     prisma.site.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
   ]);

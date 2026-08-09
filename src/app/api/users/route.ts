@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   if (!(await canManageUsers(session.tenantId, session.roleId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const users = await prisma.user.findMany({
-    where: { tenantId: session.tenantId },
+    where: { tenantId: session.tenantId, archivedAt: null },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,

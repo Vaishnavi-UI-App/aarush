@@ -149,6 +149,10 @@ model User {
   // distinct from tenant/role fields, which only an owner can change.
   phone        String?
   photoData    String? @db.Text
+  // Deactivating (not deleting -- their attendance/expense/invoice history has FK
+  // references that can't be dropped) blocks login and hides them from the active
+  // Users list, without touching anything they created.
+  archivedAt   DateTime?
 
   passwordResetTokens   PasswordResetToken[]
   attendanceRecords     AttendanceRecord[]
@@ -373,8 +377,9 @@ model Vendor {
   address   String?
   email     String?
   phone     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
 
   purchases      Purchase[]
   vendorPayments VendorPayment[]

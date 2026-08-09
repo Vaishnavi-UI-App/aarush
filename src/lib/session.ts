@@ -87,8 +87,8 @@ export async function getServerSession(): Promise<SessionPayload | null> {
   const session = decodeSession(token);
   if (!session) return null;
 
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { tenantId: true, roleId: true } });
-  if (!user || user.tenantId !== session.tenantId || !user.roleId) return null;
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { tenantId: true, roleId: true, archivedAt: true } });
+  if (!user || user.tenantId !== session.tenantId || !user.roleId || user.archivedAt) return null;
 
   return { ...session, roleId: user.roleId };
 }

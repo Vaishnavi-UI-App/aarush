@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   const vendors = await prisma.vendor.findMany({
-    where: { tenantId: session.tenantId },
+    where: { tenantId: session.tenantId, archivedAt: null },
     orderBy: { name: "asc" },
   });
 

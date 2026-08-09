@@ -3,14 +3,19 @@ import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
 import NewVendorForm from "./NewVendorForm";
+import EditableVendorRow from "./EditableVendorRow";
 
 export default async function VendorsPage() {
   const session = await getServerSession();
   if (!(await can(session!.tenantId, session!.roleId, "vendors", "view"))) redirect("/dashboard");
-  const vendors = await prisma.vendor.findMany({
-    where: { tenantId: session!.tenantId },
-    orderBy: { name: "asc" },
-  });
+  const [vendors, canEdit, canDelete] = await Promise.all([
+    prisma.vendor.findMany({
+      where: { tenantId: session!.tenantId, archivedAt: null },
+      orderBy: { name: "asc" },
+    }),
+    can(session!.tenantId, session!.roleId, "vendors", "edit"),
+    can(session!.tenantId, session!.roleId, "vendors", "delete"),
+  ]);
 
   return (
     <div>
@@ -33,19 +38,12 @@ export default async function VendorsPage() {
                 <th>State code</th>
                 <th>Phone</th>
                 <th>Email</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {vendors.map((v) => (
-                <tr key={v.id}>
-                  <td data-label="Name">
-                    <a href={`/vendors/${v.id}`}>{v.name}</a>
-                  </td>
-                  <td data-label="GSTIN">{v.gstin ?? "—"}</td>
-                  <td data-label="State code">{v.stateCode}</td>
-                  <td data-label="Phone">{v.phone ?? "—"}</td>
-                  <td data-label="Email">{v.email ?? "—"}</td>
-                </tr>
+                <EditableVendorRow key={v.id} vendor={v} canEdit={canEdit} canDelete={canDelete} />
               ))}
             </tbody>
           </table>

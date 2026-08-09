@@ -13,6 +13,9 @@ export async function POST(request: NextRequest) {
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
+  if (user.archivedAt) {
+    return NextResponse.json({ error: "This account has been deactivated. Contact your owner." }, { status: 403 });
+  }
   if (!user.roleId) {
     return NextResponse.json({ error: "This account has no role assigned. Contact your owner." }, { status: 403 });
   }
