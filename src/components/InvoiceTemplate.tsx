@@ -6,8 +6,11 @@ function money(n: number): string {
 
 // Keeps the item table (and so the printed page) at a consistent height whether the
 // invoice carries a handful of lines or many -- short invoices still fill out the sheet
-// instead of leaving a lot of dead space above the totals.
-const MIN_ITEM_ROWS = 7;
+// instead of leaving a lot of dead space above the totals. Tuned for landscape A4 (see
+// generate-real-invoice-pdf.ts): landscape trades page height for width, so this needs
+// to stay small enough that the Bank Details/Terms blocks below the item table still
+// fit on the same page instead of spilling onto an otherwise-empty page 2.
+const MIN_ITEM_ROWS = 4;
 
 export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const { seller, billedTo, shippedTo, items, bank } = invoice;
