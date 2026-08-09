@@ -117,7 +117,7 @@ table {
 .parties-table td {
   border: 1px solid #000;
   vertical-align: top;
-  padding: 6px 8px;
+  padding: 5px 8px;
 }
 
 .seller-cell {
@@ -144,7 +144,7 @@ table {
 }
 
 .seller-info div {
-  line-height: 1.5;
+  line-height: 1.35;
 }
 
 .state-badge {
@@ -272,7 +272,7 @@ table {
 
 .bank-sign-table td {
   border: 1px solid #000;
-  padding: 8px;
+  padding: 6px 8px;
   vertical-align: top;
 }
 
@@ -306,9 +306,9 @@ table {
 
 .terms-table td {
   border: 1px solid #000;
-  padding: 6px 8px;
+  padding: 5px 8px;
   font-size: 10px;
-  line-height: 1.5;
+  line-height: 1.4;
   vertical-align: top;
 }
 
@@ -329,7 +329,7 @@ table {
   text-align: center;
   font-style: italic;
   font-size: 11px;
-  margin-top: 8px;
+  margin-top: 3px;
 }
 
 @media print {
