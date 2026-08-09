@@ -13,7 +13,6 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const { seller, billedTo, shippedTo, items, bank } = invoice;
   const hasIgst = (invoice.totalIgst ?? 0) > 0;
   const summaryColSpan = hasIgst ? 13 : 11;
-  const totalCols = summaryColSpan + 1;
   const blankRows = Math.max(0, MIN_ITEM_ROWS - items.length);
   const documentTitle = invoice.documentType === "PROFORMA" ? "PROFORMA INVOICE" : "TAX INVOICE";
 
@@ -24,99 +23,92 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
       <div className="title-row">{documentTitle}</div>
       <div className="original-badge">Original For Recipient</div>
 
-      <table className="items-table">
-        {/* The company letterhead + billed-to/shipped-to blocks live inside <thead> (not as
-            separate tables before it) specifically so they repeat at the top of every printed
-            page once the item list spans more than one -- browsers only repeat a table's own
-            <thead> across page breaks, not standalone tables that happen to precede it. */}
-        <thead>
-          <tr className="repeat-header-row">
-            <td colSpan={totalCols} className="header-repeat-cell">
-              <table className="header-table">
+      <table className="header-table">
+        <tbody>
+          <tr>
+            <td className="seller-cell">
+              <div className="seller-block">
+                <img src={seller.logoUrl} alt={`${seller.name} logo`} className="logo-img" />
+                <div className="seller-info">
+                  <div className="seller-name">{seller.name}</div>
+                  {seller.addressLines.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                  <div>&#9742; {seller.phone} &#9993; {seller.email}</div>
+                  <div>GSTIN : <b>{seller.gstin}</b> <span className="state-badge">State Code : {seller.stateCode}</span></div>
+                  <div>PAN : <b>{seller.pan}</b></div>
+                  {seller.cinNo && <div>CIN : <b>{seller.cinNo}</b></div>}
+                  {seller.website && <div>Website : {seller.website}</div>}
+                  {seller.altEmail && <div>Email : {seller.altEmail}</div>}
+                  {seller.altMobile && <div>MOBILE NO : {seller.altMobile}</div>}
+                  {seller.udyam && (
+                    <>
+                      <div>{seller.udyam} :</div>
+                      <div>{seller.udyam} :</div>
+                      <div>: {seller.altMobile}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </td>
+            <td className="meta-cell">
+              <table className="meta-table">
                 <tbody>
                   <tr>
-                    <td className="seller-cell">
-                      <div className="seller-block">
-                        <img src={seller.logoUrl} alt={`${seller.name} logo`} className="logo-img" />
-                        <div className="seller-info">
-                          <div className="seller-name">{seller.name}</div>
-                          {seller.addressLines.map((line, i) => (
-                            <div key={i}>{line}</div>
-                          ))}
-                          <div>&#9742; {seller.phone} &#9993; {seller.email}</div>
-                          <div>GSTIN : <b>{seller.gstin}</b> <span className="state-badge">State Code : {seller.stateCode}</span></div>
-                          <div>PAN : <b>{seller.pan}</b></div>
-                          {seller.cinNo && <div>CIN : <b>{seller.cinNo}</b></div>}
-                          {seller.website && <div>Website : {seller.website}</div>}
-                          {seller.altEmail && <div>Email : {seller.altEmail}</div>}
-                          {seller.altMobile && <div>MOBILE NO : {seller.altMobile}</div>}
-                          {seller.udyam && (
-                            <>
-                              <div>{seller.udyam} :</div>
-                              <div>{seller.udyam} :</div>
-                              <div>: {seller.altMobile}</div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="meta-cell">
-                      <table className="meta-table">
-                        <tbody>
-                          <tr>
-                            <td><div className="meta-label">Invoice Number</div><div className="meta-value">{invoice.invoiceNumber}</div></td>
-                            <td><div className="meta-label">Invoice Date</div><div className="meta-value">{invoice.invoiceDate}</div></td>
-                            <td><div className="meta-label">Place of Supply</div><div className="meta-value">{invoice.placeOfSupply}</div></td>
-                          </tr>
-                          <tr>
-                            <td><div className="meta-label">Date Of Supply</div><div className="meta-value">{invoice.dateOfSupply}</div></td>
-                            <td><div className="meta-label">Reverse Charge</div><div className="meta-value">{invoice.reverseCharge}</div></td>
-                            <td><div className="meta-label">PO Number</div><div className="meta-value">{invoice.poNumber}</div></td>
-                          </tr>
-                          <tr>
-                            <td><div className="meta-label">PO Date</div><div className="meta-value">{invoice.poDate}</div></td>
-                            <td><div className="meta-label">Vehicle Number</div><div className="meta-value">{invoice.vehicleNumber}</div></td>
-                            <td><div className="meta-label">Transportation Mode</div><div className="meta-value">{invoice.transportationMode}</div></td>
-                          </tr>
-                          <tr>
-                            <td><div className="meta-label">Place Of Supply</div><div className="meta-value">{invoice.placeOfSupplySite}</div></td>
-                            <td colSpan={2}><div className="meta-label">DELIVERD THREW</div><div className="meta-value">{invoice.deliveredThrough}</div></td>
-                          </tr>
-                          <tr>
-                            <td><div className="meta-label">Site</div><div className="meta-value">{invoice.site}</div></td>
-                            <td colSpan={2}><div className="meta-label">Payment Terms</div><div className="meta-value">{invoice.paymentTerms}</div></td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
+                    <td><div className="meta-label">Invoice Number</div><div className="meta-value">{invoice.invoiceNumber}</div></td>
+                    <td><div className="meta-label">Invoice Date</div><div className="meta-value">{invoice.invoiceDate}</div></td>
+                    <td><div className="meta-label">Place of Supply</div><div className="meta-value">{invoice.placeOfSupply}</div></td>
                   </tr>
-                </tbody>
-              </table>
-
-              <table className="parties-table">
-                <tbody>
                   <tr>
-                    <td className="party-cell">
-                      <div className="party-header">Details of Receiver | Billed to</div>
-                      <div><b>Name: {billedTo.name}</b></div>
-                      <div>Address: - {billedTo.address}</div>
-                      <div>Mobile: {billedTo.mobile}</div>
-                      <div>Email: {billedTo.email}</div>
-                      <div>GSTIN: {billedTo.gstin} <span className="state-badge">State Code : {billedTo.stateCode}</span></div>
-                      <div>State: {billedTo.state}</div>
-                    </td>
-                    <td className="party-cell">
-                      <div className="party-header">Details of Consignee | Shipped to</div>
-                      <div><b>Name: {shippedTo.name}</b></div>
-                      <div>Address: - {shippedTo.address}</div>
-                      <div>GSTIN: {shippedTo.gstin} <span className="state-badge">State Code : {shippedTo.stateCode}</span></div>
-                      <div>State: {shippedTo.state}</div>
-                    </td>
+                    <td><div className="meta-label">Date Of Supply</div><div className="meta-value">{invoice.dateOfSupply}</div></td>
+                    <td><div className="meta-label">Reverse Charge</div><div className="meta-value">{invoice.reverseCharge}</div></td>
+                    <td><div className="meta-label">PO Number</div><div className="meta-value">{invoice.poNumber}</div></td>
+                  </tr>
+                  <tr>
+                    <td><div className="meta-label">PO Date</div><div className="meta-value">{invoice.poDate}</div></td>
+                    <td><div className="meta-label">Vehicle Number</div><div className="meta-value">{invoice.vehicleNumber}</div></td>
+                    <td><div className="meta-label">Transportation Mode</div><div className="meta-value">{invoice.transportationMode}</div></td>
+                  </tr>
+                  <tr>
+                    <td><div className="meta-label">Place Of Supply</div><div className="meta-value">{invoice.placeOfSupplySite}</div></td>
+                    <td colSpan={2}><div className="meta-label">DELIVERD THREW</div><div className="meta-value">{invoice.deliveredThrough}</div></td>
+                  </tr>
+                  <tr>
+                    <td><div className="meta-label">Site</div><div className="meta-value">{invoice.site}</div></td>
+                    <td colSpan={2}><div className="meta-label">Payment Terms</div><div className="meta-value">{invoice.paymentTerms}</div></td>
                   </tr>
                 </tbody>
               </table>
             </td>
           </tr>
+        </tbody>
+      </table>
+
+      <table className="parties-table">
+        <tbody>
+          <tr>
+            <td className="party-cell">
+              <div className="party-header">Details of Receiver | Billed to</div>
+              <div><b>Name: {billedTo.name}</b></div>
+              <div>Address: - {billedTo.address}</div>
+              <div>Mobile: {billedTo.mobile}</div>
+              <div>Email: {billedTo.email}</div>
+              <div>GSTIN: {billedTo.gstin} <span className="state-badge">State Code : {billedTo.stateCode}</span></div>
+              <div>State: {billedTo.state}</div>
+            </td>
+            <td className="party-cell">
+              <div className="party-header">Details of Consignee | Shipped to</div>
+              <div><b>Name: {shippedTo.name}</b></div>
+              <div>Address: - {shippedTo.address}</div>
+              <div>GSTIN: {shippedTo.gstin} <span className="state-badge">State Code : {shippedTo.stateCode}</span></div>
+              <div>State: {shippedTo.state}</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table className="items-table">
+        <thead>
           <tr>
             <th rowSpan={2}>Sr. No.</th>
             <th rowSpan={2}>Name of Product</th>

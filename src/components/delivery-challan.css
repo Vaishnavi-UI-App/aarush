@@ -146,19 +146,6 @@ table {
   text-align: center;
 }
 
-/* The repeated letterhead/meta row carries its own bordered dc-meta-table, so it
-   doesn't need the items-table cell's own border/padding doubling up around it. */
-.dc-header-repeat-cell {
-  border: none;
-  padding: 0;
-  height: auto;
-}
-
-.dc-repeat-header-row {
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-
 .dc-col-sr {
   width: 80px;
 }

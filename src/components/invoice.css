@@ -185,19 +185,6 @@ table {
   padding: 4px 6px;
 }
 
-/* The repeated letterhead/party-details row carries its own bordered nested tables
-   (.header-table / .parties-table), so it doesn't need the items-table cell's own
-   border/padding doubling up around them. */
-.header-repeat-cell {
-  border: none;
-  padding: 0;
-}
-
-.repeat-header-row {
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-
 .items-table tr {
   break-inside: avoid;
   page-break-inside: avoid;

@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
 import { puppeteerLaunchOptions } from "@/lib/puppeteer-launch-options";
+import { buildRepeatingHeaderTemplate } from "@/lib/pdf-repeating-header";
 
 /** Renders a real, persisted invoice's print view (/print/invoices/[id]) to PDF.
  * That route is session-gated like everywhere else, so the caller's session token
@@ -25,13 +26,25 @@ export async function generateRealInvoicePdf(
       throw new Error("Invoice not found");
     }
 
+    const headerInfo = await page.evaluate(() => ({
+      logoSrc: (document.querySelector<HTMLImageElement>(".logo-img"))?.src ?? "",
+      companyName: document.querySelector(".seller-name")?.textContent?.trim() ?? "",
+      docLabel: document.querySelector(".title-row")?.textContent?.trim() ?? "",
+      partyName: (document.querySelector(".party-cell b")?.textContent ?? "").replace(/^Name:\s*/, "").trim(),
+    }));
+
     const pdfBuffer = await page.pdf({
       format: "A4",
       landscape: true,
       printBackground: true,
-      margin: { top: "10mm", bottom: "14mm", left: "8mm", right: "8mm" },
+      margin: { top: "16mm", bottom: "14mm", left: "8mm", right: "8mm" },
       displayHeaderFooter: true,
-      headerTemplate: "<span/>",
+      headerTemplate: buildRepeatingHeaderTemplate({
+        logoSrc: headerInfo.logoSrc,
+        companyName: headerInfo.companyName,
+        docLabel: headerInfo.docLabel,
+        partyName: headerInfo.partyName,
+      }),
       footerTemplate:
         '<div style="width:100%;font-size:9px;text-align:center;color:#555;font-family:Arial,Helvetica,sans-serif;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>',
     });
