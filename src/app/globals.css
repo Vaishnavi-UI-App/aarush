@@ -47,3 +47,18 @@ a {
     color-scheme: dark;
   }
 }
+
+/* Visually hides the page scrollbar on specific routes (Expenses, Track) that opted in
+   via a "hide-scrollbar-page" marker somewhere in their content, without touching every
+   other page -- html is the element that actually scrolls in this layout (the app shell
+   doesn't have its own inner scroll container), so :has() on it is what lets this stay
+   scoped instead of a global rule. Scrolling itself still works, just without a visible
+   track/thumb. */
+html:has(.hide-scrollbar-page) {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* old Edge/IE */
+}
+
+html:has(.hide-scrollbar-page)::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Android WebView */
+}

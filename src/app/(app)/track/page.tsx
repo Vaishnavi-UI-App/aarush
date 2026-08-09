@@ -63,7 +63,7 @@ export default async function TrackPage() {
   }));
 
   return (
-    <div>
+    <div className="hide-scrollbar-page">
       <h1 className="afs-page-title">Track</h1>
       <p className="afs-page-subtitle">
         Live position while sharing is turned on -- keeps updating in the background on Android even after the app is

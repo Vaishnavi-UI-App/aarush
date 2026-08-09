@@ -66,7 +66,7 @@ export default async function ExpensesPage() {
     }));
 
     return (
-      <div>
+      <div className="hide-scrollbar-page">
         <div className="exp-header">
           <div>
             <h1 className="afs-page-title">Expense Tracker</h1>
@@ -101,7 +101,7 @@ export default async function ExpensesPage() {
   });
 
   return (
-    <div>
+    <div className="hide-scrollbar-page">
       <h1 className="afs-page-title">Expenses</h1>
       <p className="afs-page-subtitle">
         Log a site expense you paid for -- personal spend is reimbursed the next time the site is funded
