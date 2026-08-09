@@ -46,6 +46,20 @@ export function resizePhotoToDataUrl(file: File): Promise<string> {
   });
 }
 
+/** Snapshots the current frame of a live <video> stream (from getUserMedia) into a
+ * downscaled JPEG data URL -- same size/quality target as resizePhotoToDataUrl, so a
+ * live camera capture and a file-picker capture produce comparably sized payloads. */
+export function captureVideoFrameToDataUrl(video: HTMLVideoElement): string {
+  const scale = Math.min(1, MAX_WIDTH / video.videoWidth);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(video.videoWidth * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not process the photo");
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+}
+
 /** Renders a timestamp as "just now" / "Xm ago" / "Xh ago" for freshness indicators. */
 export function formatRelative(date: Date): string {
   const seconds = Math.max(0, (Date.now() - date.getTime()) / 1000);

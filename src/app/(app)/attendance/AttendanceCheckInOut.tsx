@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getLocation, resizePhotoToDataUrl } from "@/lib/capture";
+import { getLocation } from "@/lib/capture";
 import { computeElapsedHours, formatHMS } from "@/lib/attendance-hours";
 import { CalendarCheckIcon, CameraIcon, AlertTriangleIcon } from "@/components/icons";
+import LiveCameraCapture from "./LiveCameraCapture";
 
 interface PunchDTO {
   id: string;
@@ -63,8 +64,8 @@ export default function AttendanceCheckInOut({
   sites: SiteOption[];
 }) {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [showCamera, setShowCamera] = useState(false);
   const [siteId, setSiteId] = useState(today?.siteId ?? "");
   const [busy, setBusy] = useState(false);
   const [breakBusy, setBreakBusy] = useState(false);
@@ -92,7 +93,7 @@ export default function AttendanceCheckInOut({
     setError(null);
     setGeofenceIssue(null);
     setPendingAction(action);
-    fileInputRef.current?.click();
+    setShowCamera(true);
   }
 
   async function submitPunch(action: "check-in" | "check-out", lat: number, lng: number, photo: string, outsideGeofenceReason?: string) {
@@ -114,15 +115,14 @@ export default function AttendanceCheckInOut({
     router.refresh();
   }
 
-  async function onPhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !pendingAction) return;
+  async function onCameraCapture(photo: string) {
+    setShowCamera(false);
+    if (!pendingAction) return;
 
     setBusy(true);
     setError(null);
     try {
-      const [{ lat, lng }, photo] = await Promise.all([getLocation(), resizePhotoToDataUrl(file)]);
+      const { lat, lng } = await getLocation();
       await submitPunch(pendingAction, lat, lng, photo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -130,6 +130,11 @@ export default function AttendanceCheckInOut({
       setBusy(false);
       setPendingAction(null);
     }
+  }
+
+  function onCameraCancel() {
+    setShowCamera(false);
+    setPendingAction(null);
   }
 
   async function confirmOutsideGeofence() {
@@ -182,8 +187,9 @@ export default function AttendanceCheckInOut({
 
   return (
     <div>
+      {showCamera && <LiveCameraCapture onCapture={onCameraCapture} onCancel={onCameraCancel} />}
+
       <div className={cardClass}>
-        <input ref={fileInputRef} type="file" accept="image/*" capture="user" style={{ display: "none" }} onChange={onPhotoSelected} />
         <div className="att-status-row">
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div className="att-icon-box att-icon-box-gray">

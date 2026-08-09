@@ -52,7 +52,7 @@ export default async function CustomersPage() {
                   <td data-label="Email">{c.email ?? "—"}</td>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <Link href={`/customers/${c.id}/edit`} className="afs-icon-btn" title="Edit customer">
+                      <Link href={`/customers/${c.id}/edit`} className="afs-icon-btn edit" title="Edit customer">
                         <EditIcon />
                       </Link>
                       {canDelete && <DeleteCustomerButton customerId={c.id} customerName={c.name} />}

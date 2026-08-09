@@ -36,6 +36,67 @@ async function nextChallanNumber(tx: Prisma.TransactionClient, tenantId: string,
   return `DC/${fy}/${counter.lastSequence}`;
 }
 
+export interface UpdateDeliveryChallanInput {
+  tenantId: string;
+  challanId: string;
+  customerId?: string;
+  siteId?: string;
+  toName?: string;
+  toAddress?: string;
+  poNumber?: string;
+  poDate?: Date;
+  vehicleNumber?: string;
+  lines: DeliveryChallanLineInput[];
+}
+
+export async function updateDeliveryChallan(input: UpdateDeliveryChallanInput) {
+  const { tenantId, challanId, customerId, siteId, toName, toAddress, poNumber, poDate, vehicleNumber, lines } = input;
+
+  if (lines.length === 0) {
+    throw new Error("Delivery challan must have at least one line item");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const challan = await tx.deliveryChallan.findFirst({ where: { id: challanId, tenantId } });
+    if (!challan) {
+      throw new Error("Delivery challan not found");
+    }
+    if (challan.archivedAt) {
+      throw new Error("Archived delivery challans cannot be edited");
+    }
+    if (customerId) {
+      await tx.customer.findFirstOrThrow({ where: { id: customerId, tenantId } });
+    }
+    if (siteId) {
+      await tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } });
+    }
+
+    await tx.deliveryChallanLine.deleteMany({ where: { challanId } });
+
+    return tx.deliveryChallan.update({
+      where: { id: challanId },
+      data: {
+        customerId: customerId ?? null,
+        siteId: siteId ?? null,
+        toName,
+        toAddress,
+        poNumber,
+        poDate,
+        vehicleNumber,
+        lines: {
+          create: lines.map((line, i) => ({
+            srNo: i + 1,
+            particulars: line.particulars,
+            qty: line.qty,
+            unit: line.unit || "NOS",
+          })),
+        },
+      },
+      include: { lines: true },
+    });
+  });
+}
+
 export async function createDeliveryChallan(input: CreateDeliveryChallanInput) {
   const { tenantId, customerId, siteId, toName, toAddress, poNumber, poDate, vehicleNumber, lines } = input;
 

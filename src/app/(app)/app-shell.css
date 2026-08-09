@@ -512,6 +512,21 @@
   color: #2b5cb2;
 }
 
+.afs-icon-btn.view {
+  background: rgba(15, 148, 136, 0.14);
+  color: #0f9488;
+}
+
+.afs-icon-btn.download {
+  background: rgba(201, 154, 46, 0.18);
+  color: #a97e14;
+}
+
+.afs-icon-btn.invite {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+}
+
 .afs-modal-backdrop {
   position: fixed;
   inset: 0;
