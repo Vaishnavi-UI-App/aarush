@@ -10,7 +10,7 @@ function money(n: number): string {
 // generate-real-invoice-pdf.ts): landscape trades page height for width, so this needs
 // to stay small enough that the Bank Details/Terms blocks below the item table still
 // fit on the same page instead of spilling onto an otherwise-empty page 2.
-const MIN_ITEM_ROWS = 4;
+const MIN_ITEM_ROWS = 2;
 
 export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const { seller, billedTo, shippedTo, items, bank } = invoice;
