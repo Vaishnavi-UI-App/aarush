@@ -15,15 +15,23 @@ export class AttendanceError extends Error {
 
 type Decimalish = number | string | Prisma.Decimal;
 
-/** A @db.Date column has no timezone, so the value must be constructed at UTC midnight
- * of the server's *local* calendar day -- setHours(0,0,0,0) followed by serialization
- * truncates to the UTC calendar day instead, which is off by one in any timezone ahead
- * of UTC (e.g. IST, UTC+5:30) for hours after local midnight but before UTC midnight. */
-export function attendanceDateBucket(when: Date = new Date()): Date {
-  return new Date(Date.UTC(when.getFullYear(), when.getMonth(), when.getDate()));
-}
-
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+/** A @db.Date column has no timezone, so this must return UTC-midnight of the *IST*
+ * calendar day `when` falls on -- this app has one country of users, so "today" always
+ * means the IST calendar day regardless of what timezone the server process itself runs
+ * in. Production runs with a UTC system clock, so naively reading when.getFullYear() /
+ * getMonth() / getDate() (local-to-the-process, i.e. UTC in prod) returns the *UTC*
+ * calendar day -- wrong by one for the ~5.5 hours after IST midnight but before UTC
+ * midnight (00:00-05:30 IST), which is exactly when this bucketed a live check-in onto
+ * *yesterday's* date and made it vanish from "today" on the admin dashboard. Shifting the
+ * instant forward by the IST offset before reading its UTC calendar components gives the
+ * IST day independent of the server's own timezone, same technique as istTimeToUtcInstant
+ * below. */
+export function attendanceDateBucket(when: Date = new Date()): Date {
+  const ist = new Date(when.getTime() + IST_OFFSET_MS);
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()));
+}
 
 /** ShiftConfig start/end times are plain "HH:MM" wall-clock strings, always meant in IST
  * (this app has one country of users) -- this converts one to the real UTC instant it

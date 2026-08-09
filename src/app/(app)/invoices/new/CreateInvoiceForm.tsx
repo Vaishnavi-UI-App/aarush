@@ -48,18 +48,18 @@ function emptyLine(): Line {
 }
 
 /**
- * Server-supplied initial lines only carry itemId, not itemQuery -- and older invoices
- * (created via script/API before this picker existed) may have itemId unset even though
- * their description exactly matches a catalog item name. Fall back to a name match so those
- * still show up as "picked" instead of looking like manual/unmatched rows.
+ * The Item picker is the only visible input for a line's name/description now, so it must
+ * never show blank for a line that already has one -- prefer the catalog's canonical name
+ * when itemId resolves, otherwise fall back to whatever description text is already stored
+ * (older/manual lines included), rather than leaving the field empty just because it isn't
+ * linked to a catalog item.
  */
 function resolveItemQuery(line: { itemId: string; description: string }, items: Item[]): string {
   if (line.itemId) {
     const byId = items.find((i) => i.id === line.itemId);
     if (byId) return byId.name;
   }
-  const byName = items.find((i) => i.name === line.description);
-  return byName ? byName.name : "";
+  return line.description;
 }
 
 function round2(n: number): number {
@@ -169,14 +169,16 @@ export default function CreateInvoiceForm({
 
   /** Fires on every keystroke in the searchable item picker. An exact (case-insensitive) name
    * match auto-fills the line like a normal pick; anything else is just free text -- the line
-   * falls back to manual (itemId cleared) without touching whatever the user's already typed
-   * into Description/HSN/etc. */
+   * falls back to manual (itemId cleared). Either way `description` (the line's actual Name
+   * of Product on the invoice) mirrors this field directly -- there's no separate visible
+   * input for it, since showing the item name twice (once in the picker, once right next to
+   * it) was pure duplication. */
   function onItemQueryChange(index: number, value: string) {
     const match = items.find((i) => i.name.toLowerCase() === value.trim().toLowerCase());
     if (match) {
       pickItem(index, match.id);
     } else {
-      updateLine(index, { itemQuery: value, itemId: "" });
+      updateLine(index, { itemQuery: value, itemId: "", description: value });
     }
   }
 
@@ -462,26 +464,20 @@ export default function CreateInvoiceForm({
               <tr key={idx}>
                 <td data-label="Item">
                   <input
+                    required
                     type="text"
                     list="afs-items-datalist"
                     value={line.itemQuery}
                     onChange={(e) => onItemQueryChange(idx, e.target.value)}
-                    placeholder="Search item, or leave blank for manual"
+                    placeholder="Search item, or type a name manually"
                     autoComplete="off"
                   />
                 </td>
                 <td data-label="Description">
                   <input
-                    required
-                    value={line.description}
-                    onChange={(e) => updateLine(idx, { description: e.target.value })}
-                    style={{ marginBottom: 4 }}
-                  />
-                  <input
                     value={line.detail}
                     onChange={(e) => updateLine(idx, { detail: e.target.value })}
-                    placeholder="Detail / spec (optional)"
-                    style={{ fontSize: 11.5 }}
+                    placeholder="Description / spec (optional)"
                   />
                 </td>
                 <td data-label="HSN/SAC">

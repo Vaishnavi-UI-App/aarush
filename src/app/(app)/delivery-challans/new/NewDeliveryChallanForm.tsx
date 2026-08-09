@@ -26,16 +26,39 @@ function emptyLine(): Line {
   return { particulars: "", qty: "1", unit: "NOS" };
 }
 
-export default function NewDeliveryChallanForm({ customers, sites }: { customers: Customer[]; sites: Site[] }) {
+export interface DeliveryChallanFormInitialValues {
+  customerId: string;
+  siteId: string;
+  toName: string;
+  toAddress: string;
+  poNumber: string;
+  poDate: string;
+  vehicleNumber: string;
+  lines: Line[];
+}
+
+export default function NewDeliveryChallanForm({
+  customers,
+  sites,
+  editChallanId,
+  initialValues,
+}: {
+  customers: Customer[];
+  sites: Site[];
+  /** When set, the form edits this existing delivery challan (PATCH) instead of creating a new one. */
+  editChallanId?: string;
+  initialValues?: DeliveryChallanFormInitialValues;
+}) {
   const router = useRouter();
-  const [customerId, setCustomerId] = useState("");
-  const [toName, setToName] = useState("");
-  const [toAddress, setToAddress] = useState("");
-  const [poNumber, setPoNumber] = useState("");
-  const [poDate, setPoDate] = useState("");
-  const [vehicleNumber, setVehicleNumber] = useState("");
-  const [siteId, setSiteId] = useState("");
-  const [lines, setLines] = useState<Line[]>([emptyLine()]);
+  const isEdit = !!editChallanId;
+  const [customerId, setCustomerId] = useState(initialValues?.customerId ?? "");
+  const [toName, setToName] = useState(initialValues?.toName ?? "");
+  const [toAddress, setToAddress] = useState(initialValues?.toAddress ?? "");
+  const [poNumber, setPoNumber] = useState(initialValues?.poNumber ?? "");
+  const [poDate, setPoDate] = useState(initialValues?.poDate ?? "");
+  const [vehicleNumber, setVehicleNumber] = useState(initialValues?.vehicleNumber ?? "");
+  const [siteId, setSiteId] = useState(initialValues?.siteId ?? "");
+  const [lines, setLines] = useState<Line[]>(initialValues?.lines ?? [emptyLine()]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -65,8 +88,8 @@ export default function NewDeliveryChallanForm({ customers, sites }: { customers
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/delivery-challans", {
-        method: "POST",
+      const res = await fetch(isEdit ? `/api/delivery-challans/${editChallanId}` : "/api/delivery-challans", {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId: customerId || undefined,
@@ -80,10 +103,11 @@ export default function NewDeliveryChallanForm({ customers, sites }: { customers
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create delivery challan");
-      router.push(`/delivery-challans/${data.id}`);
+      if (!res.ok) throw new Error(data.error || `Failed to ${isEdit ? "update" : "create"} delivery challan`);
+      router.push(`/delivery-challans/${isEdit ? editChallanId : data.id}`);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create delivery challan");
+      setError(err instanceof Error ? err.message : `Failed to ${isEdit ? "update" : "create"} delivery challan`);
     } finally {
       setSaving(false);
     }
@@ -194,7 +218,7 @@ export default function NewDeliveryChallanForm({ customers, sites }: { customers
 
       <div>
         <button type="submit" disabled={saving} className="afs-btn afs-btn-primary">
-          {saving ? "Creating…" : "Create Delivery Challan"}
+          {isEdit ? (saving ? "Saving…" : "Save Changes") : saving ? "Creating…" : "Create Delivery Challan"}
         </button>
       </div>
     </form>

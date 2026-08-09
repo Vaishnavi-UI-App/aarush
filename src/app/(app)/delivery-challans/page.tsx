@@ -1,15 +1,21 @@
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { ViewIcon, DownloadIcon } from "@/components/icons";
+import { can } from "@/lib/permissions";
+import { ViewIcon, DownloadIcon, EditIcon } from "@/components/icons";
+import DeleteDeliveryChallanButton from "./DeleteDeliveryChallanButton";
 
 export default async function DeliveryChallansPage() {
   const session = await getServerSession();
-  const challans = await prisma.deliveryChallan.findMany({
-    where: { tenantId: session!.tenantId, archivedAt: null },
-    include: { customer: { select: { name: true } }, lines: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [challans, canEdit, canDelete] = await Promise.all([
+    prisma.deliveryChallan.findMany({
+      where: { tenantId: session!.tenantId, archivedAt: null },
+      include: { customer: { select: { name: true } }, lines: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    can(session!.tenantId, session!.roleId, "deliveryChallans", "edit"),
+    can(session!.tenantId, session!.roleId, "deliveryChallans", "delete"),
+  ]);
 
   return (
     <div>
@@ -54,18 +60,24 @@ export default async function DeliveryChallansPage() {
                     <td data-label="Total Qty">{totalQty}</td>
                     <td>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <Link href={`/delivery-challans/${c.id}`} className="afs-icon-btn" title="View">
+                        <Link href={`/delivery-challans/${c.id}`} className="afs-icon-btn view" title="View">
                           <ViewIcon />
                         </Link>
                         <a
                           href={`/api/delivery-challans/${c.id}/pdf`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="afs-icon-btn"
+                          className="afs-icon-btn download"
                           title="Download PDF"
                         >
                           <DownloadIcon />
                         </a>
+                        {canEdit && (
+                          <Link href={`/delivery-challans/${c.id}/edit`} className="afs-icon-btn edit" title="Edit delivery challan">
+                            <EditIcon />
+                          </Link>
+                        )}
+                        {canDelete && <DeleteDeliveryChallanButton challanId={c.id} challanNumber={c.number} />}
                       </div>
                     </td>
                   </tr>

@@ -141,7 +141,7 @@ export default function EditableItemRow({ item }: { item: Item }) {
       </td>
       <td>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button type="button" onClick={() => setEditing(true)} title="Edit item" className="afs-icon-btn">
+          <button type="button" onClick={() => setEditing(true)} title="Edit item" className="afs-icon-btn edit">
             <EditIcon />
           </button>
           <DeleteItemButton itemId={item.id} itemName={item.name} />
