@@ -176,6 +176,8 @@ table {
 
 .dc-footer-table {
   border: 1px solid #000;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .dc-footer-cell {

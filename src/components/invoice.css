@@ -100,6 +100,19 @@ table {
   margin-bottom: -1px;
 }
 
+/* These four are each short enough to always fit on one page -- if a page break would
+   otherwise land inside one (as happened with Bank and Payment Details splitting
+   Account No./IFSC Code onto one page and Bank Name/Branch onto the next), push the
+   whole table onto the next page instead of slicing it in half. The items-table is
+   deliberately excluded: it's the one table that's expected to span pages, and its own
+   rows already avoid splitting individually (see .items-table tr below). */
+.words-table,
+.bank-sign-table,
+.terms-table {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 .header-table td,
 .parties-table td {
   border: 1px solid #000;
