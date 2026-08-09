@@ -10,21 +10,30 @@ interface StaffOption {
   email: string;
 }
 
+interface EmployeeSummary {
+  presentDays: number;
+  absentDays: number;
+  halfDays: number;
+  leaveDays: number;
+  holidayDays: number;
+  lateCount: number;
+  totalHours: number;
+  overtimeHours: number;
+}
+
 interface MonthlyData {
   user: { id: string; name: string | null; email: string };
   month: string;
-  summary: {
-    presentDays: number;
-    absentDays: number;
-    halfDays: number;
-    leaveDays: number;
-    holidayDays: number;
-    lateCount: number;
-    totalHours: number;
-    overtimeHours: number;
-  };
+  summary: EmployeeSummary;
   daily: { date: string; status: string; hours: number; overtimeHours: number; isLate: boolean; isEarlyDeparture: boolean }[];
 }
+
+interface AllEmployeesData {
+  month: string;
+  staff: { user: { id: string; name: string | null; email: string }; summary: EmployeeSummary }[];
+}
+
+const ALL_EMPLOYEES = "all";
 
 function currentMonth(): string {
   const now = new Date();
@@ -35,16 +44,18 @@ export default function MonthlyReport({ staff }: { staff: StaffOption[] }) {
   const [userId, setUserId] = useState(staff[0]?.id ?? "");
   const [month, setMonth] = useState(currentMonth());
   const [data, setData] = useState<MonthlyData | null>(null);
+  const [allData, setAllData] = useState<AllEmployeesData | null>(null);
   const [loading, setLoading] = useState(false);
+  const isAll = userId === ALL_EMPLOYEES;
 
   useEffect(() => {
     if (!userId) return;
     setLoading(true);
     fetch(`/api/attendance/reports/monthly?userId=${userId}&month=${month}`)
       .then((res) => res.json())
-      .then((d) => setData(d))
+      .then((d) => (isAll ? setAllData(d) : setData(d)))
       .finally(() => setLoading(false));
-  }, [userId, month]);
+  }, [userId, month, isAll]);
 
   return (
     <div>
@@ -52,6 +63,7 @@ export default function MonthlyReport({ staff }: { staff: StaffOption[] }) {
         <div className="afs-form-field" style={{ maxWidth: 240 }}>
           <label>Employee</label>
           <select value={userId} onChange={(e) => setUserId(e.target.value)}>
+            <option value={ALL_EMPLOYEES}>All employees</option>
             {staff.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name || s.email}
@@ -70,7 +82,46 @@ export default function MonthlyReport({ staff }: { staff: StaffOption[] }) {
         )}
       </div>
 
-      {loading || !data ? (
+      {isAll ? (
+        loading || !allData ? (
+          <div className="afs-empty">Loading…</div>
+        ) : (
+          <div className="afs-card">
+            {allData.staff.length === 0 ? (
+              <div className="afs-empty">No staff yet.</div>
+            ) : (
+              <table className="afs-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Present</th>
+                    <th>Absent</th>
+                    <th>Half Day</th>
+                    <th>Leave</th>
+                    <th>Total Hours</th>
+                    <th>Overtime</th>
+                    <th>Late</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allData.staff.map(({ user, summary }) => (
+                    <tr key={user.id}>
+                      <td data-label="Employee">{user.name || user.email}</td>
+                      <td data-label="Present">{summary.presentDays}</td>
+                      <td data-label="Absent">{summary.absentDays}</td>
+                      <td data-label="Half Day">{summary.halfDays}</td>
+                      <td data-label="Leave">{summary.leaveDays}</td>
+                      <td data-label="Total Hours">{summary.totalHours.toFixed(1)}h</td>
+                      <td data-label="Overtime">{summary.overtimeHours.toFixed(1)}h</td>
+                      <td data-label="Late">{summary.lateCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )
+      ) : loading || !data ? (
         <div className="afs-empty">Loading…</div>
       ) : (
         <>
