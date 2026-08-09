@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TrashIcon } from "@/components/icons";
+import { COMMON_UNITS } from "@/lib/units";
 
 interface Customer {
   id: string;
@@ -18,10 +19,11 @@ interface Site {
 interface Line {
   particulars: string;
   qty: string;
+  unit: string;
 }
 
 function emptyLine(): Line {
-  return { particulars: "", qty: "1" };
+  return { particulars: "", qty: "1", unit: "NOS" };
 }
 
 export default function NewDeliveryChallanForm({ customers, sites }: { customers: Customer[]; sites: Site[] }) {
@@ -74,7 +76,7 @@ export default function NewDeliveryChallanForm({ customers, sites }: { customers
           poNumber: poNumber || undefined,
           poDate: poDate || undefined,
           vehicleNumber: vehicleNumber || undefined,
-          lines: lines.map((l) => ({ particulars: l.particulars, qty: Number(l.qty) })),
+          lines: lines.map((l) => ({ particulars: l.particulars, qty: Number(l.qty), unit: l.unit })),
         }),
       });
       const data = await res.json();
@@ -144,7 +146,8 @@ export default function NewDeliveryChallanForm({ customers, sites }: { customers
         <thead>
           <tr>
             <th>Particulars</th>
-            <th style={{ width: 120 }}>Qty</th>
+            <th style={{ width: 100 }}>Qty</th>
+            <th style={{ width: 110 }}>Unit</th>
             <th style={{ width: 40, position: "sticky", right: 0, background: "#f2f4fa" }}></th>
           </tr>
         </thead>
@@ -163,6 +166,15 @@ export default function NewDeliveryChallanForm({ customers, sites }: { customers
                   value={line.qty}
                   onChange={(e) => updateLine(idx, { qty: e.target.value })}
                 />
+              </td>
+              <td data-label="Unit">
+                <select required value={line.unit} onChange={(e) => updateLine(idx, { unit: e.target.value })}>
+                  {COMMON_UNITS.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
               </td>
               <td style={{ position: "sticky", right: 0, background: "#fff", zIndex: 1 }}>
                 <button type="button" onClick={() => removeLine(idx)} title="Delete line" className="afs-icon-btn danger">

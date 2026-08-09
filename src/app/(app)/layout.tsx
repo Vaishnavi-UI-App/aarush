@@ -14,16 +14,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/login");
   }
 
-  const tenant = await prisma.tenant.findUnique({ where: { id: session.tenantId } });
+  const [tenant, pageAccess, manageUsers] = await Promise.all([
+    prisma.tenant.findUnique({ where: { id: session.tenantId } }),
+    getPageAccessMap(session.tenantId, session.roleId),
+    canManageUsers(session.tenantId, session.roleId),
+  ]);
   if (!tenant) {
     (await cookies()).delete(SESSION_COOKIE_NAME);
     redirect("/login");
   }
-
-  const [pageAccess, manageUsers] = await Promise.all([
-    getPageAccessMap(session.tenantId, session.roleId),
-    canManageUsers(session.tenantId, session.roleId),
-  ]);
 
   return (
     <div className="afs-shell">

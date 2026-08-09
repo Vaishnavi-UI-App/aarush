@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
+import { reverseGeocode } from "@/lib/reverse-geocode";
 import TrackView from "./TrackView";
 
 export default async function TrackPage() {
@@ -28,21 +29,30 @@ export default async function TrackPage() {
     }),
   ]);
 
-  const serializedStaff = staff.map((s) => ({
-    id: s.id,
-    name: s.name,
-    email: s.email,
-    ping: s.locationPing
-      ? {
-          lat: s.locationPing.lat != null ? s.locationPing.lat.toString() : null,
-          lng: s.locationPing.lng != null ? s.locationPing.lng.toString() : null,
-          pingedAt: s.locationPing.pingedAt.toISOString(),
-          sharingEnabled: s.locationPing.sharingEnabled,
-          nearestSiteName: s.locationPing.nearestSite?.name ?? null,
-          distanceMeters: s.locationPing.distanceMeters,
-        }
-      : null,
-  }));
+  const serializedStaff = await Promise.all(
+    staff.map(async (s) => {
+      const lat = s.locationPing?.lat != null ? Number(s.locationPing.lat) : null;
+      const lng = s.locationPing?.lng != null ? Number(s.locationPing.lng) : null;
+      const placeName = lat != null && lng != null ? await reverseGeocode(lat, lng) : null;
+
+      return {
+        id: s.id,
+        name: s.name,
+        email: s.email,
+        ping: s.locationPing
+          ? {
+              lat: s.locationPing.lat != null ? s.locationPing.lat.toString() : null,
+              lng: s.locationPing.lng != null ? s.locationPing.lng.toString() : null,
+              placeName,
+              pingedAt: s.locationPing.pingedAt.toISOString(),
+              sharingEnabled: s.locationPing.sharingEnabled,
+              nearestSiteName: s.locationPing.nearestSite?.name ?? null,
+              distanceMeters: s.locationPing.distanceMeters,
+            }
+          : null,
+      };
+    })
+  );
 
   const serializedSites = sites.map((s) => ({
     id: s.id,
@@ -55,7 +65,10 @@ export default async function TrackPage() {
   return (
     <div>
       <h1 className="afs-page-title">Track</h1>
-      <p className="afs-page-subtitle">Live position while each person has the app open and sharing turned on -- nearest site, not attendance status</p>
+      <p className="afs-page-subtitle">
+        Live position while sharing is turned on -- keeps updating in the background on Android even after the app is
+        closed, once the person has accepted the background-location prompt -- nearest site, not attendance status
+      </p>
       <div style={{ marginTop: 20 }}>
         <TrackView staff={serializedStaff} sites={serializedSites} />
       </div>

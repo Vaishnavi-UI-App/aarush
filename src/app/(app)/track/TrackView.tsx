@@ -15,6 +15,7 @@ interface StaffPing {
   ping: {
     lat: string | null;
     lng: string | null;
+    placeName: string | null;
     pingedAt: string;
     sharingEnabled: boolean;
     nearestSiteName: string | null;
@@ -165,7 +166,7 @@ export default function TrackView({ staff, sites }: { staff: StaffPing[]; sites:
                 <td data-label="Location">
                   {s.ping?.lat && s.ping?.lng ? (
                     <a href={`https://www.google.com/maps?q=${s.ping.lat},${s.ping.lng}`} target="_blank" rel="noopener noreferrer">
-                      {Number(s.ping.lat).toFixed(4)}, {Number(s.ping.lng).toFixed(4)} (map)
+                      {s.ping.placeName ?? `${Number(s.ping.lat).toFixed(4)}, ${Number(s.ping.lng).toFixed(4)}`} (map)
                     </a>
                   ) : (
                     "—"

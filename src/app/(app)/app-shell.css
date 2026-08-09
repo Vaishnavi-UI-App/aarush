@@ -1,8 +1,15 @@
+/* This dashboard is a fully custom, light-only design -- it never adapted its colors for
+   dark mode. Without this, a phone in system dark mode inherits globals.css's dark
+   --foreground (near-white) into any text here that doesn't set its own color, washing it
+   out against these still-white cards, and native <select>/date inputs render with a
+   dark OS skin that clashes with the rest of the UI. Pin both back to light explicitly. */
 .afs-shell {
   display: flex;
   min-height: 100vh;
   font-family: Arial, Helvetica, sans-serif;
   background: var(--afs-bg, #eef1f8);
+  color: #1a2333;
+  color-scheme: light;
 }
 
 .afs-sidebar {

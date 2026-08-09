@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ClockIcon, ChevronLeftIcon, ChevronRightIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@/components/icons";
 
 interface TodayStatus {
   recordId: string;
@@ -34,6 +35,38 @@ const HEATMAP_COLOR: Record<string, string> = {
   HOLIDAY: "#c7cbd6",
 };
 
+const LEGEND_LABEL: Record<string, string> = {
+  PRESENT: "Present",
+  ABSENT: "Absent",
+  HALF_DAY: "Half Day",
+  LEAVE: "Leave",
+  HOLIDAY: "Holiday",
+};
+
+// Reuses the same badge tones as .afs-badge-* elsewhere in the app so avatar colors
+// read as part of the same design system rather than a one-off palette.
+const AVATAR_PALETTE = [
+  { bg: "#dbeafe", color: "#1e40af" },
+  { bg: "#dcfce7", color: "#14532d" },
+  { bg: "#fbeed9", color: "#a3620f" },
+  { bg: "#fbe4e2", color: "#a13a3a" },
+  { bg: "#e0e7ff", color: "#3730a3" },
+  { bg: "#f7edd0", color: "#8a6d13" },
+];
+
+function avatarFor(id: string, label: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  const palette = AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+  const initials = label
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+  return { ...palette, initials: initials || "?" };
+}
+
 function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
@@ -43,6 +76,11 @@ function shiftMonth(month: string, delta: number): string {
 function currentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
 export default function TeamTodayGrid() {
@@ -60,19 +98,28 @@ export default function TeamTodayGrid() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <button type="button" onClick={() => setMonth((m) => shiftMonth(m, -1))} className="afs-btn" style={{ background: "#e5e7eb", color: "#333", padding: "4px 12px" }}>
-          ← Prev
-        </button>
-        <div style={{ fontSize: 13, fontWeight: 600, minWidth: 90, textAlign: "center" }}>{month}</div>
-        <button type="button" onClick={() => setMonth((m) => shiftMonth(m, 1))} className="afs-btn" style={{ background: "#e5e7eb", color: "#333", padding: "4px 12px" }}>
-          Next →
-        </button>
-        <div style={{ display: "flex", gap: 12, marginLeft: "auto", fontSize: 11, color: "#667", flexWrap: "wrap" }}>
+      <div className="att-team-toolbar">
+        <div className="att-team-nav">
+          <button type="button" onClick={() => setMonth((m) => shiftMonth(m, -12))} title="Previous year" className="att-team-nav-btn">
+            <ChevronDoubleLeftIcon />
+          </button>
+          <button type="button" onClick={() => setMonth((m) => shiftMonth(m, -1))} title="Previous month" className="att-team-nav-btn">
+            <ChevronLeftIcon />
+          </button>
+          <div className="att-team-month">{monthLabel(month)}</div>
+          <button type="button" onClick={() => setMonth((m) => shiftMonth(m, 1))} title="Next month" className="att-team-nav-btn">
+            <ChevronRightIcon />
+          </button>
+          <button type="button" onClick={() => setMonth((m) => shiftMonth(m, 12))} title="Next year" className="att-team-nav-btn">
+            <ChevronDoubleRightIcon />
+          </button>
+        </div>
+
+        <div className="att-team-legend">
           {Object.entries(HEATMAP_COLOR).map(([status, color]) => (
-            <span key={status} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 9, height: 9, borderRadius: 2, background: color, display: "inline-block" }} />
-              {status.replace("_", " ")}
+            <span key={status} className="att-team-legend-item">
+              <span className="att-team-legend-dot" style={{ background: color }} />
+              {LEGEND_LABEL[status]}
             </span>
           ))}
         </div>
@@ -83,39 +130,54 @@ export default function TeamTodayGrid() {
       ) : data.staff.length === 0 ? (
         <div className="afs-empty">No staff yet.</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {data.staff.map((s) => (
-            <div key={s.id} className="afs-card" style={{ padding: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13.5 }}>{s.name || s.email}</div>
-                  <div style={{ fontSize: 11.5, color: "#889" }}>{s.email}</div>
-                </div>
-                {s.today ? (
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5 }}>
-                    <span className={`att-status-pill att-status-pill-${s.today.status.toLowerCase()}`}>{s.today.status.replace("_", " ")}</span>
-                    {s.today.isLate && <span className="att-flag">LATE</span>}
-                    {s.today.onBreak && <span className="att-flag">ON BREAK</span>}
-                    <span style={{ color: "#667" }}>
-                      {s.today.checkInAt ? new Date(s.today.checkInAt).toLocaleTimeString("en-IN") : "—"}
-                      {" → "}
-                      {s.today.checkOutAt ? new Date(s.today.checkOutAt).toLocaleTimeString("en-IN") : s.today.isOpen ? "still in" : "—"}
-                    </span>
+        <div className="att-team-grid">
+          {data.staff.map((s) => {
+            const label = s.name || s.email;
+            const avatar = avatarFor(s.id, label);
+            return (
+              <div key={s.id} className="att-team-card">
+                <div className="att-team-card-top">
+                  <div className="att-team-person">
+                    <div className="att-team-avatar" style={{ background: avatar.bg, color: avatar.color }}>
+                      {avatar.initials}
+                    </div>
+                    <div>
+                      <div className="att-team-name">{label}</div>
+                      <div className="att-team-email">{s.email}</div>
+                    </div>
                   </div>
-                ) : (
-                  <span className="att-status-pill att-status-pill-absent">No check-in today</span>
-                )}
-              </div>
 
-              <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
-                {data.days.map((d) => {
-                  const status = s.byDate[d];
-                  const color = status ? HEATMAP_COLOR[status] : "#eef0f6";
-                  return <div key={d} title={`${d}: ${status ? status.replace("_", " ") : "no record"}`} style={{ width: 12, height: 12, borderRadius: 3, background: color }} />;
-                })}
+                  {s.today ? (
+                    <div className="att-team-status">
+                      <span className={`att-status-pill att-status-pill-${s.today.status.toLowerCase()}`}>{s.today.status.replace("_", " ")}</span>
+                      {s.today.isLate && <span className="att-flag">LATE</span>}
+                      {s.today.onBreak && <span className="att-flag">ON BREAK</span>}
+                    </div>
+                  ) : (
+                    <span className="att-team-nocheckin">
+                      <ClockIcon /> No check-in today
+                    </span>
+                  )}
+                </div>
+
+                {s.today && (
+                  <div className="att-team-times">
+                    {s.today.checkInAt ? new Date(s.today.checkInAt).toLocaleTimeString("en-IN") : "—"}
+                    {" → "}
+                    {s.today.checkOutAt ? new Date(s.today.checkOutAt).toLocaleTimeString("en-IN") : s.today.isOpen ? "still in" : "—"}
+                  </div>
+                )}
+
+                <div className="att-team-heatmap">
+                  {data.days.map((d) => {
+                    const status = s.byDate[d];
+                    const color = status ? HEATMAP_COLOR[status] : "#eef0f6";
+                    return <div key={d} title={`${d}: ${status ? status.replace("_", " ") : "no record"}`} className="att-team-heatmap-cell" style={{ background: color }} />;
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -65,6 +65,7 @@ export default function DeliveryChallanTemplate({ challan }: { challan: Delivery
               <th className="dc-col-sr">Sr. No.</th>
               <th>Particulars</th>
               <th className="dc-col-qty">Qty.</th>
+              <th className="dc-col-unit">Unit</th>
             </tr>
           </thead>
           <tbody>
@@ -73,11 +74,13 @@ export default function DeliveryChallanTemplate({ challan }: { challan: Delivery
                 <td className="center">{line.srNo}</td>
                 <td className="left">{line.particulars}</td>
                 <td className="center">{line.qty}</td>
+                <td className="center">{line.unit}</td>
               </tr>
             ))}
             {Array.from({ length: blankRows }, (_, i) => (
               <tr key={`blank-${i}`}>
                 <td>&nbsp;</td>
+                <td></td>
                 <td></td>
                 <td></td>
               </tr>
@@ -87,6 +90,7 @@ export default function DeliveryChallanTemplate({ challan }: { challan: Delivery
                 Total:
               </td>
               <td className="center bold">{challan.totalQty}</td>
+              <td></td>
             </tr>
           </tbody>
         </table>

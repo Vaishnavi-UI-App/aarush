@@ -64,10 +64,15 @@ function computeElapsedHours(punches: PunchDTO[], breaks: BreakDTO[], now: numbe
   return Math.max(0, (workMs - breakMs) / 3_600_000);
 }
 
-function formatHours(h: number): string {
-  const hrs = Math.floor(h);
-  const mins = Math.round((h - hrs) * 60);
-  return `${hrs}h ${mins.toString().padStart(2, "0")}m`;
+/** hh:mm:ss ticking display for the live "worked today" timer -- a minute-only
+ * granularity only visibly changes once a minute, which reads as frozen even though
+ * the underlying value is recomputed every second. */
+function formatHMS(h: number): string {
+  const totalSeconds = Math.floor(h * 3600);
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
 function statusPillClass(status: string) {
@@ -222,7 +227,7 @@ export default function AttendanceCheckInOut({
           {checkedIn && (
             <div>
               <div className="att-timer-label">Worked today</div>
-              <div className="att-timer">{formatHours(elapsedHours)}</div>
+              <div className="att-timer">{formatHMS(elapsedHours)}</div>
             </div>
           )}
         </div>
@@ -263,7 +268,13 @@ export default function AttendanceCheckInOut({
               >
                 <CameraIcon /> {busy && pendingAction === "check-out" ? "Checking out…" : "Check Out with Photo"}
               </button>
-              <button type="button" disabled={breakBusy} onClick={toggleBreak} className="afs-btn" style={{ background: "#e5e7eb", color: "#333" }}>
+              <button
+                type="button"
+                disabled={breakBusy}
+                onClick={toggleBreak}
+                className="afs-btn"
+                style={{ background: "#e5e7eb", color: "#333", justifyContent: "center", padding: "13px", fontSize: 14.5 }}
+              >
                 {breakBusy ? "Updating…" : onBreak ? "End Break" : "Start Break"}
               </button>
             </>

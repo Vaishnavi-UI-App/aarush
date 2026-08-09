@@ -5,6 +5,7 @@ import { financialYearLabel } from "@/lib/gst-invoice";
 export interface DeliveryChallanLineInput {
   particulars: string;
   qty: number;
+  unit?: string;
 }
 
 export interface CreateDeliveryChallanInput {
@@ -70,6 +71,7 @@ export async function createDeliveryChallan(input: CreateDeliveryChallanInput) {
             srNo: i + 1,
             particulars: line.particulars,
             qty: line.qty,
+            unit: line.unit || "NOS",
           })),
         },
       },

@@ -154,6 +154,10 @@ table {
   width: 100px;
 }
 
+.dc-col-unit {
+  width: 80px;
+}
+
 .dc-items-table td.center {
   text-align: center;
 }

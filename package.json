@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.26",
     "@capacitor/android": "^8.5.0",
     "@capacitor/app": "^8.1.1",
     "@capacitor/camera": "^8.2.2",

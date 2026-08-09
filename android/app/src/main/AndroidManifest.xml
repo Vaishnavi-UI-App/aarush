@@ -42,4 +42,12 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Background location: lets Track keep updating a staff member's position after
+         they close the app. Android requires ACCESS_BACKGROUND_LOCATION to be requested
+         separately from (and after) foreground location, and requires the app to show its
+         own explanation before the system permission dialog (see BackgroundLocationConsent). -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 </manifest>

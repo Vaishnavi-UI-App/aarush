@@ -2,6 +2,7 @@ export interface DeliveryChallanLineItem {
   srNo: number;
   particulars: string;
   qty: number;
+  unit: string;
 }
 
 export interface DeliveryChallanData {

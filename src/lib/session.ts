@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 export interface SessionPayload {
   userId: string;
@@ -67,10 +68,27 @@ export class SessionError extends Error {}
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;
 
-/** Same as getSession, but for Server Components / layouts using next/headers instead of a NextRequest. */
+/**
+ * Same as getSession, but for Server Components / layouts using next/headers instead of a
+ * NextRequest.
+ *
+ * The signed cookie only proves *who's logged in* (userId/tenantId) -- its roleId is a
+ * snapshot from whenever the user last logged in, so it goes stale the moment an owner
+ * reassigns that user's role. Every page render (sidebar, page-level `can()` gates) reads
+ * roleId from here, so without this the promoted/demoted user won't see the change reflected
+ * anywhere -- web or the Android app's WebView -- until they log out and back in. Re-reading
+ * roleId from the user row on every call fixes that; it's a single indexed primary-key
+ * lookup, cheap enough to not be worth caching against the request lifecycle.
+ */
 export async function getServerSession(): Promise<SessionPayload | null> {
   const store = await cookies();
   const token = store.get(COOKIE_NAME)?.value;
   if (!token) return null;
-  return decodeSession(token);
+  const session = decodeSession(token);
+  if (!session) return null;
+
+  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { tenantId: true, roleId: true } });
+  if (!user || user.tenantId !== session.tenantId || !user.roleId) return null;
+
+  return { ...session, roleId: user.roleId };
 }

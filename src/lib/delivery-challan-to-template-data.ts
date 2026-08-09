@@ -21,6 +21,7 @@ export function toDeliveryChallanTemplateData(challan: ChallanWithRelations, ten
       srNo: line.srNo,
       particulars: line.particulars,
       qty: Number(line.qty),
+      unit: line.unit,
     }));
 
   const totalQty = lines.reduce((sum, l) => sum + l.qty, 0);
