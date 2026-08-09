@@ -30,6 +30,10 @@ interface Item {
 
 interface Line {
   itemId: string;
+  /** What's typed/shown in the searchable item picker -- not sent to the server. Kept in
+   * sync with itemId when a catalog item is picked, but free-typed otherwise so the field
+   * doesn't fight the user while they're searching. */
+  itemQuery: string;
   description: string;
   detail: string;
   hsnCode: string;
@@ -40,7 +44,22 @@ interface Line {
 }
 
 function emptyLine(): Line {
-  return { itemId: "", description: "", detail: "", hsnCode: "", unit: "NOS", qty: "1", rate: "0", taxRate: "18" };
+  return { itemId: "", itemQuery: "", description: "", detail: "", hsnCode: "", unit: "NOS", qty: "1", rate: "0", taxRate: "18" };
+}
+
+/**
+ * Server-supplied initial lines only carry itemId, not itemQuery -- and older invoices
+ * (created via script/API before this picker existed) may have itemId unset even though
+ * their description exactly matches a catalog item name. Fall back to a name match so those
+ * still show up as "picked" instead of looking like manual/unmatched rows.
+ */
+function resolveItemQuery(line: { itemId: string; description: string }, items: Item[]): string {
+  if (line.itemId) {
+    const byId = items.find((i) => i.id === line.itemId);
+    if (byId) return byId.name;
+  }
+  const byName = items.find((i) => i.name === line.description);
+  return byName ? byName.name : "";
 }
 
 function round2(n: number): number {
@@ -48,7 +67,7 @@ function round2(n: number): number {
 }
 
 export interface InvoiceFormInitialValues {
-  lines: Line[];
+  lines: Omit<Line, "itemQuery">[];
   discount: string;
   poNumber: string;
   poDate: string;
@@ -95,7 +114,9 @@ export default function CreateInvoiceForm({
   const isEdit = !!editInvoiceId;
   const [customerId, setCustomerId] = useState(defaultCustomerId ?? customers[0]?.id ?? "");
   const [items, setItems] = useState<Item[]>(initialItems);
-  const [lines, setLines] = useState<Line[]>(initialValues?.lines ?? [emptyLine()]);
+  const [lines, setLines] = useState<Line[]>(
+    initialValues?.lines.map((l) => ({ ...l, itemQuery: resolveItemQuery(l, initialItems) })) ?? [emptyLine()],
+  );
   const [discount, setDiscount] = useState(initialValues?.discount ?? "0");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -136,6 +157,7 @@ export default function CreateInvoiceForm({
     }
     updateLine(index, {
       itemId,
+      itemQuery: item.name,
       description: item.name,
       detail: item.description ?? "",
       hsnCode: item.hsnCode,
@@ -143,6 +165,19 @@ export default function CreateInvoiceForm({
       rate: item.salePrice.toString(),
       taxRate: item.taxRate.toString(),
     });
+  }
+
+  /** Fires on every keystroke in the searchable item picker. An exact (case-insensitive) name
+   * match auto-fills the line like a normal pick; anything else is just free text -- the line
+   * falls back to manual (itemId cleared) without touching whatever the user's already typed
+   * into Description/HSN/etc. */
+  function onItemQueryChange(index: number, value: string) {
+    const match = items.find((i) => i.name.toLowerCase() === value.trim().toLowerCase());
+    if (match) {
+      pickItem(index, match.id);
+    } else {
+      updateLine(index, { itemQuery: value, itemId: "" });
+    }
   }
 
   function addLine() {
@@ -426,14 +461,14 @@ export default function CreateInvoiceForm({
             return (
               <tr key={idx}>
                 <td data-label="Item">
-                  <select value={line.itemId} onChange={(e) => pickItem(idx, e.target.value)}>
-                    <option value="">— manual —</option>
-                    {items.map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name}
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    list="afs-items-datalist"
+                    value={line.itemQuery}
+                    onChange={(e) => onItemQueryChange(idx, e.target.value)}
+                    placeholder="Search item, or leave blank for manual"
+                    autoComplete="off"
+                  />
                 </td>
                 <td data-label="Description">
                   <input
@@ -507,6 +542,12 @@ export default function CreateInvoiceForm({
           })}
         </tbody>
       </table>
+
+      <datalist id="afs-items-datalist">
+        {items.map((i) => (
+          <option key={i.id} value={i.name} />
+        ))}
+      </datalist>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         <button type="button" onClick={addLine} className="afs-btn afs-btn-gold">
