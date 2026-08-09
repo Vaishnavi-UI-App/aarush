@@ -27,6 +27,7 @@ export default async function ItemsPage() {
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Description</th>
                 <th>HSN/SAC</th>
                 <th>Unit</th>
                 <th>Sale price</th>

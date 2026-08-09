@@ -35,10 +35,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "name, hsnCode, unit, salePrice, taxRate are required" }, { status: 400 });
   }
 
+  const name = body.name.trim();
+  const duplicate = await prisma.item.findFirst({
+    where: { tenantId: session.tenantId, name: { equals: name, mode: "insensitive" } },
+  });
+  if (duplicate) {
+    return NextResponse.json({ error: `An item named "${name}" already exists` }, { status: 409 });
+  }
+
   const item = await prisma.item.create({
     data: {
       tenantId: session.tenantId,
-      name: body.name,
+      name,
       description: body.description || null,
       hsnCode: body.hsnCode,
       unit: body.unit,

@@ -79,13 +79,10 @@ export default function EditableItemRow({ item }: { item: Item }) {
     return (
       <tr>
         <td data-label="Name">
-          <input value={form.name} onChange={(e) => set("name", e.target.value)} style={{ marginBottom: 4 }} />
-          <input
-            value={form.description}
-            onChange={(e) => set("description", e.target.value)}
-            placeholder="Description (optional)"
-            style={{ fontSize: 11.5 }}
-          />
+          <input value={form.name} onChange={(e) => set("name", e.target.value)} />
+        </td>
+        <td data-label="Description">
+          <input value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Optional spec/detail" />
         </td>
         <td data-label="HSN/SAC">
           <input value={form.hsnCode} onChange={(e) => set("hsnCode", e.target.value)} />
@@ -131,9 +128,9 @@ export default function EditableItemRow({ item }: { item: Item }) {
 
   return (
     <tr>
-      <td data-label="Name">
-        {item.name}
-        {item.description && <div style={{ fontSize: 11.5, color: "#889", marginTop: 2 }}>{item.description}</div>}
+      <td data-label="Name">{item.name}</td>
+      <td data-label="Description" style={{ color: item.description ? undefined : "#aab" }}>
+        {item.description || "—"}
       </td>
       <td data-label="HSN/SAC">{item.hsnCode}</td>
       <td data-label="Unit">{item.unit}</td>

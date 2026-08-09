@@ -25,10 +25,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Item not found" }, { status: 404 });
   }
 
+  const name = body.name.trim();
+  const duplicate = await prisma.item.findFirst({
+    where: { tenantId: session.tenantId, name: { equals: name, mode: "insensitive" }, id: { not: id } },
+  });
+  if (duplicate) {
+    return NextResponse.json({ error: `An item named "${name}" already exists` }, { status: 409 });
+  }
+
   const updated = await prisma.item.update({
     where: { id },
     data: {
-      name: body.name,
+      name,
       description: body.description !== undefined ? body.description || null : item.description,
       hsnCode: body.hsnCode,
       unit: body.unit,
