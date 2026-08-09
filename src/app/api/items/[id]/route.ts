@@ -29,6 +29,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     where: { id },
     data: {
       name: body.name,
+      description: body.description !== undefined ? body.description || null : item.description,
       hsnCode: body.hsnCode,
       unit: body.unit,
       salePrice: body.salePrice,

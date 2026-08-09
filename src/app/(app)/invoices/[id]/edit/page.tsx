@@ -18,6 +18,9 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
       include: { lines: true, customer: true, payments: true },
     }),
     prisma.tenant.findUniqueOrThrow({ where: { id: session!.tenantId } }),
+    // Not filtered by archivedAt: unlike the create-new-invoice picker, this page can be
+    // editing an old invoice whose customer has since been archived -- the customer field
+    // here is read-only display, not a picker, so it still needs to resolve that name.
     prisma.customer.findMany({ where: { tenantId: session!.tenantId }, orderBy: { name: "asc" } }),
     prisma.item.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
     prisma.site.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
@@ -71,6 +74,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           items={items.map((i) => ({
             id: i.id,
             name: i.name,
+            description: i.description ?? undefined,
             hsnCode: i.hsnCode,
             unit: i.unit,
             salePrice: Number(i.salePrice),
@@ -98,7 +102,9 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             lines: invoice.lines.map((l) => ({
               itemId: l.itemId ?? "",
               description: l.description,
+              detail: l.detail ?? "",
               hsnCode: l.hsnCode,
+              unit: l.unit,
               qty: Number(l.qty).toString(),
               rate: Number(l.rate).toString(),
               taxRate: Number(l.taxRate).toString(),

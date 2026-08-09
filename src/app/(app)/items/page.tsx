@@ -42,6 +42,7 @@ export default async function ItemsPage() {
                   item={{
                     id: i.id,
                     name: i.name,
+                    description: i.description,
                     hsnCode: i.hsnCode,
                     unit: i.unit,
                     salePrice: Number(i.salePrice),

@@ -6,7 +6,7 @@ import { COMMON_UNITS } from "@/lib/units";
 
 export default function NewItemForm() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
+  const [form, setForm] = useState({ name: "", description: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -30,7 +30,7 @@ export default function NewItemForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create item");
-      setForm({ name: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
+      setForm({ name: "", description: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create item");
@@ -45,6 +45,10 @@ export default function NewItemForm() {
         <div className="afs-form-field">
           <label>Name *</label>
           <input required value={form.name} onChange={(e) => set("name", e.target.value)} />
+        </div>
+        <div className="afs-form-field">
+          <label>Description</label>
+          <input value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Optional spec/detail shown under the name on invoices" />
         </div>
         <div className="afs-form-field">
           <label>HSN/SAC *</label>

@@ -21,6 +21,7 @@ const PAYMENT_TERMS_OPTIONS = ["Due on Receipt", "Net 15", "Net 30", "Net 45", "
 interface Item {
   id: string;
   name: string;
+  description?: string;
   hsnCode: string;
   unit: string;
   salePrice: number;
@@ -30,14 +31,16 @@ interface Item {
 interface Line {
   itemId: string;
   description: string;
+  detail: string;
   hsnCode: string;
+  unit: string;
   qty: string;
   rate: string;
   taxRate: string;
 }
 
 function emptyLine(): Line {
-  return { itemId: "", description: "", hsnCode: "", qty: "1", rate: "0", taxRate: "18" };
+  return { itemId: "", description: "", detail: "", hsnCode: "", unit: "NOS", qty: "1", rate: "0", taxRate: "18" };
 }
 
 function round2(n: number): number {
@@ -98,7 +101,7 @@ export default function CreateInvoiceForm({
   const [saving, setSaving] = useState(false);
 
   const [showNewItemForm, setShowNewItemForm] = useState(false);
-  const [newItem, setNewItem] = useState({ name: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
+  const [newItem, setNewItem] = useState({ name: "", description: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
   const [newItemError, setNewItemError] = useState<string | null>(null);
   const [savingNewItem, setSavingNewItem] = useState(false);
 
@@ -134,7 +137,9 @@ export default function CreateInvoiceForm({
     updateLine(index, {
       itemId,
       description: item.name,
+      detail: item.description ?? "",
       hsnCode: item.hsnCode,
+      unit: item.unit,
       rate: item.salePrice.toString(),
       taxRate: item.taxRate.toString(),
     });
@@ -154,7 +159,7 @@ export default function CreateInvoiceForm({
 
   function cancelNewItem() {
     setShowNewItemForm(false);
-    setNewItem({ name: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
+    setNewItem({ name: "", description: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
     setNewItemError(null);
   }
 
@@ -180,13 +185,14 @@ export default function CreateInvoiceForm({
       const created: Item = {
         id: data.id,
         name: data.name,
+        description: data.description ?? undefined,
         hsnCode: data.hsnCode,
         unit: data.unit,
         salePrice: Number(data.salePrice),
         taxRate: Number(data.taxRate),
       };
       setItems((its) => [...its, created].sort((a, b) => a.name.localeCompare(b.name)));
-      setNewItem({ name: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
+      setNewItem({ name: "", description: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
       setShowNewItemForm(false);
       router.refresh();
     } catch (e) {
@@ -238,7 +244,9 @@ export default function CreateInvoiceForm({
         lines: lines.map((l) => ({
           itemId: l.itemId || undefined,
           description: l.description,
+          detail: l.detail || undefined,
           hsnCode: l.hsnCode,
+          unit: l.unit,
           qty: Number(l.qty),
           rate: Number(l.rate),
           taxRate: Number(l.taxRate),
@@ -404,6 +412,7 @@ export default function CreateInvoiceForm({
             <th>Item</th>
             <th>Description</th>
             <th>HSN/SAC</th>
+            <th style={{ width: 100 }}>Unit</th>
             <th style={{ width: 70 }}>Qty</th>
             <th style={{ width: 100 }}>Rate</th>
             <th style={{ width: 90 }}>Tax %</th>
@@ -431,10 +440,26 @@ export default function CreateInvoiceForm({
                     required
                     value={line.description}
                     onChange={(e) => updateLine(idx, { description: e.target.value })}
+                    style={{ marginBottom: 4 }}
+                  />
+                  <input
+                    value={line.detail}
+                    onChange={(e) => updateLine(idx, { detail: e.target.value })}
+                    placeholder="Detail / spec (optional)"
+                    style={{ fontSize: 11.5 }}
                   />
                 </td>
                 <td data-label="HSN/SAC">
                   <input required value={line.hsnCode} onChange={(e) => updateLine(idx, { hsnCode: e.target.value })} />
+                </td>
+                <td data-label="Unit">
+                  <select required value={line.unit} onChange={(e) => updateLine(idx, { unit: e.target.value })}>
+                    {COMMON_UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td data-label="Qty">
                   <input
@@ -504,6 +529,10 @@ export default function CreateInvoiceForm({
             <div className="afs-form-field">
               <label>Name *</label>
               <input required value={newItem.name} onChange={(e) => setNewItemField("name", e.target.value)} />
+            </div>
+            <div className="afs-form-field">
+              <label>Description</label>
+              <input value={newItem.description} onChange={(e) => setNewItemField("description", e.target.value)} placeholder="Optional spec/detail" />
             </div>
             <div className="afs-form-field">
               <label>HSN/SAC *</label>

@@ -9,6 +9,7 @@ import DeleteItemButton from "./DeleteItemButton";
 interface Item {
   id: string;
   name: string;
+  description: string | null;
   hsnCode: string;
   unit: string;
   salePrice: number;
@@ -21,6 +22,7 @@ export default function EditableItemRow({ item }: { item: Item }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: item.name,
+    description: item.description ?? "",
     hsnCode: item.hsnCode,
     unit: item.unit,
     salePrice: item.salePrice.toString(),
@@ -36,6 +38,7 @@ export default function EditableItemRow({ item }: { item: Item }) {
   function cancel() {
     setForm({
       name: item.name,
+      description: item.description ?? "",
       hsnCode: item.hsnCode,
       unit: item.unit,
       salePrice: item.salePrice.toString(),
@@ -54,6 +57,7 @@ export default function EditableItemRow({ item }: { item: Item }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
+          description: form.description,
           hsnCode: form.hsnCode,
           unit: form.unit,
           salePrice: Number(form.salePrice),
@@ -75,7 +79,13 @@ export default function EditableItemRow({ item }: { item: Item }) {
     return (
       <tr>
         <td data-label="Name">
-          <input value={form.name} onChange={(e) => set("name", e.target.value)} />
+          <input value={form.name} onChange={(e) => set("name", e.target.value)} style={{ marginBottom: 4 }} />
+          <input
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            placeholder="Description (optional)"
+            style={{ fontSize: 11.5 }}
+          />
         </td>
         <td data-label="HSN/SAC">
           <input value={form.hsnCode} onChange={(e) => set("hsnCode", e.target.value)} />
@@ -121,7 +131,10 @@ export default function EditableItemRow({ item }: { item: Item }) {
 
   return (
     <tr>
-      <td data-label="Name">{item.name}</td>
+      <td data-label="Name">
+        {item.name}
+        {item.description && <div style={{ fontSize: 11.5, color: "#889", marginTop: 2 }}>{item.description}</div>}
+      </td>
       <td data-label="HSN/SAC">{item.hsnCode}</td>
       <td data-label="Unit">{item.unit}</td>
       <td data-label="Sale price">Rs. {item.salePrice.toFixed(2)}</td>

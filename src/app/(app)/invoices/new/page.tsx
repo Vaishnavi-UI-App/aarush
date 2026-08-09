@@ -12,7 +12,7 @@ export default async function NewInvoicePage({
 
   const [tenant, customers, items, sites] = await Promise.all([
     prisma.tenant.findUniqueOrThrow({ where: { id: session!.tenantId } }),
-    prisma.customer.findMany({ where: { tenantId: session!.tenantId }, orderBy: { name: "asc" } }),
+    prisma.customer.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
     prisma.item.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
     prisma.site.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
   ]);
@@ -42,6 +42,7 @@ export default async function NewInvoicePage({
           items={items.map((i) => ({
             id: i.id,
             name: i.name,
+            description: i.description ?? undefined,
             hsnCode: i.hsnCode,
             unit: i.unit,
             salePrice: Number(i.salePrice),

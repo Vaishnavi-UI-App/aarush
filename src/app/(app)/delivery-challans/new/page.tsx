@@ -6,7 +6,7 @@ export default async function NewDeliveryChallanPage() {
   const session = await getServerSession();
 
   const [customers, sites] = await Promise.all([
-    prisma.customer.findMany({ where: { tenantId: session!.tenantId }, orderBy: { name: "asc" } }),
+    prisma.customer.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
     prisma.site.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
   ]);
 

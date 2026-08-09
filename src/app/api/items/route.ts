@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     data: {
       tenantId: session.tenantId,
       name: body.name,
+      description: body.description || null,
       hsnCode: body.hsnCode,
       unit: body.unit,
       salePrice: body.salePrice,

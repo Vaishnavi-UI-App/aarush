@@ -18,9 +18,10 @@ export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Ten
   const items: InvoiceLineItem[] = invoice.lines.map((line, i) => ({
     srNo: i + 1,
     name: line.description,
+    description: line.detail ?? undefined,
     hsnSac: line.hsnCode,
     qty: Number(line.qty),
-    unit: "NOS",
+    unit: line.unit,
     rate: Number(line.rate),
     taxableValue: Number(line.taxableValue),
     cgstRate: Number(line.taxRate) > 0 && Number(line.cgstAmount) > 0 ? Number(line.taxRate) / 2 : 0,

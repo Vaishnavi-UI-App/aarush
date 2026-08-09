@@ -40,7 +40,10 @@ export function calculateTaxSplit(
 export interface InvoiceLineInput {
   itemId?: string;
   description: string;
+  /** Smaller second line printed under the description on the invoice. */
+  detail?: string;
   hsnCode: string;
+  unit?: string;
   qty: number;
   rate: number;
   taxRate: number;
@@ -67,7 +70,9 @@ export function computeInvoiceLines(lines: InvoiceLineInput[], sellerStateCode: 
     return {
       itemId: line.itemId,
       description: line.description,
+      detail: line.detail,
       hsnCode: line.hsnCode,
+      unit: line.unit || "NOS",
       qty: line.qty,
       rate: line.rate,
       taxableValue,
@@ -465,7 +470,9 @@ export async function convertProformaToSale(tenantId: string, proformaId: string
     lines: proforma.lines.map((l) => ({
       itemId: l.itemId ?? undefined,
       description: l.description,
+      detail: l.detail ?? undefined,
       hsnCode: l.hsnCode,
+      unit: l.unit,
       qty: Number(l.qty),
       rate: Number(l.rate),
       taxRate: Number(l.taxRate),
