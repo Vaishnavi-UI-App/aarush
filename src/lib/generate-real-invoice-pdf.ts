@@ -35,8 +35,15 @@ export async function generateRealInvoicePdf(
 
     const pdfBuffer = await page.pdf({
       format: "A4",
-      landscape: true,
       printBackground: true,
+      // Portrait, not landscape -- landscape "fixed" the wide GST column grid getting
+      // cut off on the right, but it did that by trading page height for width, which
+      // then made short invoices spill their Bank Details/Terms block onto an
+      // otherwise-empty second page. Scaling down instead fixes both at once: it
+      // shrinks the ~900px-wide document to fit portrait's ~733px usable width, and
+      // since height shrinks by the same factor, a one-item invoice now has plenty of
+      // room to spare rather than needing every trimmed-padding trick to just barely fit.
+      scale: 0.8,
       margin: { top: "16mm", bottom: "14mm", left: "8mm", right: "8mm" },
       displayHeaderFooter: true,
       headerTemplate: buildRepeatingHeaderTemplate({

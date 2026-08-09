@@ -17,8 +17,9 @@ export async function generateInvoicePdf(origin: string): Promise<Buffer> {
 
     const pdfBuffer = await page.pdf({
       format: "A4",
-      landscape: true,
       printBackground: true,
+      // Portrait + scale, not landscape -- see generate-real-invoice-pdf.ts for why.
+      scale: 0.8,
       margin: { top: "16mm", bottom: "14mm", left: "8mm", right: "8mm" },
       displayHeaderFooter: true,
       headerTemplate: buildRepeatingHeaderTemplate({
