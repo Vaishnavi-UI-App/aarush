@@ -1,15 +1,20 @@
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { can } from "@/lib/permissions";
 import NewCustomerForm from "./NewCustomerForm";
+import DeleteCustomerButton from "./DeleteCustomerButton";
 import { EditIcon } from "@/components/icons";
 
 export default async function CustomersPage() {
   const session = await getServerSession();
-  const customers = await prisma.customer.findMany({
-    where: { tenantId: session!.tenantId },
-    orderBy: { name: "asc" },
-  });
+  const [customers, canDelete] = await Promise.all([
+    prisma.customer.findMany({
+      where: { tenantId: session!.tenantId, archivedAt: null },
+      orderBy: { name: "asc" },
+    }),
+    can(session!.tenantId, session!.roleId, "customers", "delete"),
+  ]);
 
   return (
     <div>
@@ -46,9 +51,12 @@ export default async function CustomersPage() {
                   <td data-label="Phone">{c.phone ?? "—"}</td>
                   <td data-label="Email">{c.email ?? "—"}</td>
                   <td>
-                    <Link href={`/customers/${c.id}/edit`} className="afs-icon-btn" title="Edit customer">
-                      <EditIcon />
-                    </Link>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Link href={`/customers/${c.id}/edit`} className="afs-icon-btn" title="Edit customer">
+                        <EditIcon />
+                      </Link>
+                      {canDelete && <DeleteCustomerButton customerId={c.id} customerName={c.name} />}
+                    </div>
                   </td>
                 </tr>
               ))}

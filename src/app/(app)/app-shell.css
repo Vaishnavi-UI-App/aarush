@@ -98,6 +98,30 @@
   padding: 0;
 }
 
+/* The actual current markup for both "My Profile" and "Sign out" -- a plain <a> and a
+   bare <button>, neither wrapped in a <form> -- so they need their own rule rather than
+   relying on the (stale) form-scoped one above. */
+.afs-sidebar-footer > a,
+.afs-sidebar-footer > button {
+  display: block;
+  background: none;
+  border: none;
+  color: #d7deee;
+  cursor: pointer;
+  font-size: 12.5px;
+  padding: 0;
+}
+
+.afs-sidebar-footer > a:hover,
+.afs-sidebar-footer > button:hover {
+  color: #fff;
+}
+
+.afs-sidebar-footer > a.active {
+  color: var(--afs-gold, #c99a2e);
+  font-weight: 600;
+}
+
 .afs-main {
   flex: 1;
   min-width: 0;

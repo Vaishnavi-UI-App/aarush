@@ -2,9 +2,12 @@ import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { round2 } from "@/lib/gst-invoice";
+import { marksOwnAttendance } from "@/lib/permissions";
+import { attendanceDateBucket, reconcileStaleOpenDays } from "@/lib/attendance";
 import RevenueTrendChart from "./RevenueTrendChart";
 import InvoiceStatusChart from "./InvoiceStatusChart";
 import ThemeShell from "./ThemeShell";
+import StaffDashboard from "./StaffDashboard";
 import { ReceivableIcon, InvoiceIcon, CustomersIcon, OverdueIcon } from "@/components/icons";
 import "./dashboard.css";
 
@@ -19,6 +22,57 @@ function monthLabel(date: Date): string {
 export default async function DashboardPage() {
   const session = await getServerSession();
   const tenantId = session!.tenantId;
+  const userId = session!.userId;
+
+  // Owners get the financial overview below; everyone else (field/office staff who
+  // punch their own attendance) gets a personal dashboard instead -- they generally
+  // shouldn't be the audience for company-wide revenue/receivables anyway.
+  if (await marksOwnAttendance(tenantId, session!.roleId)) {
+    await reconcileStaleOpenDays(tenantId, userId);
+
+    const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+
+    const [user, today, monthRecords] = await Promise.all([
+      prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { name: true, email: true, photoData: true, role: true, roleRef: { select: { name: true } } },
+      }),
+      prisma.attendanceRecord.findUnique({
+        where: { tenantId_userId_date: { tenantId, userId, date: attendanceDateBucket() } },
+        include: { punches: { orderBy: { at: "asc" } }, breaks: { orderBy: { startAt: "asc" } } },
+      }),
+      prisma.attendanceRecord.findMany({
+        where: { tenantId, userId, date: { gte: monthStart } },
+      }),
+    ]);
+
+    const presentDays = monthRecords.filter((r) => r.status === "PRESENT").length;
+    const halfDays = monthRecords.filter((r) => r.status === "HALF_DAY").length;
+    const absentDays = monthRecords.filter((r) => r.status === "ABSENT").length;
+    const lateCount = monthRecords.filter((r) => r.isLate).length;
+    const totalHoursThisMonth = monthRecords.reduce((sum, r) => sum + Number(r.computedWorkHours ?? 0), 0);
+
+    return (
+      <StaffDashboard
+        user={{
+          name: user.name,
+          email: user.email,
+          photoData: user.photoData,
+          roleName: user.roleRef?.name ?? user.role.replace("_", " "),
+        }}
+        today={
+          today
+            ? {
+                status: today.status,
+                punches: today.punches.map((p) => ({ kind: p.kind, at: p.at.toISOString() })),
+                breaks: today.breaks.map((b) => ({ startAt: b.startAt.toISOString(), endAt: b.endAt ? b.endAt.toISOString() : null })),
+              }
+            : null
+        }
+        monthStats={{ presentDays, halfDays, absentDays, lateCount, totalHours: round2(totalHoursThisMonth) }}
+      />
+    );
+  }
 
   const [invoices, customers] = await Promise.all([
     prisma.invoice.findMany({

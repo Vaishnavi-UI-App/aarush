@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getLocation, resizePhotoToDataUrl } from "@/lib/capture";
+import { computeElapsedHours, formatHMS } from "@/lib/attendance-hours";
 import { CalendarCheckIcon, CameraIcon, AlertTriangleIcon } from "@/components/icons";
 
 interface PunchDTO {
@@ -44,35 +45,6 @@ export interface HistoryRecordDTO {
 interface SiteOption {
   id: string;
   name: string;
-}
-
-function computeElapsedHours(punches: PunchDTO[], breaks: BreakDTO[], now: number): number {
-  const sorted = [...punches].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  let workMs = 0;
-  let openStart: number | null = null;
-  for (const p of sorted) {
-    const t = new Date(p.at).getTime();
-    if (p.kind === "CHECK_IN") {
-      if (openStart === null) openStart = t;
-    } else if (openStart !== null) {
-      workMs += t - openStart;
-      openStart = null;
-    }
-  }
-  if (openStart !== null) workMs += Math.max(0, now - openStart);
-  const breakMs = breaks.reduce((sum, b) => sum + Math.max(0, (b.endAt ? new Date(b.endAt).getTime() : now) - new Date(b.startAt).getTime()), 0);
-  return Math.max(0, (workMs - breakMs) / 3_600_000);
-}
-
-/** hh:mm:ss ticking display for the live "worked today" timer -- a minute-only
- * granularity only visibly changes once a minute, which reads as frozen even though
- * the underlying value is recomputed every second. */
-function formatHMS(h: number): string {
-  const totalSeconds = Math.floor(h * 3600);
-  const hrs = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-  return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
 function statusPillClass(status: string) {

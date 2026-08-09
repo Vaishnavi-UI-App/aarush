@@ -145,6 +145,10 @@ model User {
   siteId       String?
   site         Site?    @relation("AssignedSiteUsers", fields: [siteId], references: [id])
   createdAt    DateTime @default(now())
+  // Self-service profile info, editable by the user themselves from /profile --
+  // distinct from tenant/role fields, which only an owner can change.
+  phone        String?
+  photoData    String? @db.Text
 
   passwordResetTokens   PasswordResetToken[]
   attendanceRecords     AttendanceRecord[]
@@ -344,6 +348,11 @@ model Customer {
   creditDays  Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  // Soft-delete only -- a customer can't be hard-deleted once it has any invoice
+  // against it (GST invoices must stay retrievable for audit), same reasoning as
+  // Item.archivedAt. Archived customers are hidden from pickers/lists but historical
+  // invoices/ledger entries keep working since they reference the row directly.
+  archivedAt  DateTime?
 
   invoices         Invoice[]
   payments         Payment[]

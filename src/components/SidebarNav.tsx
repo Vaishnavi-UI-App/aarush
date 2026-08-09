@@ -213,6 +213,9 @@ export default function SidebarNav({
           ))}
         </nav>
         <div className="afs-sidebar-footer">
+          <Link href="/profile" className={pathname.startsWith("/profile") ? "active" : ""} style={{ display: "block", marginBottom: 10 }}>
+            My Profile
+          </Link>
           <button onClick={logout} type="button">
             Sign out
           </button>
