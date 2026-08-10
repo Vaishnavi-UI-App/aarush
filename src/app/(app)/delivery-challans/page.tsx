@@ -2,18 +2,17 @@ import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
-import { ViewIcon, DownloadIcon, EditIcon } from "@/components/icons";
+import { ViewIcon } from "@/components/icons";
 import DeleteDeliveryChallanButton from "./DeleteDeliveryChallanButton";
 
 export default async function DeliveryChallansPage() {
   const session = await getServerSession();
-  const [challans, canEdit, canDelete] = await Promise.all([
+  const [challans, canDelete] = await Promise.all([
     prisma.deliveryChallan.findMany({
       where: { tenantId: session!.tenantId, archivedAt: null },
       include: { customer: { select: { name: true } }, lines: true },
       orderBy: { createdAt: "desc" },
     }),
-    can(session!.tenantId, session!.roleId, "deliveryChallans", "edit"),
     can(session!.tenantId, session!.roleId, "deliveryChallans", "delete"),
   ]);
 
@@ -63,20 +62,6 @@ export default async function DeliveryChallansPage() {
                         <Link href={`/delivery-challans/${c.id}`} className="afs-icon-btn view" title="View">
                           <ViewIcon />
                         </Link>
-                        <a
-                          href={`/api/delivery-challans/${c.id}/pdf`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="afs-icon-btn download"
-                          title="Download PDF"
-                        >
-                          <DownloadIcon />
-                        </a>
-                        {canEdit && (
-                          <Link href={`/delivery-challans/${c.id}/edit`} className="afs-icon-btn edit" title="Edit delivery challan">
-                            <EditIcon />
-                          </Link>
-                        )}
                         {canDelete && <DeleteDeliveryChallanButton challanId={c.id} challanNumber={c.number} />}
                       </div>
                     </td>

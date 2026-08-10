@@ -1,19 +1,23 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
 import NewSiteForm from "./NewSiteForm";
+import EditableSiteRow from "./EditableSiteRow";
 
 export default async function SitesPage() {
   const session = await getServerSession();
   if (!(await can(session!.tenantId, session!.roleId, "sites", "view"))) redirect("/dashboard");
 
-  const sites = await prisma.site.findMany({
-    where: { tenantId: session!.tenantId, archivedAt: null },
-    include: { wallet: true },
-    orderBy: { name: "asc" },
-  });
+  const [sites, canEdit, canDelete] = await Promise.all([
+    prisma.site.findMany({
+      where: { tenantId: session!.tenantId, archivedAt: null },
+      include: { wallet: true },
+      orderBy: { name: "asc" },
+    }),
+    can(session!.tenantId, session!.roleId, "sites", "edit"),
+    can(session!.tenantId, session!.roleId, "sites", "delete"),
+  ]);
 
   return (
     <div>
@@ -35,6 +39,7 @@ export default async function SitesPage() {
                 <th>Address</th>
                 <th>Company balance</th>
                 <th>Pending reimbursement</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -43,14 +48,18 @@ export default async function SitesPage() {
                   ? Number(s.wallet.totalPersonalSpent) - Number(s.wallet.totalPersonalReimbursed)
                   : 0;
                 return (
-                  <tr key={s.id}>
-                    <td data-label="Site">
-                      <Link href={`/sites/${s.id}`}>{s.name}</Link>
-                    </td>
-                    <td data-label="Address">{s.address || "—"}</td>
-                    <td data-label="Company balance">Rs. {Number(s.wallet?.companyBalance ?? 0).toFixed(2)}</td>
-                    <td data-label="Pending reimbursement">{pending > 0 ? `Rs. ${pending.toFixed(2)}` : "—"}</td>
-                  </tr>
+                  <EditableSiteRow
+                    key={s.id}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    site={{
+                      id: s.id,
+                      name: s.name,
+                      address: s.address,
+                      companyBalance: Number(s.wallet?.companyBalance ?? 0),
+                      pending,
+                    }}
+                  />
                 );
               })}
             </tbody>

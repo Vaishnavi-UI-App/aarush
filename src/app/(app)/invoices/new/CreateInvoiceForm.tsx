@@ -98,7 +98,7 @@ export default function CreateInvoiceForm({
   defaultCustomerId,
   editInvoiceId,
   initialValues,
-  sites,
+  sites: initialSites,
 }: {
   type: "SALE" | "PROFORMA";
   /** SALE only: same form/behavior as any other sale invoice, just prints "Service Tax
@@ -137,7 +137,12 @@ export default function CreateInvoiceForm({
   const [reverseCharge, setReverseCharge] = useState(initialValues?.reverseCharge ?? false);
   const [deliveredThrough, setDeliveredThrough] = useState(initialValues?.deliveredThrough ?? "");
   const [placeOfSupplySite, setPlaceOfSupplySite] = useState(initialValues?.placeOfSupplySite ?? "");
+  const [sites, setSites] = useState<Site[]>(initialSites);
   const [siteId, setSiteId] = useState(initialValues?.siteId ?? "");
+  const [showNewSiteForm, setShowNewSiteForm] = useState(false);
+  const [newSiteName, setNewSiteName] = useState("");
+  const [newSiteError, setNewSiteError] = useState<string | null>(null);
+  const [savingNewSite, setSavingNewSite] = useState(false);
   const [paymentTerms, setPaymentTerms] = useState(initialValues?.paymentTerms ?? "");
 
   const [shipToSameAsBilling, setShipToSameAsBilling] = useState(initialValues?.shipToSameAsBilling ?? true);
@@ -202,6 +207,39 @@ export default function CreateInvoiceForm({
     setShowNewItemForm(false);
     setNewItem({ name: "", description: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
     setNewItemError(null);
+  }
+
+  function cancelNewSite() {
+    setShowNewSiteForm(false);
+    setNewSiteName("");
+    setNewSiteError(null);
+  }
+
+  async function addSite() {
+    if (!newSiteName.trim()) {
+      setNewSiteError("Name is required");
+      return;
+    }
+    setSavingNewSite(true);
+    setNewSiteError(null);
+    try {
+      const res = await fetch("/api/sites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newSiteName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create site");
+      const created: Site = { id: data.id, name: data.name };
+      setSites((ss) => [...ss, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setSiteId(created.id);
+      cancelNewSite();
+      router.refresh();
+    } catch (e) {
+      setNewSiteError(e instanceof Error ? e.message : "Failed to create site");
+    } finally {
+      setSavingNewSite(false);
+    }
   }
 
   async function addItem() {
@@ -386,7 +424,16 @@ export default function CreateInvoiceForm({
           <input value={placeOfSupplySite} onChange={(e) => setPlaceOfSupplySite(e.target.value)} />
         </div>
         <div className="afs-form-field">
-          <label>Site</label>
+          <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            Site
+            <button
+              type="button"
+              onClick={() => setShowNewSiteForm((v) => !v)}
+              style={{ fontSize: 11.5, fontWeight: 400, color: "#2b5cb2", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              + New site
+            </button>
+          </label>
           <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
             <option value="">— none —</option>
             {sites.map((s) => (
@@ -395,6 +442,24 @@ export default function CreateInvoiceForm({
               </option>
             ))}
           </select>
+          {showNewSiteForm && (
+            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+              <input
+                autoFocus
+                value={newSiteName}
+                onChange={(e) => setNewSiteName(e.target.value)}
+                placeholder="New site name"
+                style={{ flex: 1 }}
+              />
+              <button type="button" onClick={addSite} disabled={savingNewSite} className="afs-btn afs-btn-primary" style={{ padding: "4px 10px", fontSize: 12 }}>
+                {savingNewSite ? "Adding…" : "Add"}
+              </button>
+              <button type="button" onClick={cancelNewSite} disabled={savingNewSite} className="afs-btn" style={{ padding: "4px 10px", fontSize: 12, background: "#e5e7eb", color: "#333" }}>
+                Cancel
+              </button>
+            </div>
+          )}
+          {newSiteError && <div style={{ color: "#b91c1c", fontSize: 11.5, marginTop: 4 }}>{newSiteError}</div>}
         </div>
         <div className="afs-form-field">
           <label>Payment Terms</label>

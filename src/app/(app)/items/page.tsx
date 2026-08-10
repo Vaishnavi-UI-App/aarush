@@ -26,6 +26,7 @@ export default async function ItemsPage() {
           <table className="afs-table">
             <thead>
               <tr>
+                <th style={{ width: 50 }}>Sr. No.</th>
                 <th>Name</th>
                 <th>Description</th>
                 <th>HSN/SAC</th>
@@ -37,9 +38,10 @@ export default async function ItemsPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((i) => (
+              {items.map((i, idx) => (
                 <EditableItemRow
                   key={i.id}
+                  srNo={idx + 1}
                   item={{
                     id: i.id,
                     name: i.name,

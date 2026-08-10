@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { COMMON_UNITS } from "@/lib/units";
-import { EditIcon } from "@/components/icons";
+import { EditIcon, PlusIcon } from "@/components/icons";
 import DeleteItemButton from "./DeleteItemButton";
 
 interface Item {
@@ -17,7 +17,7 @@ interface Item {
   currentStock: number;
 }
 
-export default function EditableItemRow({ item }: { item: Item }) {
+export default function EditableItemRow({ item, srNo }: { item: Item; srNo: number }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -31,8 +31,44 @@ export default function EditableItemRow({ item }: { item: Item }) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [addingStock, setAddingStock] = useState(false);
+  const [stockQty, setStockQty] = useState("");
+  const [stockError, setStockError] = useState<string | null>(null);
+  const [savingStock, setSavingStock] = useState(false);
+
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function cancelAddStock() {
+    setAddingStock(false);
+    setStockQty("");
+    setStockError(null);
+  }
+
+  async function saveAddStock() {
+    const qty = Number(stockQty);
+    if (!Number.isFinite(qty) || qty === 0) {
+      setStockError("Enter a non-zero quantity");
+      return;
+    }
+    setSavingStock(true);
+    setStockError(null);
+    try {
+      const res = await fetch(`/api/items/${item.id}/add-stock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qty }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update stock");
+      cancelAddStock();
+      router.refresh();
+    } catch (e) {
+      setStockError(e instanceof Error ? e.message : "Failed to update stock");
+    } finally {
+      setSavingStock(false);
+    }
   }
 
   function cancel() {
@@ -78,6 +114,7 @@ export default function EditableItemRow({ item }: { item: Item }) {
   if (editing) {
     return (
       <tr>
+        <td data-label="Sr. No.">{srNo}</td>
         <td data-label="Name">
           <input value={form.name} onChange={(e) => set("name", e.target.value)} />
         </td>
@@ -128,6 +165,7 @@ export default function EditableItemRow({ item }: { item: Item }) {
 
   return (
     <tr>
+      <td data-label="Sr. No.">{srNo}</td>
       <td data-label="Name">{item.name}</td>
       <td data-label="Description" style={{ color: item.description ? undefined : "#aab" }}>
         {item.description || "—"}
@@ -137,7 +175,32 @@ export default function EditableItemRow({ item }: { item: Item }) {
       <td data-label="Sale price">Rs. {item.salePrice.toFixed(2)}</td>
       <td data-label="Tax rate">{item.taxRate.toFixed(2)}%</td>
       <td data-label="Stock on hand">
-        {item.currentStock <= 0 ? <span className="afs-badge afs-badge-overdue">Out of stock</span> : `${item.currentStock} ${item.unit}`}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          {item.currentStock <= 0 ? <span className="afs-badge afs-badge-overdue">Out of stock</span> : `${item.currentStock} ${item.unit}`}
+          <button type="button" onClick={() => setAddingStock((v) => !v)} title="Add stock" className="afs-icon-btn success" style={{ width: 20, height: 20 }}>
+            <PlusIcon />
+          </button>
+        </div>
+        {addingStock && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+            <input
+              autoFocus
+              type="number"
+              step="0.001"
+              value={stockQty}
+              onChange={(e) => setStockQty(e.target.value)}
+              placeholder={`Qty (${item.unit})`}
+              style={{ width: 90 }}
+            />
+            <button type="button" onClick={saveAddStock} disabled={savingStock} className="afs-btn afs-btn-primary" style={{ padding: "4px 8px", fontSize: 11.5 }}>
+              {savingStock ? "…" : "Add"}
+            </button>
+            <button type="button" onClick={cancelAddStock} disabled={savingStock} className="afs-btn" style={{ padding: "4px 8px", fontSize: 11.5, background: "#e5e7eb", color: "#333" }}>
+              Cancel
+            </button>
+          </div>
+        )}
+        {stockError && <div style={{ color: "#b91c1c", fontSize: 11 }}>{stockError}</div>}
       </td>
       <td>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
