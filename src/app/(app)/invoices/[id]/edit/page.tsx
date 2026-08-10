@@ -15,7 +15,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const [invoice, tenant, customers, items, sites] = await Promise.all([
     prisma.invoice.findFirst({
       where: { id, tenantId: session!.tenantId },
-      include: { lines: true, customer: true, payments: true },
+      include: { lines: { orderBy: { srNo: "asc" } }, customer: true, payments: true },
     }),
     prisma.tenant.findUniqueOrThrow({ where: { id: session!.tenantId } }),
     // Not filtered by archivedAt: unlike the create-new-invoice picker, this page can be
@@ -101,6 +101,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             shipToStateCode: invoice.shipToStateCode ?? "",
             lines: invoice.lines.map((l) => ({
               itemId: l.itemId ?? "",
+              srNo: l.srNo ?? undefined,
               description: l.description,
               detail: l.detail ?? "",
               hsnCode: l.hsnCode,

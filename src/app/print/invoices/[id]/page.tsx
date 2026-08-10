@@ -14,7 +14,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
   const [invoice, tenant] = await Promise.all([
     prisma.invoice.findFirst({
       where: { id, tenantId: session.tenantId },
-      include: { lines: true, customer: true, site: true },
+      include: { lines: { orderBy: { srNo: "asc" } }, customer: true, site: true },
     }),
     prisma.tenant.findUniqueOrThrow({ where: { id: session.tenantId } }),
   ]);

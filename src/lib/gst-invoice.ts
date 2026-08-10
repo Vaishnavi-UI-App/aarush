@@ -60,7 +60,7 @@ export function computeInvoiceLines(lines: InvoiceLineInput[], sellerStateCode: 
   let sgstTotal = 0;
   let igstTotal = 0;
 
-  const lineData = lines.map((line) => {
+  const lineData = lines.map((line, i) => {
     const taxableValue = round2(line.qty * line.rate);
     const split = calculateTaxSplit(taxableValue, line.taxRate, sellerStateCode, buyerStateCode);
     const lineTotal = round2(taxableValue + split.cgst + split.sgst + split.igst);
@@ -72,7 +72,11 @@ export function computeInvoiceLines(lines: InvoiceLineInput[], sellerStateCode: 
 
     return {
       itemId: line.itemId,
-      srNo: line.srNo,
+      // Always persist a concrete value -- a caller that doesn't set one (the common
+      // case) still gets its position in this exact save, so re-fetching with
+      // `orderBy: { srNo: "asc" }` reproduces the order it was submitted in instead of
+      // whatever order Postgres happens to hand back rows in with no explicit sort.
+      srNo: line.srNo ?? i + 1,
       description: line.description,
       detail: line.detail,
       hsnCode: line.hsnCode,

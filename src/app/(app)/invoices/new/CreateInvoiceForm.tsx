@@ -30,6 +30,10 @@ interface Item {
 
 interface Line {
   itemId: string;
+  /** Overrides the printed Sr.No -- see the schema comment on InvoiceLine.srNo. Carried
+   * through untouched on every save; this form has no UI to edit it, so it must never be
+   * dropped just because some *other* field on the invoice changed. */
+  srNo?: number;
   /** What's typed/shown in the searchable item picker -- not sent to the server. Kept in
    * sync with itemId when a catalog item is picked, but free-typed otherwise so the field
    * doesn't fight the user while they're searching. */
@@ -280,6 +284,7 @@ export default function CreateInvoiceForm({
         shipToStateCode: shipToSameAsBilling ? undefined : shipToStateCode || undefined,
         lines: lines.map((l) => ({
           itemId: l.itemId || undefined,
+          srNo: l.srNo,
           description: l.description,
           detail: l.detail || undefined,
           hsnCode: l.hsnCode,

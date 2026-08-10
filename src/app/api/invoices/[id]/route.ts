@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const invoice = await prisma.invoice.findFirst({
     where: { id, tenantId: session.tenantId },
     include: {
-      lines: true,
+      lines: { orderBy: { srNo: "asc" } },
       customer: true,
       payments: true,
     },

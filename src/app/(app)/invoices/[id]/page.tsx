@@ -19,7 +19,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const [invoice, tenant, isOwner] = await Promise.all([
     prisma.invoice.findFirst({
       where: { id, tenantId: session!.tenantId },
-      include: { lines: true, customer: true, payments: true, site: true },
+      include: { lines: { orderBy: { srNo: "asc" } }, customer: true, payments: true, site: true },
     }),
     prisma.tenant.findUniqueOrThrow({ where: { id: session!.tenantId } }),
     canManageUsers(session!.tenantId, session!.roleId),
