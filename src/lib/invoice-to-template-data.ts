@@ -16,7 +16,7 @@ function formatDate(d: Date): string {
  * invoice, so every real invoice a tenant raises prints in that same layout. */
 export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Tenant): InvoiceData {
   const items: InvoiceLineItem[] = invoice.lines.map((line, i) => ({
-    srNo: i + 1,
+    srNo: line.srNo ?? i + 1,
     name: line.description,
     description: line.detail ?? undefined,
     hsnSac: line.hsnCode,

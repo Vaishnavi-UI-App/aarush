@@ -39,6 +39,9 @@ export function calculateTaxSplit(
 
 export interface InvoiceLineInput {
   itemId?: string;
+  /** Overrides the printed Sr.No -- see the schema comment on InvoiceLine.srNo. Omit for
+   * the default (line's position in the array, 1/2/3...). */
+  srNo?: number;
   description: string;
   /** Smaller second line printed under the description on the invoice. */
   detail?: string;
@@ -69,6 +72,7 @@ export function computeInvoiceLines(lines: InvoiceLineInput[], sellerStateCode: 
 
     return {
       itemId: line.itemId,
+      srNo: line.srNo,
       description: line.description,
       detail: line.detail,
       hsnCode: line.hsnCode,
@@ -469,6 +473,7 @@ export async function convertProformaToSale(tenantId: string, proformaId: string
     conversionNote: conversionNote?.trim() || undefined,
     lines: proforma.lines.map((l) => ({
       itemId: l.itemId ?? undefined,
+      srNo: l.srNo ?? undefined,
       description: l.description,
       detail: l.detail ?? undefined,
       hsnCode: l.hsnCode,

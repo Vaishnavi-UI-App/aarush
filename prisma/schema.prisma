@@ -587,6 +587,11 @@ model InvoiceLine {
   itemId    String?
   item      Item?   @relation(fields: [itemId], references: [id])
 
+  // Overrides the printed Sr.No (default is just the line's position, 1/2/3...) --
+  // needed when an invoice's lines must cross-reference a source document (e.g. a
+  // customer's quotation) whose own numbering has gaps, so the printed invoice still
+  // matches the row numbers the customer is already looking at side by side with it.
+  srNo         Int?
   description  String
   // Smaller second line printed under the description (see Item.description above) --
   // kept as a separate column rather than folded into `description` so a line can carry
