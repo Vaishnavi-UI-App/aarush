@@ -1,4 +1,5 @@
 import { InvoiceData } from "@/lib/invoice-types";
+import { MailIcon, PhoneIcon } from "@/components/icons";
 
 function money(n: number): string {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -38,7 +39,9 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
                   {seller.addressLines.map((line, i) => (
                     <div key={i}>{line}</div>
                   ))}
-                  <div>&#9742; {seller.phone} &#9993; {seller.email}</div>
+                  <div className="contact-line">
+                    <PhoneIcon size={11} /> {seller.phone} <MailIcon size={11} /> {seller.email}
+                  </div>
                   <div>GSTIN : <b>{seller.gstin}</b> <span className="state-badge">State Code : {seller.stateCode}</span></div>
                   <div>PAN : <b>{seller.pan}</b></div>
                   {seller.cinNo && <div>CIN : <b>{seller.cinNo}</b></div>}

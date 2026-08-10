@@ -147,6 +147,17 @@ table {
   line-height: 1.35;
 }
 
+.contact-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.contact-line svg {
+  flex-shrink: 0;
+}
+
 .state-badge {
   border: 1px solid #000;
   padding: 0 4px;
