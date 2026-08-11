@@ -5,6 +5,7 @@ import { can } from "@/lib/permissions";
 import { BankIcon, ArrowUpIcon, ArrowDownIcon, HelpCircleIcon } from "@/components/icons";
 import FundSiteForm from "./FundSiteForm";
 import SiteHistoryTable, { HistoryEntry } from "./SiteHistoryTable";
+import SiteLocationMapLoader from "./SiteLocationMapLoader";
 import "./site-detail.css";
 
 export default async function SiteDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,6 +34,7 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
   ]);
   if (!site) notFound();
 
+  const canEditSite = canEditFund;
   const wallet = site.wallet;
   const pending = wallet ? Number(wallet.totalPersonalSpent) - Number(wallet.totalPersonalReimbursed) : 0;
 
@@ -110,6 +112,18 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
       </div>
+
+      {canEditSite && (
+        <div className="afs-card" style={{ marginBottom: 20 }}>
+          <div className="sd-history-title">Location &amp; Geofence</div>
+          <SiteLocationMapLoader
+            siteId={site.id}
+            initialLat={site.latitude != null ? Number(site.latitude) : null}
+            initialLng={site.longitude != null ? Number(site.longitude) : null}
+            initialRadiusM={site.geofenceRadiusM}
+          />
+        </div>
+      )}
 
       <div className="afs-card" style={{ marginBottom: 20 }}>
         <FundSiteForm siteId={site.id} />

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { formatRelative } from "@/lib/capture";
-import type { StaffPoint } from "./TrackMap";
+import type { StaffPoint, SitePoint } from "./TrackMap";
 
 const TrackMap = dynamic(() => import("./TrackMap"), { ssr: false, loading: () => <div className="afs-empty">Loading map…</div> });
 
@@ -79,10 +79,18 @@ export default function TrackView({ staff, sites }: { staff: StaffPing[]; sites:
     [rows]
   );
 
+  const sitePoints: SitePoint[] = useMemo(
+    () =>
+      sites
+        .filter((s) => s.latitude != null && s.longitude != null)
+        .map((s) => ({ id: s.id, name: s.name, lat: Number(s.latitude), lng: Number(s.longitude) })),
+    [sites]
+  );
+
   return (
     <div>
-      <div className="afs-card" style={{ marginBottom: 20, padding: 0, overflow: "hidden" }}>
-        <TrackMap staff={staffPoints} />
+      <div className="afs-card" style={{ marginBottom: 20, padding: 16 }}>
+        <TrackMap staff={staffPoints} sites={sitePoints} />
       </div>
 
       <div className="afs-card" style={{ marginBottom: 20, padding: 16 }}>
