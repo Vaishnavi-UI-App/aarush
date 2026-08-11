@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircleIcon, EditIcon, MailIcon, TrashIcon, XCircleIcon } from "@/components/icons";
 
@@ -115,7 +116,7 @@ export default function UserRow({ user, roles, sites, isSelf }: { user: User; ro
         {editingName ? (
           <input value={name} onChange={(e) => setName(e.target.value)} disabled={busy} autoFocus style={{ minWidth: 120 }} />
         ) : (
-          user.name || "—"
+          <Link href={`/settings/users/${user.id}`}>{user.name || "—"}</Link>
         )}
       </td>
       <td data-label="Email">{user.email}</td>
