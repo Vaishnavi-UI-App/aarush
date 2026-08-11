@@ -9,6 +9,7 @@ interface Site {
   id: string;
   name: string;
   address: string | null;
+  pincode: string | null;
   companyBalance: number;
   pending: number;
 }
@@ -16,8 +17,9 @@ interface Site {
 export default function EditableSiteRow({ site, canEdit, canDelete }: { site: Site; canEdit: boolean; canDelete: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ name: site.name, address: site.address ?? "" });
+  const [form, setForm] = useState({ name: site.name, address: site.address ?? "", pincode: site.pincode ?? "" });
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -26,14 +28,16 @@ export default function EditableSiteRow({ site, canEdit, canDelete }: { site: Si
   }
 
   function cancel() {
-    setForm({ name: site.name, address: site.address ?? "" });
+    setForm({ name: site.name, address: site.address ?? "", pincode: site.pincode ?? "" });
     setError(null);
+    setNotice(null);
     setEditing(false);
   }
 
   async function save() {
     setSaving(true);
     setError(null);
+    setNotice(null);
     try {
       const res = await fetch(`/api/sites/${site.id}`, {
         method: "PATCH",
@@ -42,6 +46,10 @@ export default function EditableSiteRow({ site, canEdit, canDelete }: { site: Si
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save site");
+      const pincodeChanged = form.pincode !== (site.pincode ?? "");
+      if (pincodeChanged && form.pincode) {
+        setNotice(data.latitude != null ? "Location updated on the map from the new pincode." : "Couldn't locate that pincode on the map -- set it manually from the site page if needed.");
+      }
       setEditing(false);
       router.refresh();
     } catch (e) {
@@ -76,6 +84,9 @@ export default function EditableSiteRow({ site, canEdit, canDelete }: { site: Si
         <td data-label="Address">
           <input value={form.address} onChange={(e) => set("address", e.target.value)} />
         </td>
+        <td data-label="Pincode">
+          <input value={form.pincode} onChange={(e) => set("pincode", e.target.value)} maxLength={10} style={{ width: 90 }} />
+        </td>
         <td data-label="Company balance">Rs. {site.companyBalance.toFixed(2)}</td>
         <td data-label="Pending reimbursement">{site.pending > 0 ? `Rs. ${site.pending.toFixed(2)}` : "—"}</td>
         <td>
@@ -99,10 +110,11 @@ export default function EditableSiteRow({ site, canEdit, canDelete }: { site: Si
         <Link href={`/sites/${site.id}`}>{site.name}</Link>
       </td>
       <td data-label="Address">{site.address || "—"}</td>
+      <td data-label="Pincode">{site.pincode || "—"}</td>
       <td data-label="Company balance">Rs. {site.companyBalance.toFixed(2)}</td>
       <td data-label="Pending reimbursement">{site.pending > 0 ? `Rs. ${site.pending.toFixed(2)}` : "—"}</td>
       <td>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {canEdit && (
             <button type="button" onClick={() => setEditing(true)} title="Edit site" className="afs-icon-btn edit">
               <EditIcon />
@@ -114,6 +126,7 @@ export default function EditableSiteRow({ site, canEdit, canDelete }: { site: Si
             </button>
           )}
           {error && <span style={{ color: "#b91c1c", fontSize: 11 }}>{error}</span>}
+          {notice && !error && <span style={{ color: "#14532d", fontSize: 11 }}>{notice}</span>}
         </div>
       </td>
     </tr>

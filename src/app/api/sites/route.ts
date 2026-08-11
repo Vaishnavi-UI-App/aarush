@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
+import { geocodeSiteLocation, PINCODE_GEOFENCE_RADIUS_M } from "@/lib/reverse-geocode";
 
 export async function GET(request: NextRequest) {
   let session;
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   const sites = await prisma.site.findMany({
     where: { tenantId: session.tenantId, archivedAt: null },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, address: true },
+    select: { id: true, name: true, address: true, pincode: true },
   });
 
   return NextResponse.json(sites);
@@ -40,15 +41,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
+  const pincode = body.pincode ? String(body.pincode).trim() : null;
+  const geocoded = await geocodeSiteLocation(pincode, body.address);
+
   const site = await prisma.site.create({
     data: {
       tenantId: session.tenantId,
       name: body.name,
       address: body.address || null,
+      pincode,
+      latitude: geocoded?.lat ?? null,
+      longitude: geocoded?.lng ?? null,
+      geofenceRadiusM: geocoded ? PINCODE_GEOFENCE_RADIUS_M : null,
       wallet: { create: {} },
     },
     include: { wallet: true },
   });
 
-  return NextResponse.json(site, { status: 201 });
+  return NextResponse.json({ ...site, geocodeFailed: !!pincode && !geocoded }, { status: 201 });
 }

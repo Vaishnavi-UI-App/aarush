@@ -900,6 +900,10 @@ model Site {
   tenant     Tenant    @relation(fields: [tenantId], references: [id])
   name       String
   address    String?
+  // When set, a new/edited site is auto-located on the map from this (geocoded server-side)
+  // instead of requiring the admin to search/click the map manually -- see POST/PATCH
+  // /api/sites.
+  pincode    String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   archivedAt DateTime? // soft-delete, same convention as Invoice/Purchase/DeliveryChallan

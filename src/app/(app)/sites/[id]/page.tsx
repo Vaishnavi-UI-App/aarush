@@ -70,7 +70,9 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
   return (
     <div>
       <h1 className="afs-page-title">{site.name}</h1>
-      <p className="afs-page-subtitle">{site.address || "No address on file"}</p>
+      <p className="afs-page-subtitle">
+        {[site.address, site.pincode].filter(Boolean).join(" - ") || "No address on file"}
+      </p>
 
       <div className="sd-stat-grid">
         <div className="sd-stat-card">
@@ -121,7 +123,7 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
             initialLat={site.latitude != null ? Number(site.latitude) : null}
             initialLng={site.longitude != null ? Number(site.longitude) : null}
             initialRadiusM={site.geofenceRadiusM}
-            defaultSearchQuery={site.address ? `${site.name}, ${site.address}` : site.name}
+            defaultSearchQuery={[site.name, site.address, site.pincode].filter(Boolean).join(", ")}
           />
         </div>
       )}

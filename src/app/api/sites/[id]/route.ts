@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
+import { geocodeSiteLocation, PINCODE_GEOFENCE_RADIUS_M } from "@/lib/reverse-geocode";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -63,7 +64,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     data.address = body.address || null;
   }
 
-  if ("latitude" in body || "longitude" in body || "geofenceRadiusM" in body) {
+  const pincodeChanged = body.pincode !== undefined && String(body.pincode || "").trim() !== (existing.pincode ?? "");
+  if (body.pincode !== undefined) {
+    data.pincode = body.pincode ? String(body.pincode).trim() : null;
+  }
+
+  // Only auto-geocode from the pincode when the caller isn't also setting an explicit
+  // lat/lng in this same request -- the site's own Location & Geofence map (search/click/
+  // drag) always wins over a pincode-derived guess, never gets silently overwritten by it.
+  const explicitLocationInBody = "latitude" in body || "longitude" in body || "geofenceRadiusM" in body;
+  if (pincodeChanged && !explicitLocationInBody) {
+    const geocoded = body.pincode ? await geocodeSiteLocation(String(body.pincode), (data.address as string | null) ?? existing.address) : null;
+    data.latitude = geocoded?.lat ?? null;
+    data.longitude = geocoded?.lng ?? null;
+    data.geofenceRadiusM = geocoded ? PINCODE_GEOFENCE_RADIUS_M : null;
+  }
+
+  if (explicitLocationInBody) {
     const { latitude, longitude, geofenceRadiusM } = body;
     // All three null together clears the geofence; otherwise all three are required so
     // a half-configured geofence (e.g. a radius with no coordinates) can't be saved.

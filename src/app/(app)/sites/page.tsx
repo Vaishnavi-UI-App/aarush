@@ -37,6 +37,7 @@ export default async function SitesPage() {
               <tr>
                 <th>Site</th>
                 <th>Address</th>
+                <th>Pincode</th>
                 <th>Company balance</th>
                 <th>Pending reimbursement</th>
                 <th>Action</th>
@@ -56,6 +57,7 @@ export default async function SitesPage() {
                       id: s.id,
                       name: s.name,
                       address: s.address,
+                      pincode: s.pincode,
                       companyBalance: Number(s.wallet?.companyBalance ?? 0),
                       pending,
                     }}

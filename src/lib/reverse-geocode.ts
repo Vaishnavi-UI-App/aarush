@@ -73,3 +73,17 @@ export async function geocodeAddress(query: string): Promise<{ lat: number; lng:
     return null;
   }
 }
+
+/** A pincode covers a whole postal area, not one building, so a pincode-geocoded location
+ * gets a deliberately loose geofence -- an admin can tighten it later from the site's own
+ * Location & Geofence map (which sets an exact point + radius via search/click/drag). */
+export const PINCODE_GEOFENCE_RADIUS_M = 1000;
+
+/** Builds the best available geocoding query for a site from whatever it has on file --
+ * pincode is the most specific single field, so it leads; address adds context when
+ * present. Returns null when there's nothing to geocode from. */
+export async function geocodeSiteLocation(pincode: string | null | undefined, address: string | null | undefined) {
+  const parts = [address?.trim(), pincode?.trim(), "India"].filter(Boolean);
+  if (!pincode?.trim()) return null;
+  return geocodeAddress(parts.join(", "));
+}
