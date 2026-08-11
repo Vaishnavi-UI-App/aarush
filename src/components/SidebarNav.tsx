@@ -120,6 +120,13 @@ const icons: Record<string, ReactNode> = {
       <circle cx="17" cy="19" r="1.6" />
     </Icon>
   ),
+  "/payroll": (
+    <Icon>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M6 9v.01M18 15v.01" />
+    </Icon>
+  ),
   "/settings/users": (
     <Icon>
       <circle cx="12" cy="12" r="3" />
@@ -147,6 +154,7 @@ const links: { href: string; label: string; pages?: PageKey[]; ownerOnly?: boole
   { href: "/reports/ageing", label: "Ageing Report", pages: ["ageing"] },
   { href: "/attendance", label: "Attendance", pages: ["myAttendance", "allAttendance"] },
   { href: "/expenses", label: "Expenses", pages: ["expenses"] },
+  { href: "/payroll", label: "Payroll", ownerOnly: true },
   { href: "/sites", label: "Sites", pages: ["sites"] },
   { href: "/track", label: "Track", pages: ["track"] },
   { href: "/settings/users", label: "Settings", ownerOnly: true },
