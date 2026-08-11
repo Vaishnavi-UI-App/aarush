@@ -35,9 +35,35 @@ export default function EditableSiteRow({ site, canEdit, canDelete }: { site: Si
   }
 
   async function save() {
-    setSaving(true);
     setError(null);
     setNotice(null);
+
+    // No <form> wraps this row (Save is a plain button, not a submit), so HTML's
+    // `required` attribute never actually fires here -- enforce it in JS instead.
+    if (form.address.trim() && !form.pincode.trim()) {
+      setError("Pincode is required once an address is set");
+      return;
+    }
+
+    if (form.address.trim() && form.pincode.trim()) {
+      try {
+        const res = await fetch(
+          `/api/geocode/validate-pincode?address=${encodeURIComponent(form.address.trim())}&pincode=${encodeURIComponent(form.pincode.trim())}`
+        );
+        const check = await res.json();
+        if (res.ok && check.valid === false) {
+          setError(
+            `Pincode ${form.pincode.trim()} doesn't look like it belongs to "${form.address.trim()}"` +
+              (check.resolvedCity ? ` -- that pincode resolves to ${check.resolvedCity}.` : ".")
+          );
+          return;
+        }
+      } catch {
+        // Validation service unreachable -- don't block saving on that alone.
+      }
+    }
+
+    setSaving(true);
     try {
       const res = await fetch(`/api/sites/${site.id}`, {
         method: "PATCH",
@@ -85,7 +111,13 @@ export default function EditableSiteRow({ site, canEdit, canDelete }: { site: Si
           <input value={form.address} onChange={(e) => set("address", e.target.value)} />
         </td>
         <td data-label="Pincode">
-          <input value={form.pincode} onChange={(e) => set("pincode", e.target.value)} maxLength={10} style={{ width: 90 }} />
+          <input
+            required={!!form.address.trim()}
+            value={form.pincode}
+            onChange={(e) => set("pincode", e.target.value)}
+            maxLength={10}
+            style={{ width: 90 }}
+          />
         </td>
         <td data-label="Company balance">Rs. {site.companyBalance.toFixed(2)}</td>
         <td data-label="Pending reimbursement">{site.pending > 0 ? `Rs. ${site.pending.toFixed(2)}` : "—"}</td>

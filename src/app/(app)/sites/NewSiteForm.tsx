@@ -22,16 +22,63 @@ export default function NewSiteForm() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [checkingPincode, setCheckingPincode] = useState(false);
+  const [autoFillingPincode, setAutoFillingPincode] = useState(false);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  async function onAddressBlur() {
+    if (!form.address.trim() || form.pincode.trim()) return;
+    setAutoFillingPincode(true);
+    try {
+      const res = await fetch(`/api/geocode/pincode-for-address?address=${encodeURIComponent(form.address.trim())}`);
+      const data = await res.json();
+      if (res.ok && data.pincode) {
+        setForm((f) => (f.pincode.trim() ? f : { ...f, pincode: data.pincode }));
+        setNotice(`Pincode ${data.pincode} auto-filled from the address -- check it's correct.`);
+      }
+    } catch {
+      // Best-effort auto-fill -- the admin can still type the pincode manually.
+    } finally {
+      setAutoFillingPincode(false);
+    }
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setError(null);
     setNotice(null);
+
+    // A dropped pin is the most precise thing the admin can give us, so it overrides the
+    // pincode-vs-city cross-check entirely -- there's nothing more authoritative to
+    // validate it against.
+    if (!pickedLocation && form.address.trim() && form.pincode.trim()) {
+      setCheckingPincode(true);
+      try {
+        const res = await fetch(
+          `/api/geocode/validate-pincode?address=${encodeURIComponent(form.address.trim())}&pincode=${encodeURIComponent(form.pincode.trim())}`
+        );
+        const check = await res.json();
+        if (res.ok && check.valid === false) {
+          setError(
+            `Pincode ${form.pincode.trim()} doesn't look like it belongs to "${form.address.trim()}"` +
+              (check.resolvedCity ? ` -- that pincode resolves to ${check.resolvedCity}.` : ".") +
+              " Double-check it, or pin the exact location on the map instead."
+          );
+          setCheckingPincode(false);
+          return;
+        }
+      } catch {
+        // Validation service being unreachable shouldn't block adding the site -- fall
+        // through and let the pincode-based geocoding on the server do its best.
+      } finally {
+        setCheckingPincode(false);
+      }
+    }
+
+    setSaving(true);
     try {
       const res = await fetch("/api/sites", {
         method: "POST",
@@ -63,6 +110,8 @@ export default function NewSiteForm() {
     }
   }
 
+  const pincodeRequired = !!form.address.trim();
+
   return (
     <form onSubmit={onSubmit}>
       <div className="afs-form-row">
@@ -72,16 +121,17 @@ export default function NewSiteForm() {
         </div>
         <div className="afs-form-field">
           <label>Address</label>
-          <input value={form.address} onChange={(e) => set("address", e.target.value)} />
+          <input value={form.address} onChange={(e) => set("address", e.target.value)} onBlur={onAddressBlur} />
         </div>
         <div className="afs-form-field">
-          <label>Pincode</label>
+          <label>Pincode {pincodeRequired && "*"}</label>
           <input
+            required={pincodeRequired}
             value={form.pincode}
             onChange={(e) => set("pincode", e.target.value)}
-            placeholder="e.g. 411017"
+            placeholder={autoFillingPincode ? "Looking up…" : "e.g. 411017"}
             maxLength={10}
-            title="Used to automatically place this site on the map"
+            title="Must match the city in the address -- used to place this site on the map"
           />
         </div>
       </div>
@@ -107,8 +157,8 @@ export default function NewSiteForm() {
 
       {error && <div style={{ color: "#b91c1c", fontSize: 13, marginBottom: 10 }}>{error}</div>}
       {notice && !error && <div style={{ color: "#14532d", fontSize: 13, marginBottom: 10 }}>{notice}</div>}
-      <button type="submit" disabled={saving} className="afs-btn afs-btn-primary">
-        {saving ? "Adding…" : "+ Add Site"}
+      <button type="submit" disabled={saving || checkingPincode} className="afs-btn afs-btn-primary">
+        {checkingPincode ? "Checking pincode…" : saving ? "Adding…" : "+ Add Site"}
       </button>
     </form>
   );
