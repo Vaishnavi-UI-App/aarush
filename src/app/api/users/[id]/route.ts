@@ -21,6 +21,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (body.siteId !== undefined && body.siteId !== null && typeof body.siteId !== "string") {
     return NextResponse.json({ error: "siteId must be a string or null" }, { status: 400 });
   }
+  if (body.monthlySalary !== undefined && body.monthlySalary !== null && !(typeof body.monthlySalary === "number" && body.monthlySalary >= 0)) {
+    return NextResponse.json({ error: "monthlySalary must be a non-negative number or null" }, { status: 400 });
+  }
 
   const role = await prisma.role.findFirst({ where: { id: body.roleId, tenantId: session.tenantId } });
   if (!role) {
@@ -47,8 +50,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       roleId: role.id,
       name: typeof body.name === "string" ? body.name : undefined,
       siteId: body.siteId !== undefined ? body.siteId || null : undefined,
+      monthlySalary: body.monthlySalary !== undefined ? body.monthlySalary : undefined,
     },
-    select: { id: true, name: true, email: true, roleId: true, roleRef: { select: { name: true } }, siteId: true, site: { select: { name: true } }, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      roleId: true,
+      roleRef: { select: { name: true } },
+      siteId: true,
+      site: { select: { name: true } },
+      createdAt: true,
+      monthlySalary: true,
+    },
   });
 
   return NextResponse.json(user);

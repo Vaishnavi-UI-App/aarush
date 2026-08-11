@@ -23,6 +23,7 @@ export default async function SettingsUsersPage() {
         siteId: true,
         site: { select: { name: true } },
         createdAt: true,
+        monthlySalary: true,
       },
     }),
     prisma.role.findMany({
@@ -63,6 +64,7 @@ export default async function SettingsUsersPage() {
               <th>Email</th>
               <th>Role</th>
               <th>Site</th>
+              <th>Monthly Salary</th>
               <th>Added</th>
               <th>Action</th>
             </tr>
@@ -79,6 +81,7 @@ export default async function SettingsUsersPage() {
                   roleName: u.roleRef?.name ?? "—",
                   siteId: u.siteId,
                   createdAt: u.createdAt,
+                  monthlySalary: u.monthlySalary != null ? Number(u.monthlySalary) : null,
                 }}
                 roles={roles}
                 sites={sites}

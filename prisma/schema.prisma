@@ -64,8 +64,36 @@ model Tenant {
   roles                   Role[]
   shiftConfigs            ShiftConfig[]
   attendanceAuditLogs     AttendanceAuditLog[]
+  companyDocuments        CompanyDocument[]
 
   @@map("tenants")
+}
+
+// Arbitrary company files (policy letters, letterhead, certificates...) an owner/admin
+// uploads from Settings > Organization Details -- no downstream FK from anything else in
+// the app, just a titled file with a hard-delete, unlike the invoice/customer/item soft-
+// delete convention which exists because *other* records reference those.
+model CompanyDocument {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  title    String
+  fileName String
+  mimeType String
+  fileSize Int
+  // Stored as base64 like User.photoData/Tenant.logoUrl elsewhere in this app -- no
+  // object storage (S3 etc.) is set up, so this keeps the pattern consistent rather than
+  // introducing a second storage mechanism for one feature.
+  fileData String @db.Text
+
+  uploadedById String?
+  uploadedBy   User?  @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("company_documents")
 }
 
 enum UserRole {
@@ -157,6 +185,11 @@ model User {
   bankAccountNo   String?
   bankIfsc        String?
   bankName        String?
+  // Admin-only, unlike phone/photo/KYC above -- an employee editing their own salary
+  // through the self-service profile route would be an obvious problem, so this is only
+  // ever written from Settings > Users (PATCH /api/users/[id], gated on canManageUsers),
+  // never from PATCH /api/profile.
+  monthlySalary   Decimal? @db.Decimal(12, 2)
   // Deactivating (not deleting -- their attendance/expense/invoice history has FK
   // references that can't be dropped) blocks login and hides them from the active
   // Users list, without touching anything they created.
@@ -169,6 +202,7 @@ model User {
   fundAllocationsAdded  FundAllocation[]     @relation("FundAllocationsAdded")
   expensesAdded         Expense[]            @relation("ExpensesAdded")
   locationPing          LocationPing?
+  companyDocumentsUploaded CompanyDocument[]
 
   @@index([tenantId])
   @@index([roleId])
