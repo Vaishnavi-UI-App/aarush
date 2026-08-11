@@ -42,7 +42,11 @@ export async function POST(request: NextRequest) {
   }
 
   const pincode = body.pincode ? String(body.pincode).trim() : null;
-  const geocoded = await geocodeSiteLocation(pincode, body.address);
+
+  // An explicit pin dropped on the map (New Site form's optional picker) always wins over
+  // a pincode-derived guess -- skip geocoding entirely rather than let it race/override.
+  const hasExplicitPin = typeof body.latitude === "number" && typeof body.longitude === "number";
+  const geocoded = hasExplicitPin ? null : await geocodeSiteLocation(pincode, body.address);
 
   const site = await prisma.site.create({
     data: {
@@ -50,13 +54,17 @@ export async function POST(request: NextRequest) {
       name: body.name,
       address: body.address || null,
       pincode,
-      latitude: geocoded?.lat ?? null,
-      longitude: geocoded?.lng ?? null,
-      geofenceRadiusM: geocoded ? PINCODE_GEOFENCE_RADIUS_M : null,
+      latitude: hasExplicitPin ? body.latitude : (geocoded?.lat ?? null),
+      longitude: hasExplicitPin ? body.longitude : (geocoded?.lng ?? null),
+      geofenceRadiusM: hasExplicitPin
+        ? (typeof body.geofenceRadiusM === "number" ? body.geofenceRadiusM : PINCODE_GEOFENCE_RADIUS_M)
+        : geocoded
+          ? PINCODE_GEOFENCE_RADIUS_M
+          : null,
       wallet: { create: {} },
     },
     include: { wallet: true },
   });
 
-  return NextResponse.json({ ...site, geocodeFailed: !!pincode && !geocoded }, { status: 201 });
+  return NextResponse.json({ ...site, geocodeFailed: !hasExplicitPin && !!pincode && !geocoded }, { status: 201 });
 }
