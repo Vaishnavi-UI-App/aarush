@@ -465,7 +465,7 @@ export async function convertProformaToSale(
   return prisma.$transaction(async (tx) => {
     const proforma = await tx.invoice.findFirst({
       where: { id: proformaId, tenantId, type: "PROFORMA" },
-      include: { lines: true },
+      include: { lines: { orderBy: { srNo: "asc" } } },
     });
     if (!proforma) {
       throw new Error("Proforma invoice not found");
@@ -515,9 +515,12 @@ export async function convertProformaToSale(
       shipToStateCode: proforma.shipToStateCode ?? undefined,
       conversionNote: conversionNote?.trim() || undefined,
       proformaSourceId: proforma.id,
+      // No srNo here (deliberately) -- the resulting tax invoice numbers its own lines
+      // 1, 2, 3... in the order they were selected, regardless of what Sr.No those items
+      // had on the proforma. A tax invoice with only 3 of a 56-item proforma's lines
+      // should read "1, 2, 3", not "14, 22, 35".
       lines: selectedLines.map((l) => ({
         itemId: l.itemId ?? undefined,
-        srNo: l.srNo ?? undefined,
         description: l.description,
         detail: l.detail ?? undefined,
         hsnCode: l.hsnCode,
