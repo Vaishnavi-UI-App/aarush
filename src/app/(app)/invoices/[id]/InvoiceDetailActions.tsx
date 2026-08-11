@@ -54,6 +54,13 @@ export default function InvoiceDetailActions({
     setSelectedLineIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)));
   }
 
+  const selectableLineIds = lines.filter((l) => !l.convertedToInvoiceId).map((l) => l.id);
+  const allSelected = selectableLineIds.length > 0 && selectableLineIds.every((id) => selectedLineIds.includes(id));
+
+  function toggleSelectAll() {
+    setSelectedLineIds(allSelected ? [] : selectableLineIds);
+  }
+
   async function recordManualPayment(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -154,7 +161,19 @@ export default function InvoiceDetailActions({
 
       {showConvertForm && (
         <form onSubmit={convertToSale} style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Select items to include in this tax invoice</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Select items to include in this tax invoice</div>
+            {selectableLineIds.length > 1 && (
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="afs-btn"
+                style={{ background: "#e5e7eb", color: "#333", padding: "4px 10px", fontSize: 12 }}
+              >
+                {allSelected ? "Unselect All" : "Select All"}
+              </button>
+            )}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
             {lines.map((l) => {
               const converted = !!l.convertedToInvoiceId;
