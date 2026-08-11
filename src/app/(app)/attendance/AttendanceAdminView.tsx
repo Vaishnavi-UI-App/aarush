@@ -5,6 +5,7 @@ import OverviewTab from "./OverviewTab";
 import TeamTodayGrid from "./TeamTodayGrid";
 import MonthlyReport from "./MonthlyReport";
 import CorrectionModal, { CorrectableRecord } from "./CorrectionModal";
+import RegularizationQueueTab from "./RegularizationQueueTab";
 
 interface StaffUser {
   id: string;
@@ -210,12 +211,12 @@ function HistoryTab({ staff }: { staff: StaffUser[] }) {
 }
 
 export default function AttendanceAdminView({ staff }: { staff: StaffUser[] }) {
-  const [tab, setTab] = useState<"overview" | "today" | "history" | "reports">("overview");
+  const [tab, setTab] = useState<"overview" | "today" | "history" | "reports" | "regularize">("overview");
 
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
-        {(["overview", "today", "history", "reports"] as const).map((t) => (
+        {(["overview", "today", "history", "reports", "regularize"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -223,7 +224,7 @@ export default function AttendanceAdminView({ staff }: { staff: StaffUser[] }) {
             className={tab === t ? "afs-btn afs-btn-primary" : "afs-btn"}
             style={tab === t ? undefined : { background: "#e5e7eb", color: "#333" }}
           >
-            {t === "overview" ? "Overview" : t === "today" ? "Team Today" : t === "history" ? "History" : "Monthly Report"}
+            {t === "overview" ? "Overview" : t === "today" ? "Team Today" : t === "history" ? "History" : t === "reports" ? "Monthly Report" : "Regularization"}
           </button>
         ))}
       </div>
@@ -232,6 +233,7 @@ export default function AttendanceAdminView({ staff }: { staff: StaffUser[] }) {
       {tab === "today" && <TeamTodayGrid />}
       {tab === "history" && <HistoryTab staff={staff} />}
       {tab === "reports" && <MonthlyReport staff={staff} />}
+      {tab === "regularize" && <RegularizationQueueTab />}
     </div>
   );
 }

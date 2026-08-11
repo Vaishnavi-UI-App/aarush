@@ -6,6 +6,7 @@ import { getLocation } from "@/lib/capture";
 import { computeElapsedHours, formatHMS } from "@/lib/attendance-hours";
 import { CalendarCheckIcon, CameraIcon, AlertTriangleIcon } from "@/components/icons";
 import LiveCameraCapture from "./LiveCameraCapture";
+import RegularizationRequestSection from "./RegularizationRequestSection";
 
 interface PunchDTO {
   id: string;
@@ -336,6 +337,8 @@ export default function AttendanceCheckInOut({
           </table>
         )}
       </div>
+
+      <RegularizationRequestSection />
 
       {photoPreview && (
         <div

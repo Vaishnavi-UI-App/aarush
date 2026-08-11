@@ -65,6 +65,7 @@ model Tenant {
   shiftConfigs            ShiftConfig[]
   attendanceAuditLogs     AttendanceAuditLog[]
   companyDocuments        CompanyDocument[]
+  attendanceRegularizations AttendanceRegularization[]
 
   @@map("tenants")
 }
@@ -203,6 +204,8 @@ model User {
   expensesAdded         Expense[]            @relation("ExpensesAdded")
   locationPing          LocationPing?
   companyDocumentsUploaded CompanyDocument[]
+  regularizationsRequested AttendanceRegularization[] @relation("RegularizationRequestedBy")
+  regularizationsReviewed  AttendanceRegularization[] @relation("RegularizationReviewedBy")
 
   @@index([tenantId])
   @@index([roleId])
@@ -228,6 +231,44 @@ enum AttendanceStatus {
   HALF_DAY
   LEAVE
   HOLIDAY
+}
+
+enum RegularizationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// An employee-initiated request for a missed/incomplete punch day, distinct from the
+// admin's existing direct-correction tool (attendance_records.isManualEntry/
+// correctionReason) -- that lets an admin fix a day they've already noticed; this is the
+// employee's own "I forgot to punch, here's what actually happened" workflow, which sits
+// in a review queue until an admin approves or rejects it. Approval reuses the exact same
+// deriveAttendance/resolveShiftConfig logic the direct-correction endpoint uses, so a
+// regularized day and a manually-corrected day compute status/hours identically.
+model AttendanceRegularization {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  userId   String
+  user     User   @relation("RegularizationRequestedBy", fields: [userId], references: [id])
+  date     DateTime @db.Date
+
+  requestedCheckInAt  DateTime?
+  requestedCheckOutAt DateTime?
+  reason              String    @db.Text
+
+  status       RegularizationStatus @default(PENDING)
+  reviewNote   String?              @db.Text
+  reviewedById String?
+  reviewedBy   User?                @relation("RegularizationReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, userId])
+  @@index([tenantId, status])
+  @@map("attendance_regularizations")
 }
 
 enum PunchKind {

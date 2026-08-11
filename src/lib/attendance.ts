@@ -44,6 +44,12 @@ export function istTimeToUtcInstant(dateBucket: Date, hhmm: string): Date {
   return new Date(Date.UTC(y, mo, d, h, m) - IST_OFFSET_MS);
 }
 
+/** Cap on how many regularization requests one user can *submit* in a single calendar
+ * month, counted against the month the requested day falls in (not when they filed it) --
+ * caps how many missed punches one person can ask to have retroactively fixed per month,
+ * independent of whether those requests end up approved or rejected. */
+export const MAX_REGULARIZATIONS_PER_MONTH = 5;
+
 export interface ShiftLike {
   id?: string;
   startTime: string;
