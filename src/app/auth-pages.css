@@ -70,6 +70,36 @@
   box-shadow: 0 0 0 3px rgba(22, 48, 92, 0.12);
 }
 
+.afs-password-field-wrap {
+  position: relative;
+}
+
+.afs-password-field-wrap input {
+  padding-right: 40px;
+}
+
+.afs-password-field-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.afs-password-field-toggle:hover {
+  background: #f1f2f6;
+  color: #374151;
+}
+
 .afs-auth-submit {
   width: 100%;
   justify-content: center;

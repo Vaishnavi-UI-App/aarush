@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import PasswordField from "@/components/PasswordField";
 import "@/app/invoice/invoice-page.css";
 import "@/app/auth-pages.css";
 
@@ -47,10 +48,7 @@ export default function LoginPage() {
           <input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
 
-        <div className="afs-auth-field">
-          <label>Password</label>
-          <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-        </div>
+        <PasswordField label="Password" required value={password} onChange={setPassword} />
 
         <button type="submit" disabled={loading} className="afs-btn afs-btn-primary afs-auth-submit">
           {loading ? "Signing in…" : "Sign in"}

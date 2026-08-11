@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import PasswordField from "@/components/PasswordField";
 import "@/app/invoice/invoice-page.css";
 import "@/app/auth-pages.css";
 
@@ -55,14 +56,8 @@ function ResetPasswordForm() {
   return (
     <form onSubmit={onSubmit}>
       {error && <div className="afs-auth-message error">{error}</div>}
-      <div className="afs-auth-field">
-        <label>New password</label>
-        <input type="password" required minLength={8} autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
-      </div>
-      <div className="afs-auth-field">
-        <label>Confirm password</label>
-        <input type="password" required minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-      </div>
+      <PasswordField label="New password" required minLength={8} autoFocus value={password} onChange={setPassword} />
+      <PasswordField label="Confirm password" required minLength={8} value={confirm} onChange={setConfirm} />
       <button type="submit" disabled={loading} className="afs-btn afs-btn-primary afs-auth-submit">
         {loading ? "Saving…" : "Set password"}
       </button>

@@ -49,3 +49,27 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   cache.set(key, { label, expiresAt: Date.now() + CACHE_TTL_MS });
   return label;
 }
+
+/** Turns a free-text place name/address into coordinates, via the same Nominatim
+ * endpoint reverseGeocode above already uses. Used by the site location picker so an
+ * admin can type "TPC Sugar, Tanzania" or "Thane" instead of having to already know
+ * (or hunt for) the exact lat/lng to click on a world map. */
+export async function geocodeAddress(query: string): Promise<{ lat: number; lng: number; label: string } | null> {
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(trimmed)}&limit=1`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "AarushFireBilling/1.0 (aarushfireprotection@gmail.com)" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const hit = data?.[0];
+    if (!hit) return null;
+    return { lat: Number(hit.lat), lng: Number(hit.lon), label: hit.display_name };
+  } catch {
+    return null;
+  }
+}

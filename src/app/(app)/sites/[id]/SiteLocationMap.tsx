@@ -13,11 +13,15 @@ export default function SiteLocationMap({
   initialLat,
   initialLng,
   initialRadiusM,
+  defaultSearchQuery,
 }: {
   siteId: string;
   initialLat: number | null;
   initialLng: number | null;
   initialRadiusM: number | null;
+  /** Pre-fills the address search box with the site's own name/address, since that's
+   * almost always what an admin would search for anyway. */
+  defaultSearchQuery?: string;
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,6 +35,11 @@ export default function SiteLocationMap({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState(defaultSearchQuery ?? "");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchResultLabel, setSearchResultLabel] = useState<string | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -87,6 +96,27 @@ export default function SiteLocationMap({
     }).addTo(map);
   }, [lat, lng, radiusM]);
 
+  async function search() {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchError(null);
+    setSearchResultLabel(null);
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(searchQuery.trim())}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Search failed");
+      setLat(Math.round(data.lat * 1e6) / 1e6);
+      setLng(Math.round(data.lng * 1e6) / 1e6);
+      setSaved(false);
+      setSearchResultLabel(data.label);
+      mapRef.current?.setView([data.lat, data.lng], 16);
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : "Search failed");
+    } finally {
+      setSearching(false);
+    }
+  }
+
   async function save() {
     if (lat == null || lng == null) {
       setError("Click the map (or drag the pin) to set a location first");
@@ -136,9 +166,30 @@ export default function SiteLocationMap({
   return (
     <div>
       <p style={{ fontSize: 13, color: "#556", marginBottom: 10 }}>
-        Click anywhere on the map (or drag the pin) to set this site&apos;s location. The shaded circle is the attendance geofence --
-        check-ins from outside it get flagged.
+        Search for the site&apos;s address below, then fine-tune by dragging the pin -- or just click anywhere on the map directly.
+        The shaded circle is the attendance geofence -- check-ins from outside it get flagged.
       </p>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              search();
+            }
+          }}
+          placeholder="Search address or place name, e.g. TPC Sugar, Tanzania"
+          style={{ flex: 1 }}
+        />
+        <button type="button" onClick={search} disabled={searching || !searchQuery.trim()} className="afs-btn" style={{ background: "#e5e7eb", color: "#333" }}>
+          {searching ? "Searching…" : "Search"}
+        </button>
+      </div>
+      {searchError && <div style={{ color: "#b91c1c", fontSize: 12.5, marginBottom: 10 }}>{searchError}</div>}
+      {searchResultLabel && !searchError && (
+        <div style={{ color: "#556", fontSize: 12.5, marginBottom: 10 }}>Found: {searchResultLabel} -- drag the pin to fine-tune if needed.</div>
+      )}
       <div
         ref={containerRef}
         style={{ width: "100%", height: 360, borderRadius: 12, overflow: "hidden", position: "relative", isolation: "isolate", zIndex: 0, marginBottom: 12 }}
