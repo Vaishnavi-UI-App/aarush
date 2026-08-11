@@ -19,7 +19,13 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const [invoice, tenant, isOwner] = await Promise.all([
     prisma.invoice.findFirst({
       where: { id, tenantId: session!.tenantId },
-      include: { lines: { orderBy: { srNo: "asc" } }, customer: true, payments: true, site: true },
+      include: {
+        lines: { orderBy: { srNo: "asc" }, include: { convertedToInvoice: { select: { id: true, number: true } } } },
+        customer: true,
+        payments: true,
+        site: true,
+        saleInvoicesFromProforma: { select: { id: true, number: true } },
+      },
     }),
     prisma.tenant.findUniqueOrThrow({ where: { id: session!.tenantId } }),
     canManageUsers(session!.tenantId, session!.roleId),
@@ -71,6 +77,20 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         <InvoiceTemplate invoice={toInvoiceTemplateData(invoice, tenant)} />
       </div>
 
+      {invoice.type === "PROFORMA" && invoice.saleInvoicesFromProforma.length > 0 && (
+        <div className="afs-card" style={{ marginBottom: 20, padding: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#334", marginBottom: 4 }}>Converted to tax invoice(s)</div>
+          <div style={{ fontSize: 13 }}>
+            {invoice.saleInvoicesFromProforma.map((s, i) => (
+              <span key={s.id}>
+                {i > 0 && ", "}
+                <a href={`/invoices/${s.id}`}>{s.number}</a>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isOwner && invoice.conversionNote && (
         <div className="afs-card" style={{ marginBottom: 20, padding: 16, background: "#fff7e0", border: "1px solid #e6c65c" }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: "#5c4a00", marginBottom: 4 }}>
@@ -91,6 +111,14 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           amount: Number(p.amount),
           status: p.status,
           mode: p.mode,
+        }))}
+        lines={invoice.lines.map((l) => ({
+          id: l.id,
+          description: l.description,
+          qty: Number(l.qty),
+          unit: l.unit,
+          convertedToInvoiceId: l.convertedToInvoiceId,
+          convertedToInvoiceNumber: l.convertedToInvoice?.number ?? null,
         }))}
       />
     </div>

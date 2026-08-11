@@ -16,9 +16,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
   const note = typeof body.note === "string" ? body.note : undefined;
+  const lineIds = Array.isArray(body.lineIds) ? body.lineIds.filter((x: unknown) => typeof x === "string") : [];
+  if (lineIds.length === 0) {
+    return NextResponse.json({ error: "Select at least one item to convert" }, { status: 400 });
+  }
 
   try {
-    const invoice = await convertProformaToSale(session.tenantId, id, note);
+    const invoice = await convertProformaToSale(session.tenantId, id, lineIds, note);
     return NextResponse.json(invoice, { status: 201 });
   } catch (e) {
     console.error("Failed to convert proforma:", e);

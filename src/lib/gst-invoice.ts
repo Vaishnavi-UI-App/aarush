@@ -172,9 +172,16 @@ export interface CreateSaleInvoiceInput extends DispatchDetailsInput {
   isServiceInvoice?: boolean;
   /** Internal, OWNER-only remark -- never printed or emailed to the customer. */
   conversionNote?: string;
+  /** SALE-only: the PROFORMA this invoice was (fully or partially) converted from, if any. */
+  proformaSourceId?: string;
 }
 
-export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
+/** Does the actual work of createSaleInvoice against an already-open transaction client --
+ * split out so convertProformaToSale can run it as one step inside its own larger
+ * transaction (validate proforma + create the sale invoice + mark lines converted +
+ * update the proforma's status, all atomically) instead of nesting a second top-level
+ * transaction inside the first. */
+async function createSaleInvoiceInTx(tx: Prisma.TransactionClient, input: CreateSaleInvoiceInput) {
   const {
     tenantId,
     customerId,
@@ -198,99 +205,103 @@ export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
     shipToGstin,
     shipToStateCode,
     conversionNote,
+    proformaSourceId,
   } = input;
 
   if (lines.length === 0) {
     throw new Error("Invoice must have at least one line item");
   }
 
-  return prisma.$transaction(async (tx) => {
-    const [tenant, customer] = await Promise.all([
-      tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
-      tx.customer.findFirstOrThrow({ where: { id: customerId, tenantId } }),
-      siteId ? tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } }) : Promise.resolve(null),
-    ]);
+  const [tenant, customer] = await Promise.all([
+    tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
+    tx.customer.findFirstOrThrow({ where: { id: customerId, tenantId } }),
+    siteId ? tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } }) : Promise.resolve(null),
+  ]);
 
-    const date = new Date();
-    const number = await nextInvoiceNumber(tx, tenantId, tenant.invoicePrefix, type, date);
+  const date = new Date();
+  const number = await nextInvoiceNumber(tx, tenantId, tenant.invoicePrefix, type, date);
 
-    const { lineData, subtotal, cgstTotal, sgstTotal, igstTotal } = computeInvoiceLines(
-      lines,
-      tenant.stateCode,
-      customer.stateCode
-    );
+  const { lineData, subtotal, cgstTotal, sgstTotal, igstTotal } = computeInvoiceLines(
+    lines,
+    tenant.stateCode,
+    customer.stateCode
+  );
 
-    const discountAmount = round2(discount);
-    const total = round2(subtotal - discountAmount + cgstTotal + sgstTotal + igstTotal);
+  const discountAmount = round2(discount);
+  const total = round2(subtotal - discountAmount + cgstTotal + sgstTotal + igstTotal);
 
-    const invoice = await tx.invoice.create({
+  const invoice = await tx.invoice.create({
+    data: {
+      tenantId,
+      customerId,
+      siteId,
+      type,
+      isServiceInvoice: type === "SALE" ? isServiceInvoice : false,
+      number,
+      date,
+      dueDate,
+      status: type === "PROFORMA" ? "DRAFT" : "SENT",
+      subtotal,
+      discount: discountAmount,
+      cgst: cgstTotal,
+      sgst: sgstTotal,
+      igst: igstTotal,
+      roundOff: 0,
+      total,
+      poNumber,
+      poDate,
+      vehicleNumber,
+      transportationMode,
+      reverseCharge,
+      deliveredThrough,
+      placeOfSupplySite,
+      paymentTerms,
+      shipToSameAsBilling,
+      shipToName: shipToSameAsBilling ? undefined : shipToName,
+      shipToAddress: shipToSameAsBilling ? undefined : shipToAddress,
+      shipToGstin: shipToSameAsBilling ? undefined : shipToGstin,
+      shipToStateCode: shipToSameAsBilling ? undefined : shipToStateCode,
+      conversionNote,
+      proformaSourceId,
+      lines: { create: lineData },
+    },
+    include: { lines: true },
+  });
+
+  // A proforma is a quote, not a real debt -- it never posts to the ledger.
+  // Converting it to a sale invoice later creates a fresh SALE invoice that does.
+  if (type === "SALE") {
+    // Serialize ledger writes per customer so the running balance never races.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${customerId}))`;
+
+    const lastEntry = await tx.ledgerEntry.findFirst({
+      where: { tenantId, customerId },
+      orderBy: { createdAt: "desc" },
+    });
+    const previousBalance = lastEntry ? Number(lastEntry.runningBalance) : 0;
+    const runningBalance = round2(previousBalance + total);
+
+    await tx.ledgerEntry.create({
       data: {
         tenantId,
+        partyType: "CUSTOMER",
         customerId,
-        siteId,
-        type,
-        isServiceInvoice: type === "SALE" ? isServiceInvoice : false,
-        number,
-        date,
-        dueDate,
-        status: type === "PROFORMA" ? "DRAFT" : "SENT",
-        subtotal,
-        discount: discountAmount,
-        cgst: cgstTotal,
-        sgst: sgstTotal,
-        igst: igstTotal,
-        roundOff: 0,
-        total,
-        poNumber,
-        poDate,
-        vehicleNumber,
-        transportationMode,
-        reverseCharge,
-        deliveredThrough,
-        placeOfSupplySite,
-        paymentTerms,
-        shipToSameAsBilling,
-        shipToName: shipToSameAsBilling ? undefined : shipToName,
-        shipToAddress: shipToSameAsBilling ? undefined : shipToAddress,
-        shipToGstin: shipToSameAsBilling ? undefined : shipToGstin,
-        shipToStateCode: shipToSameAsBilling ? undefined : shipToStateCode,
-        conversionNote,
-        lines: { create: lineData },
+        refType: "INVOICE",
+        invoiceId: invoice.id,
+        debit: total,
+        credit: 0,
+        runningBalance,
+        description: `Invoice ${number} raised`,
+        entryDate: date,
       },
-      include: { lines: true },
     });
+  }
 
-    // A proforma is a quote, not a real debt -- it never posts to the ledger.
-    // Converting it to a sale invoice later creates a fresh SALE invoice that does.
-    if (type === "SALE") {
-      // Serialize ledger writes per customer so the running balance never races.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${customerId}))`;
+  return invoice;
+}
 
-      const lastEntry = await tx.ledgerEntry.findFirst({
-        where: { tenantId, customerId },
-        orderBy: { createdAt: "desc" },
-      });
-      const previousBalance = lastEntry ? Number(lastEntry.runningBalance) : 0;
-      const runningBalance = round2(previousBalance + total);
-
-      await tx.ledgerEntry.create({
-        data: {
-          tenantId,
-          partyType: "CUSTOMER",
-          customerId,
-          refType: "INVOICE",
-          invoiceId: invoice.id,
-          debit: total,
-          credit: 0,
-          runningBalance,
-          description: `Invoice ${number} raised`,
-          entryDate: date,
-        },
-      });
-    }
-
-    return invoice;
-  });
+export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
+  return prisma.$transaction((tx) => createSaleInvoiceInTx(tx, input));
 }
 
 export interface UpdateSaleInvoiceInput extends DispatchDetailsInput {
@@ -434,64 +445,102 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
   });
 }
 
-/** Converts an accepted PROFORMA into a real SALE invoice (fresh number, posts to the ledger)
- * and marks the original proforma as APPROVED, linked to the invoice it became. */
-export async function convertProformaToSale(tenantId: string, proformaId: string, conversionNote?: string) {
-  const proforma = await prisma.$transaction(async (tx) => {
-    const p = await tx.invoice.findFirst({
+/** Converts some or all line items of an accepted PROFORMA into a real SALE invoice
+ * (fresh number, posts to the ledger). A proforma can be converted more than once --
+ * each call raises a separate SALE invoice against whichever of its lines haven't
+ * already been converted, so different items on one proforma can be billed on separate
+ * tax invoices (e.g. as they're delivered in stages) instead of forcing an all-or-
+ * nothing conversion. The proforma's own discount is prorated across conversions by
+ * each selected line's share of the *proforma's original* total taxable value (not the
+ * remaining unconverted pool), so the discount applied across every resulting sale
+ * invoice always adds up to the proforma's original discount regardless of how it gets
+ * split. The proforma moves to APPROVED only once every line has been converted;
+ * until then it's PARTIALLY_CONVERTED and stays open for further conversions. */
+export async function convertProformaToSale(
+  tenantId: string,
+  proformaId: string,
+  lineIds: string[],
+  conversionNote?: string
+) {
+  return prisma.$transaction(async (tx) => {
+    const proforma = await tx.invoice.findFirst({
       where: { id: proformaId, tenantId, type: "PROFORMA" },
       include: { lines: true },
     });
-    if (!p) {
+    if (!proforma) {
       throw new Error("Proforma invoice not found");
     }
-    if (p.status === "CANCELLED" || p.status === "APPROVED") {
-      throw new Error("This proforma has already been converted or cancelled");
+    if (proforma.archivedAt) {
+      throw new Error("Archived proformas cannot be converted");
+    }
+    if (proforma.status === "CANCELLED" || proforma.status === "APPROVED") {
+      throw new Error("This proforma has already been fully converted or cancelled");
+    }
+    if (lineIds.length === 0) {
+      throw new Error("Select at least one item to convert");
     }
 
-    await tx.invoice.update({ where: { id: p.id }, data: { status: "APPROVED" } });
+    const selectedLines = proforma.lines.filter((l) => lineIds.includes(l.id));
+    if (selectedLines.length !== lineIds.length) {
+      throw new Error("One or more selected items don't belong to this proforma");
+    }
+    if (selectedLines.some((l) => l.convertedToInvoiceId)) {
+      throw new Error("One or more selected items have already been converted to a tax invoice");
+    }
 
-    return p;
+    const proformaTaxableTotal = proforma.lines.reduce((sum, l) => sum + Number(l.taxableValue), 0);
+    const selectedTaxable = selectedLines.reduce((sum, l) => sum + Number(l.taxableValue), 0);
+    const discountShare =
+      proformaTaxableTotal > 0 ? round2((Number(proforma.discount) * selectedTaxable) / proformaTaxableTotal) : 0;
+
+    const invoice = await createSaleInvoiceInTx(tx, {
+      tenantId,
+      customerId: proforma.customerId,
+      type: "SALE",
+      discount: discountShare,
+      dueDate: proforma.dueDate ?? undefined,
+      poNumber: proforma.poNumber ?? undefined,
+      poDate: proforma.poDate ?? undefined,
+      vehicleNumber: proforma.vehicleNumber ?? undefined,
+      transportationMode: proforma.transportationMode ?? undefined,
+      reverseCharge: proforma.reverseCharge,
+      deliveredThrough: proforma.deliveredThrough ?? undefined,
+      placeOfSupplySite: proforma.placeOfSupplySite ?? undefined,
+      siteId: proforma.siteId ?? undefined,
+      paymentTerms: proforma.paymentTerms ?? undefined,
+      shipToSameAsBilling: proforma.shipToSameAsBilling,
+      shipToName: proforma.shipToName ?? undefined,
+      shipToAddress: proforma.shipToAddress ?? undefined,
+      shipToGstin: proforma.shipToGstin ?? undefined,
+      shipToStateCode: proforma.shipToStateCode ?? undefined,
+      conversionNote: conversionNote?.trim() || undefined,
+      proformaSourceId: proforma.id,
+      lines: selectedLines.map((l) => ({
+        itemId: l.itemId ?? undefined,
+        srNo: l.srNo ?? undefined,
+        description: l.description,
+        detail: l.detail ?? undefined,
+        hsnCode: l.hsnCode,
+        unit: l.unit,
+        qty: Number(l.qty),
+        rate: Number(l.rate),
+        taxRate: Number(l.taxRate),
+      })),
+    });
+
+    await tx.invoiceLine.updateMany({
+      where: { id: { in: selectedLines.map((l) => l.id) } },
+      data: { convertedToInvoiceId: invoice.id },
+    });
+
+    const selectedIds = new Set(selectedLines.map((l) => l.id));
+    const stillUnconverted = proforma.lines.some((l) => !selectedIds.has(l.id) && !l.convertedToInvoiceId);
+
+    await tx.invoice.update({
+      where: { id: proforma.id },
+      data: { status: stillUnconverted ? "PARTIALLY_CONVERTED" : "APPROVED" },
+    });
+
+    return invoice;
   });
-
-  const invoice = await createSaleInvoice({
-    tenantId,
-    customerId: proforma.customerId,
-    type: "SALE",
-    discount: Number(proforma.discount),
-    dueDate: proforma.dueDate ?? undefined,
-    poNumber: proforma.poNumber ?? undefined,
-    poDate: proforma.poDate ?? undefined,
-    vehicleNumber: proforma.vehicleNumber ?? undefined,
-    transportationMode: proforma.transportationMode ?? undefined,
-    reverseCharge: proforma.reverseCharge,
-    deliveredThrough: proforma.deliveredThrough ?? undefined,
-    placeOfSupplySite: proforma.placeOfSupplySite ?? undefined,
-    siteId: proforma.siteId ?? undefined,
-    paymentTerms: proforma.paymentTerms ?? undefined,
-    shipToSameAsBilling: proforma.shipToSameAsBilling,
-    shipToName: proforma.shipToName ?? undefined,
-    shipToAddress: proforma.shipToAddress ?? undefined,
-    shipToGstin: proforma.shipToGstin ?? undefined,
-    shipToStateCode: proforma.shipToStateCode ?? undefined,
-    conversionNote: conversionNote?.trim() || undefined,
-    lines: proforma.lines.map((l) => ({
-      itemId: l.itemId ?? undefined,
-      srNo: l.srNo ?? undefined,
-      description: l.description,
-      detail: l.detail ?? undefined,
-      hsnCode: l.hsnCode,
-      unit: l.unit,
-      qty: Number(l.qty),
-      rate: Number(l.rate),
-      taxRate: Number(l.taxRate),
-    })),
-  });
-
-  await prisma.invoice.update({
-    where: { id: proforma.id },
-    data: { convertedToInvoiceId: invoice.id },
-  });
-
-  return invoice;
 }

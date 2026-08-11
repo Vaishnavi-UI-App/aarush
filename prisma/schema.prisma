@@ -588,6 +588,10 @@ enum InvoiceStatus {
   OVERDUE
   CANCELLED
   APPROVED
+  // PROFORMA only: some but not all of its line items have been converted into a SALE
+  // invoice so far -- the proforma stays open so the remaining items can be converted
+  // later, possibly onto a separate tax invoice. See InvoiceLine.convertedToInvoiceId.
+  PARTIALLY_CONVERTED
 }
 
 model Invoice {
@@ -643,32 +647,48 @@ model Invoice {
   archivedAt  DateTime? // soft-delete: archived invoices are hidden from the main list but never destroyed, and can be restored
   archiveNote String? // optional reason entered by the user when archiving/deleting
 
-  // Set on a PROFORMA once it's been converted to a real SALE invoice -- lets the
-  // proforma row link forward to what it became instead of just showing "cancelled".
-  convertedToInvoiceId  String?  @unique
-  convertedToInvoice    Invoice? @relation("ProformaConversion", fields: [convertedToInvoiceId], references: [id])
-  convertedFromProforma Invoice? @relation("ProformaConversion")
+  // SALE only: which PROFORMA this sale invoice was raised from, if any.
+  proformaSourceId String?
+  proformaSource   Invoice? @relation("ProformaConversions", fields: [proformaSourceId], references: [id])
+  // PROFORMA only: every SALE invoice raised against this proforma so far. A proforma
+  // can be converted more than once -- each conversion selects a subset of its still-
+  // unconverted line items (see InvoiceLine.convertedToInvoiceId) and raises a fresh
+  // SALE invoice for just those, so different items on one proforma can end up on
+  // different tax invoices instead of forcing an all-or-nothing conversion.
+  saleInvoicesFromProforma Invoice[] @relation("ProformaConversions")
 
   // Internal remark entered when converting a proforma to this sale invoice. Never shown
   // on the printed PDF or in customer emails/WhatsApp -- OWNER-only in the app UI.
   conversionNote String?
 
-  lines         InvoiceLine[]
+  lines                InvoiceLine[] @relation("InvoiceLines")
+  // Reverse side of InvoiceLine.convertedToInvoice -- PROFORMA lines that were pulled
+  // into THIS sale invoice by a (possibly partial) conversion. Not the same as `lines`,
+  // which are this invoice's own line items.
+  convertedFromLines   InvoiceLine[] @relation("ConvertedInvoiceLines")
   payments      Payment[]
   ledgerEntries LedgerEntry[]
 
   @@unique([tenantId, number])
   @@index([tenantId, customerId])
   @@index([tenantId, siteId])
+  @@index([proformaSourceId])
   @@map("invoices")
 }
 
 model InvoiceLine {
   id        String  @id @default(uuid())
   invoiceId String
-  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  invoice   Invoice @relation("InvoiceLines", fields: [invoiceId], references: [id])
   itemId    String?
   item      Item?   @relation(fields: [itemId], references: [id])
+
+  // Set once this PROFORMA line has been pulled into a SALE invoice by a conversion --
+  // blocks it from being selected again in a later conversion of the same proforma,
+  // and is how a proforma can be split across several separate tax invoices over time.
+  // Only ever set on PROFORMA lines; always null on a SALE/CREDIT_NOTE invoice's own lines.
+  convertedToInvoiceId String?
+  convertedToInvoice   Invoice? @relation("ConvertedInvoiceLines", fields: [convertedToInvoiceId], references: [id])
 
   // Overrides the printed Sr.No (default is just the line's position, 1/2/3...) --
   // needed when an invoice's lines must cross-reference a source document (e.g. a
@@ -695,6 +715,7 @@ model InvoiceLine {
   lineTotal    Decimal @db.Decimal(14, 2)
 
   @@index([invoiceId])
+  @@index([convertedToInvoiceId])
   @@map("invoice_lines")
 }
 

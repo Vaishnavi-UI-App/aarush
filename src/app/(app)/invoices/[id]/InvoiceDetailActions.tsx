@@ -10,6 +10,15 @@ interface Payment {
   mode: string;
 }
 
+interface ProformaLine {
+  id: string;
+  description: string;
+  qty: number;
+  unit: string;
+  convertedToInvoiceId: string | null;
+  convertedToInvoiceNumber: string | null;
+}
+
 export default function InvoiceDetailActions({
   invoiceId,
   invoiceType,
@@ -17,6 +26,7 @@ export default function InvoiceDetailActions({
   customerId,
   amountDue,
   payments,
+  lines = [],
 }: {
   invoiceId: string;
   invoiceType: "SALE" | "PROFORMA" | "CREDIT_NOTE";
@@ -24,6 +34,7 @@ export default function InvoiceDetailActions({
   customerId: string;
   amountDue: number;
   payments: Payment[];
+  lines?: ProformaLine[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -35,6 +46,13 @@ export default function InvoiceDetailActions({
   const [cashReference, setCashReference] = useState("");
   const [showConvertForm, setShowConvertForm] = useState(false);
   const [conversionNote, setConversionNote] = useState("");
+  const [selectedLineIds, setSelectedLineIds] = useState<string[]>(() =>
+    lines.filter((l) => !l.convertedToInvoiceId).map((l) => l.id)
+  );
+
+  function toggleLine(id: string, checked: boolean) {
+    setSelectedLineIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)));
+  }
 
   async function recordManualPayment(e: React.FormEvent) {
     e.preventDefault();
@@ -97,7 +115,7 @@ export default function InvoiceDetailActions({
       const res = await fetch(`/api/invoices/${invoiceId}/convert-to-sale`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: conversionNote.trim() || undefined }),
+        body: JSON.stringify({ lineIds: selectedLineIds, note: conversionNote.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to convert proforma");
@@ -135,8 +153,42 @@ export default function InvoiceDetailActions({
       </div>
 
       {showConvertForm && (
-        <form onSubmit={convertToSale} style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-          <div className="afs-form-field" style={{ flex: "1 1 320px" }}>
+        <form onSubmit={convertToSale} style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Select items to include in this tax invoice</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+            {lines.map((l) => {
+              const converted = !!l.convertedToInvoiceId;
+              return (
+                <label
+                  key={l.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    opacity: converted ? 0.5 : 1,
+                    cursor: converted ? "not-allowed" : "pointer",
+                    fontSize: 13,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={converted}
+                    checked={converted ? false : selectedLineIds.includes(l.id)}
+                    onChange={(e) => toggleLine(l.id, e.target.checked)}
+                  />
+                  <span>
+                    {l.description} ({l.qty} {l.unit})
+                  </span>
+                  {converted && (
+                    <span style={{ fontSize: 11, color: "#889" }}>
+                      Already converted → {l.convertedToInvoiceNumber}
+                    </span>
+                  )}
+                </label>
+              );
+            })}
+          </div>
+          <div className="afs-form-field" style={{ maxWidth: 480, marginBottom: 12 }}>
             <label>Internal note (optional -- visible to OWNER only, never shown to the customer)</label>
             <textarea
               rows={2}
@@ -145,8 +197,10 @@ export default function InvoiceDetailActions({
               style={{ width: "100%", resize: "vertical" }}
             />
           </div>
-          <button type="submit" disabled={busy} className="afs-btn afs-btn-primary">
-            {busy ? "Converting…" : "Confirm Conversion"}
+          <button type="submit" disabled={busy || selectedLineIds.length === 0} className="afs-btn afs-btn-primary">
+            {busy
+              ? "Converting…"
+              : `Create Tax Invoice for ${selectedLineIds.length} item${selectedLineIds.length === 1 ? "" : "s"}`}
           </button>
         </form>
       )}

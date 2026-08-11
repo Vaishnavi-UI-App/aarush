@@ -14,7 +14,7 @@ export default async function InvoicesPage() {
       where: { tenantId: session!.tenantId, archivedAt: null },
       include: {
         customer: { select: { name: true } },
-        convertedToInvoice: { select: { id: true, number: true } },
+        saleInvoicesFromProforma: { select: { id: true, number: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -74,13 +74,17 @@ export default async function InvoicesPage() {
                     <span className={badgeClass(inv.status)}>{inv.status.replace("_", " ")}</span>
                   </td>
                   <td>
-                    {inv.convertedToInvoice ? (
-                      <span style={{ fontSize: 12, color: "#667" }}>
+                    <InvoiceRowActions invoiceId={inv.id} />
+                    {inv.saleInvoicesFromProforma.length > 0 && (
+                      <div style={{ fontSize: 12, color: "#667", marginTop: 4 }}>
                         Converted →{" "}
-                        <Link href={`/invoices/${inv.convertedToInvoice.id}`}>{inv.convertedToInvoice.number}</Link>
-                      </span>
-                    ) : (
-                      <InvoiceRowActions invoiceId={inv.id} />
+                        {inv.saleInvoicesFromProforma.map((s, i) => (
+                          <span key={s.id}>
+                            {i > 0 && ", "}
+                            <Link href={`/invoices/${s.id}`}>{s.number}</Link>
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </td>
                 </tr>
