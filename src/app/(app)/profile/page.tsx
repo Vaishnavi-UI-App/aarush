@@ -20,6 +20,7 @@ export default async function ProfilePage() {
       bankAccountNo: true,
       bankIfsc: true,
       bankName: true,
+      monthlySalary: true,
     },
   });
 
@@ -41,6 +42,7 @@ export default async function ProfilePage() {
           initialBankAccountNo={user.bankAccountNo ?? ""}
           initialBankIfsc={user.bankIfsc ?? ""}
           initialBankName={user.bankName ?? ""}
+          monthlySalary={user.monthlySalary != null ? Number(user.monthlySalary) : null}
         />
       </div>
     </div>

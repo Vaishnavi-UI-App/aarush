@@ -17,6 +17,7 @@ export default function ProfileForm({
   initialBankAccountNo,
   initialBankIfsc,
   initialBankName,
+  monthlySalary,
 }: {
   initialName: string;
   email: string;
@@ -29,6 +30,7 @@ export default function ProfileForm({
   initialBankAccountNo: string;
   initialBankIfsc: string;
   initialBankName: string;
+  monthlySalary: number | null;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,6 +137,17 @@ export default function ProfileForm({
         <div className="afs-form-field">
           <label>Role</label>
           <input readOnly value={roleName} />
+        </div>
+      </div>
+
+      <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>Monthly Salary</label>
+          <input
+            readOnly
+            value={monthlySalary != null ? `Rs. ${monthlySalary.toLocaleString("en-IN")}` : "Not set"}
+            title="Set by your organization's admin -- can't be changed here"
+          />
         </div>
       </div>
 
