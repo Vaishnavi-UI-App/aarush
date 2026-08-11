@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ArchiveConfirmDialog from "@/components/ArchiveConfirmDialog";
@@ -12,6 +13,7 @@ export default function PurchaseDetailActions({
   vendorPhone,
   vendorEmail,
   archived,
+  editable,
 }: {
   purchaseId: string;
   purchaseNumber: string;
@@ -19,6 +21,7 @@ export default function PurchaseDetailActions({
   vendorPhone: string | null;
   vendorEmail: string | null;
   archived: boolean;
+  editable: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -119,6 +122,11 @@ export default function PurchaseDetailActions({
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      {editable && (
+        <Link href={`/purchases/${purchaseId}/edit`} className="afs-btn" style={{ background: "#e5e7eb", color: "#333" }}>
+          Edit
+        </Link>
+      )}
       <a href={`/api/purchases/${purchaseId}/pdf`} target="_blank" rel="noopener noreferrer" className="afs-btn afs-btn-primary">
         ⬇ Download PDF
       </a>

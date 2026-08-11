@@ -24,9 +24,27 @@ export async function PATCH(request: NextRequest) {
     data: {
       name: body.name.trim(),
       phone: body.phone?.trim() || null,
+      aadharNumber: body.aadharNumber?.trim() || null,
+      panNumber: body.panNumber?.trim() || null,
+      bankAccountName: body.bankAccountName?.trim() || null,
+      bankAccountNo: body.bankAccountNo?.trim() || null,
+      bankIfsc: body.bankIfsc?.trim() || null,
+      bankName: body.bankName?.trim() || null,
       ...(body.photoData !== undefined ? { photoData: body.photoData || null } : {}),
     },
-    select: { id: true, name: true, email: true, phone: true, photoData: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      photoData: true,
+      aadharNumber: true,
+      panNumber: true,
+      bankAccountName: true,
+      bankAccountNo: true,
+      bankIfsc: true,
+      bankName: true,
+    },
   });
 
   return NextResponse.json(updated);

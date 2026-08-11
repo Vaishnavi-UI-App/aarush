@@ -175,9 +175,9 @@ export default function EditableItemRow({ item, srNo }: { item: Item; srNo: numb
       <td data-label="Sale price">Rs. {item.salePrice.toFixed(2)}</td>
       <td data-label="Tax rate">{item.taxRate.toFixed(2)}%</td>
       <td data-label="Stock on hand">
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap" }}>
           {item.currentStock <= 0 ? <span className="afs-badge afs-badge-overdue">Out of stock</span> : `${item.currentStock} ${item.unit}`}
-          <button type="button" onClick={() => setAddingStock((v) => !v)} title="Add stock" className="afs-icon-btn success" style={{ width: 20, height: 20 }}>
+          <button type="button" onClick={() => setAddingStock((v) => !v)} title="Add stock" className="afs-icon-btn success" style={{ width: 20, height: 20, flexShrink: 0 }}>
             <PlusIcon />
           </button>
         </div>

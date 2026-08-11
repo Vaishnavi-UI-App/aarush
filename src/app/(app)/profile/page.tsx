@@ -7,7 +7,20 @@ export default async function ProfilePage() {
   const session = await getServerSession();
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: session!.userId },
-    select: { name: true, email: true, phone: true, photoData: true, role: true, roleRef: { select: { name: true } } },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      photoData: true,
+      role: true,
+      roleRef: { select: { name: true } },
+      aadharNumber: true,
+      panNumber: true,
+      bankAccountName: true,
+      bankAccountNo: true,
+      bankIfsc: true,
+      bankName: true,
+    },
   });
 
   return (
@@ -22,6 +35,12 @@ export default async function ProfilePage() {
           initialPhone={user.phone ?? ""}
           initialPhoto={user.photoData}
           roleName={user.roleRef?.name ?? user.role.replace("_", " ")}
+          initialAadharNumber={user.aadharNumber ?? ""}
+          initialPanNumber={user.panNumber ?? ""}
+          initialBankAccountName={user.bankAccountName ?? ""}
+          initialBankAccountNo={user.bankAccountNo ?? ""}
+          initialBankIfsc={user.bankIfsc ?? ""}
+          initialBankName={user.bankName ?? ""}
         />
       </div>
     </div>

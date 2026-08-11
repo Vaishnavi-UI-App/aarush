@@ -42,27 +42,43 @@ function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+export interface PurchaseFormInitialValues {
+  discount: string;
+  dueDate: string;
+  vendorBillNumber: string;
+  siteId: string;
+  lines: Line[];
+}
+
 export default function CreatePurchaseForm({
   tenantStateCode,
   vendors,
   items: initialItems,
   defaultVendorId,
   sites,
+  editPurchaseId,
+  initialValues,
 }: {
   tenantStateCode: string;
   vendors: Vendor[];
   items: Item[];
   defaultVendorId?: string;
   sites: Site[];
+  /** When set, the form edits this existing purchase bill (PATCH) instead of creating a
+   * new one. The vendor can't be changed on edit -- it's already posted to that vendor's
+   * ledger and stock has already moved against it. */
+  editPurchaseId?: string;
+  initialValues?: PurchaseFormInitialValues;
 }) {
   const router = useRouter();
+  const isEdit = !!editPurchaseId;
   const [vendorId, setVendorId] = useState(defaultVendorId ?? vendors[0]?.id ?? "");
   const [items, setItems] = useState<Item[]>(initialItems);
-  const [lines, setLines] = useState<Line[]>([emptyLine(), emptyLine(), emptyLine(), emptyLine()]);
-  const [discount, setDiscount] = useState("0");
-  const [dueDate, setDueDate] = useState("");
-  const [vendorBillNumber, setVendorBillNumber] = useState("");
-  const [siteId, setSiteId] = useState("");
+  const [lines, setLines] = useState<Line[]>(initialValues?.lines ?? [emptyLine(), emptyLine(), emptyLine(), emptyLine()]);
+  const [discount, setDiscount] = useState(initialValues?.discount ?? "0");
+  const [dueDate, setDueDate] = useState(initialValues?.dueDate ?? "");
+  const [vendorBillNumber, setVendorBillNumber] = useState(initialValues?.vendorBillNumber ?? "");
+  const [siteId, setSiteId] = useState(initialValues?.siteId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -177,30 +193,35 @@ export default function CreatePurchaseForm({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/purchases", {
-        method: "POST",
+      const body: Record<string, unknown> = {
+        discount: Number(discount) || 0,
+        dueDate: dueDate || undefined,
+        vendorBillNumber: vendorBillNumber || undefined,
+        siteId: siteId || undefined,
+        lines: lines.map((l) => ({
+          itemId: l.itemId || undefined,
+          description: l.description,
+          hsnCode: l.hsnCode,
+          qty: Number(l.qty),
+          rate: Number(l.rate),
+          taxRate: Number(l.taxRate),
+        })),
+      };
+      if (!isEdit) {
+        body.vendorId = vendorId;
+      }
+
+      const res = await fetch(isEdit ? `/api/purchases/${editPurchaseId}` : "/api/purchases", {
+        method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          vendorId,
-          discount: Number(discount) || 0,
-          dueDate: dueDate || undefined,
-          vendorBillNumber: vendorBillNumber || undefined,
-          siteId: siteId || undefined,
-          lines: lines.map((l) => ({
-            itemId: l.itemId || undefined,
-            description: l.description,
-            hsnCode: l.hsnCode,
-            qty: Number(l.qty),
-            rate: Number(l.rate),
-            taxRate: Number(l.taxRate),
-          })),
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create purchase bill");
-      router.push(`/purchases/${data.id}`);
+      if (!res.ok) throw new Error(data.error || `Failed to ${isEdit ? "update" : "create"} purchase bill`);
+      router.push(`/purchases/${isEdit ? editPurchaseId : data.id}`);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create purchase bill");
+      setError(err instanceof Error ? err.message : `Failed to ${isEdit ? "update" : "create"} purchase bill`);
     } finally {
       setSaving(false);
     }
@@ -215,13 +236,17 @@ export default function CreatePurchaseForm({
       <div className="afs-form-row">
         <div className="afs-form-field">
           <label>Vendor *</label>
-          <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} required>
-            {vendors.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name} (state {v.stateCode})
-              </option>
-            ))}
-          </select>
+          {isEdit ? (
+            <input readOnly value={vendors.find((v) => v.id === vendorId)?.name ?? ""} title="Vendor can't be changed once a bill is recorded" />
+          ) : (
+            <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} required>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name} (state {v.stateCode})
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="afs-form-field">
           <label>Discount (Rs.)</label>
@@ -430,7 +455,7 @@ export default function CreatePurchaseForm({
       {error && <div style={{ color: "#b91c1c", fontSize: 13, marginBottom: 12 }}>{error}</div>}
 
       <button type="submit" disabled={saving} className="afs-btn afs-btn-primary">
-        {saving ? "Creating…" : "Create Purchase Bill"}
+        {isEdit ? (saving ? "Saving…" : "Save Changes") : saving ? "Creating…" : "Create Purchase Bill"}
       </button>
     </form>
   );

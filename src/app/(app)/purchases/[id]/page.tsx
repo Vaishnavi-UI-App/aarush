@@ -19,6 +19,9 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
   });
   if (!purchase) notFound();
 
+  const hasSuccessfulPayment = purchase.vendorPayments.some((p) => p.status === "SUCCESS");
+  const editable = !purchase.archivedAt && !hasSuccessfulPayment;
+
   return (
     <div>
       <div className="afs-page-header">
@@ -39,6 +42,7 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
             vendorPhone={purchase.vendor.phone}
             vendorEmail={purchase.vendor.email}
             archived={!!purchase.archivedAt}
+            editable={editable}
           />
         </div>
       </div>

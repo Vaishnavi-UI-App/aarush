@@ -11,18 +11,36 @@ export default function ProfileForm({
   initialPhone,
   initialPhoto,
   roleName,
+  initialAadharNumber,
+  initialPanNumber,
+  initialBankAccountName,
+  initialBankAccountNo,
+  initialBankIfsc,
+  initialBankName,
 }: {
   initialName: string;
   email: string;
   initialPhone: string;
   initialPhoto: string | null;
   roleName: string;
+  initialAadharNumber: string;
+  initialPanNumber: string;
+  initialBankAccountName: string;
+  initialBankAccountNo: string;
+  initialBankIfsc: string;
+  initialBankName: string;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(initialName);
   const [phone, setPhone] = useState(initialPhone);
   const [photo, setPhoto] = useState<string | null>(initialPhoto);
+  const [aadharNumber, setAadharNumber] = useState(initialAadharNumber);
+  const [panNumber, setPanNumber] = useState(initialPanNumber);
+  const [bankAccountName, setBankAccountName] = useState(initialBankAccountName);
+  const [bankAccountNo, setBankAccountNo] = useState(initialBankAccountNo);
+  const [bankIfsc, setBankIfsc] = useState(initialBankIfsc);
+  const [bankName, setBankName] = useState(initialBankName);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +73,17 @@ export default function ProfileForm({
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone: phone || undefined, photoData: photo }),
+        body: JSON.stringify({
+          name,
+          phone: phone || undefined,
+          photoData: photo,
+          aadharNumber: aadharNumber || undefined,
+          panNumber: panNumber || undefined,
+          bankAccountName: bankAccountName || undefined,
+          bankAccountNo: bankAccountNo || undefined,
+          bankIfsc: bankIfsc || undefined,
+          bankName: bankName || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save profile");
@@ -107,6 +135,50 @@ export default function ProfileForm({
         <div className="afs-form-field">
           <label>Role</label>
           <input readOnly value={roleName} />
+        </div>
+      </div>
+
+      <h3 style={{ fontSize: 14, fontWeight: 600, marginTop: 24, marginBottom: 10, color: "#334" }}>ID Details</h3>
+      <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>Aadhar Number</label>
+          <input
+            value={aadharNumber}
+            onChange={(e) => setAadharNumber(e.target.value)}
+            placeholder="e.g. 1234 5678 9012"
+            maxLength={14}
+          />
+        </div>
+        <div className="afs-form-field">
+          <label>PAN Number</label>
+          <input
+            value={panNumber}
+            onChange={(e) => setPanNumber(e.target.value.toUpperCase())}
+            placeholder="e.g. ABCDE1234F"
+            maxLength={10}
+          />
+        </div>
+      </div>
+
+      <h3 style={{ fontSize: 14, fontWeight: 600, marginTop: 24, marginBottom: 10, color: "#334" }}>Bank Details</h3>
+      <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>Account Holder Name</label>
+          <input value={bankAccountName} onChange={(e) => setBankAccountName(e.target.value)} />
+        </div>
+        <div className="afs-form-field">
+          <label>Account Number</label>
+          <input value={bankAccountNo} onChange={(e) => setBankAccountNo(e.target.value)} />
+        </div>
+      </div>
+      <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>IFSC Code</label>
+          <input value={bankIfsc} onChange={(e) => setBankIfsc(e.target.value.toUpperCase())} placeholder="e.g. SBIN0001234" maxLength={11} />
+        </div>
+        <div className="afs-form-field">
+          <label>Bank Name</label>
+          <input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="e.g. State Bank of India" />
         </div>
       </div>
 

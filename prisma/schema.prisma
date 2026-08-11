@@ -149,6 +149,14 @@ model User {
   // distinct from tenant/role fields, which only an owner can change.
   phone        String?
   photoData    String? @db.Text
+  // KYC / payroll details -- same self-service scope as phone/photo above, plain text
+  // like Tenant's own bank fields (no separate encryption layer exists in this app yet).
+  aadharNumber    String?
+  panNumber       String?
+  bankAccountName String?
+  bankAccountNo   String?
+  bankIfsc        String?
+  bankName        String?
   // Deactivating (not deleting -- their attendance/expense/invoice history has FK
   // references that can't be dropped) blocks login and hides them from the active
   // Users list, without touching anything they created.

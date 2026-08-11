@@ -149,6 +149,152 @@ export async function createPurchaseBill(input: CreatePurchaseBillInput) {
   });
 }
 
+export interface UpdatePurchaseBillInput {
+  tenantId: string;
+  purchaseId: string;
+  lines: InvoiceLineInput[];
+  discount?: number;
+  dueDate?: Date;
+  vendorBillNumber?: string;
+  siteId?: string;
+}
+
+/** Mirrors updateSaleInvoice on the vendor side: recomputes totals from the new lines,
+ * replaces the old ones, reverses the old lines' stock-in and applies the new lines'
+ * (a purchase bill is what brings stock in, so editing qty must undo the old amount before
+ * applying the new one instead of just adding on top), and re-derives the vendor ledger's
+ * running balance from that point forward the same way an invoice edit does for a customer. */
+export async function updatePurchaseBill(input: UpdatePurchaseBillInput) {
+  const { tenantId, purchaseId, lines, discount = 0, dueDate, vendorBillNumber, siteId } = input;
+
+  if (lines.length === 0) {
+    throw new Error("Purchase bill must have at least one line item");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const purchase = await tx.purchase.findFirst({
+      where: { id: purchaseId, tenantId },
+      include: { lines: true, vendorPayments: true },
+    });
+    if (!purchase) {
+      throw new Error("Purchase bill not found");
+    }
+    if (purchase.archivedAt) {
+      throw new Error("Archived purchase bills cannot be edited");
+    }
+    if (purchase.vendorPayments.some((p) => p.status === "SUCCESS")) {
+      throw new Error("Purchase bills with a recorded payment cannot be edited");
+    }
+
+    const [tenant, vendor] = await Promise.all([
+      tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
+      tx.vendor.findFirstOrThrow({ where: { id: purchase.vendorId, tenantId } }),
+      siteId ? tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } }) : Promise.resolve(null),
+    ]);
+
+    // Undo the stock this bill originally brought in before the old lines are deleted.
+    for (const oldLine of purchase.lines) {
+      if (oldLine.itemId) {
+        await tx.item.update({ where: { id: oldLine.itemId }, data: { currentStock: { decrement: oldLine.qty } } });
+      }
+    }
+
+    let subtotal = 0;
+    let cgstTotal = 0;
+    let sgstTotal = 0;
+    let igstTotal = 0;
+
+    const lineData = lines.map((line) => {
+      const taxableValue = round2(line.qty * line.rate);
+      const split = calculateTaxSplit(taxableValue, line.taxRate, tenant.stateCode, vendor.stateCode);
+      const lineTotal = round2(taxableValue + split.cgst + split.sgst + split.igst);
+
+      subtotal += taxableValue;
+      cgstTotal += split.cgst;
+      sgstTotal += split.sgst;
+      igstTotal += split.igst;
+
+      return {
+        itemId: line.itemId,
+        description: line.description,
+        hsnCode: line.hsnCode,
+        qty: line.qty,
+        rate: line.rate,
+        taxableValue,
+        taxRate: line.taxRate,
+        cgstAmount: split.cgst,
+        sgstAmount: split.sgst,
+        igstAmount: split.igst,
+        lineTotal,
+      };
+    });
+
+    subtotal = round2(subtotal);
+    cgstTotal = round2(cgstTotal);
+    sgstTotal = round2(sgstTotal);
+    igstTotal = round2(igstTotal);
+
+    const discountAmount = round2(discount);
+    const total = round2(subtotal - discountAmount + cgstTotal + sgstTotal + igstTotal);
+
+    await tx.purchaseLine.deleteMany({ where: { purchaseId } });
+
+    const updated = await tx.purchase.update({
+      where: { id: purchaseId },
+      data: {
+        dueDate,
+        vendorBillNumber,
+        siteId,
+        subtotal,
+        discount: discountAmount,
+        cgst: cgstTotal,
+        sgst: sgstTotal,
+        igst: igstTotal,
+        total,
+        lines: { create: lineData },
+      },
+      include: { lines: true },
+    });
+
+    for (const line of lines) {
+      if (line.itemId) {
+        await tx.item.update({ where: { id: line.itemId }, data: { currentStock: { increment: line.qty } } });
+      }
+    }
+
+    // Serialize ledger writes per vendor so the running balance never races, then
+    // re-derive every entry's running balance from this bill's new total onward.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${purchase.vendorId}))`;
+
+    const entry = await tx.ledgerEntry.findFirst({
+      where: { tenantId, purchaseId, refType: "PURCHASE" },
+    });
+
+    if (entry) {
+      const allEntries = await tx.ledgerEntry.findMany({
+        where: { tenantId, vendorId: purchase.vendorId },
+        orderBy: { createdAt: "asc" },
+      });
+
+      let running = 0;
+      for (const e of allEntries) {
+        const debit = e.id === entry.id ? total : Number(e.debit);
+        const credit = Number(e.credit);
+        running = round2(running + debit - credit);
+        await tx.ledgerEntry.update({
+          where: { id: e.id },
+          data: {
+            ...(e.id === entry.id ? { debit: total } : {}),
+            runningBalance: running,
+          },
+        });
+      }
+    }
+
+    return updated;
+  });
+}
+
 export interface RecordVendorPaymentInput {
   tenantId: string;
   vendorId: string;
