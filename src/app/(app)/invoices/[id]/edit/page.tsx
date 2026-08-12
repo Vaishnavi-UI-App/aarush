@@ -84,6 +84,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           editInvoiceId={invoice.id}
           sites={sites.map((s) => ({ id: s.id, name: s.name }))}
           initialValues={{
+            date: dateInputValue(invoice.date),
             discount: Number(invoice.discount).toString(),
             poNumber: invoice.poNumber ?? "",
             poDate: dateInputValue(invoice.poDate),

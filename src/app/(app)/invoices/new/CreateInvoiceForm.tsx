@@ -72,6 +72,9 @@ function round2(n: number): number {
 
 export interface InvoiceFormInitialValues {
   lines: Omit<Line, "itemQuery">[];
+  /** Edit-only: the invoice's own date (YYYY-MM-DD). Not settable on create -- new
+   * invoices are always dated today, see createSaleInvoiceInTx. */
+  date?: string;
   discount: string;
   poNumber: string;
   poDate: string;
@@ -121,6 +124,7 @@ export default function CreateInvoiceForm({
   const [lines, setLines] = useState<Line[]>(
     initialValues?.lines.map((l) => ({ ...l, itemQuery: resolveItemQuery(l, initialItems) })) ?? [emptyLine()],
   );
+  const [date, setDate] = useState(initialValues?.date ?? "");
   const [discount, setDiscount] = useState(initialValues?.discount ?? "0");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -332,7 +336,9 @@ export default function CreateInvoiceForm({
           taxRate: Number(l.taxRate),
         })),
       };
-      if (!isEdit) {
+      if (isEdit) {
+        body.date = date || undefined;
+      } else {
         body.customerId = customerId;
         body.type = type;
         body.isServiceInvoice = isServiceInvoice;
@@ -375,6 +381,12 @@ export default function CreateInvoiceForm({
             </select>
           )}
         </div>
+        {isEdit && (
+          <div className="afs-form-field">
+            <label>Invoice Date</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+          </div>
+        )}
         <div className="afs-form-field">
           <label>Discount (Rs.)</label>
           <input type="number" min="0" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} />

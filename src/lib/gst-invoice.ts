@@ -310,6 +310,10 @@ export interface UpdateSaleInvoiceInput extends DispatchDetailsInput {
   lines: InvoiceLineInput[];
   discount?: number;
   dueDate?: Date;
+  /** The invoice's own date. Must stay within the original date's financial year --
+   * the invoice number's FY segment (e.g. "24-25") is fixed at creation and would go
+   * stale otherwise. */
+  date?: Date;
 }
 
 /** Edits an existing DRAFT/SENT invoice with no successful payment against it yet.
@@ -324,6 +328,7 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
     lines,
     discount = 0,
     dueDate,
+    date,
     poNumber,
     poDate,
     vehicleNumber,
@@ -364,6 +369,11 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
     if (invoice.payments.some((p) => p.status === "SUCCESS")) {
       throw new Error("Invoices with a recorded payment cannot be edited");
     }
+    if (date && financialYearLabel(date) !== financialYearLabel(invoice.date)) {
+      throw new Error(
+        `Invoice date must stay within FY ${financialYearLabel(invoice.date)} -- the invoice number was already assigned for that year.`
+      );
+    }
 
     const [tenant, customer] = await Promise.all([
       tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
@@ -385,6 +395,7 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
     const updated = await tx.invoice.update({
       where: { id: invoiceId },
       data: {
+        date,
         dueDate,
         subtotal,
         discount: discountAmount,
@@ -433,7 +444,7 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
           await tx.ledgerEntry.update({
             where: { id: e.id },
             data: {
-              ...(e.id === entry.id ? { debit: total } : {}),
+              ...(e.id === entry.id ? { debit: total, ...(date ? { entryDate: date } : {}) } : {}),
               runningBalance: running,
             },
           });

@@ -38,6 +38,7 @@ interface UpdateInvoiceBody extends Omit<DispatchDetailsInput, "poDate"> {
   discount?: number;
   dueDate?: string;
   poDate?: string;
+  date?: string;
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -69,6 +70,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       lines: body.lines,
       discount: body.discount,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+      date: body.date ? new Date(body.date) : undefined,
       poNumber: body.poNumber,
       poDate: body.poDate ? new Date(body.poDate) : undefined,
       vehicleNumber: body.vehicleNumber,
