@@ -26,11 +26,14 @@ export default async function InvoicesPage() {
       <div className="afs-page-header">
         <div>
           <h1 className="afs-page-title">Invoices</h1>
-          <p className="afs-page-subtitle">Sales invoices and proforma quotes</p>
+          <p className="afs-page-subtitle">Sales invoices, quotations, and proforma quotes</p>
         </div>
         <div className="afs-page-header-actions">
           <Link href="/invoices/archived" style={{ fontSize: 13 }}>
             Archive {archivedCount > 0 ? `(${archivedCount})` : ""}
+          </Link>
+          <Link href="/invoices/new?type=QUOTATION" className="afs-btn" style={{ background: "#e5e7eb", color: "#333" }}>
+            + New Quotation
           </Link>
           <Link href="/invoices/new?type=PROFORMA" className="afs-btn afs-btn-gold">
             + New Proforma
@@ -66,7 +69,9 @@ export default async function InvoicesPage() {
                   <td data-label="Number">
                     <Link href={`/invoices/${inv.id}`}>{inv.number}</Link>
                   </td>
-                  <td data-label="Type">{inv.type === "PROFORMA" ? "Proforma" : inv.isServiceInvoice ? "Service" : "Sale"}</td>
+                  <td data-label="Type">
+                    {inv.type === "PROFORMA" ? "Proforma" : inv.type === "QUOTATION" ? "Quotation" : inv.isServiceInvoice ? "Service" : "Sale"}
+                  </td>
                   <td data-label="Customer">{inv.customer.name}</td>
                   <td data-label="Date">{new Date(inv.date).toLocaleDateString("en-IN")}</td>
                   <td data-label="Total">Rs. {Number(inv.total).toFixed(2)}</td>

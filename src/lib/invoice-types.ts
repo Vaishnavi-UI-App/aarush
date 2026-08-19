@@ -52,8 +52,8 @@ export interface BankDetails {
 
 export interface InvoiceData {
   /** Determines the printed document title: TAX INVOICE for a real sale, PROFORMA
-   * INVOICE for a quote that hasn't been converted yet. Defaults to SALE. */
-  documentType?: "SALE" | "PROFORMA";
+   * INVOICE or QUOTATION for a quote that hasn't been converted yet. Defaults to SALE. */
+  documentType?: "SALE" | "PROFORMA" | "QUOTATION";
   /** SALE only: prints "SERVICE TAX INVOICE" instead of "TAX INVOICE". */
   isServiceInvoice?: boolean;
   invoiceNumber: string;

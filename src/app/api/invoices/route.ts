@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
   if (!body.customerId || !Array.isArray(body.lines) || body.lines.length === 0) {
     return NextResponse.json({ error: "customerId and a non-empty lines[] are required" }, { status: 400 });
   }
-  if (body.type && body.type !== "SALE" && body.type !== "PROFORMA") {
-    return NextResponse.json({ error: "type must be SALE or PROFORMA" }, { status: 400 });
+  if (body.type && body.type !== "SALE" && body.type !== "PROFORMA" && body.type !== "QUOTATION") {
+    return NextResponse.json({ error: "type must be SALE, PROFORMA, or QUOTATION" }, { status: 400 });
   }
 
   for (const line of body.lines) {

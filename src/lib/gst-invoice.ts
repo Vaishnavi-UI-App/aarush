@@ -110,11 +110,12 @@ export function financialYearLabel(date: Date): string {
   return `${two(fyStart)}-${two(fyStart + 1)}`;
 }
 
-export type BillableInvoiceType = "SALE" | "PROFORMA";
+export type BillableInvoiceType = "SALE" | "PROFORMA" | "QUOTATION";
 
 const INVOICE_PREFIXES: Record<BillableInvoiceType, (tenantPrefix: string) => string> = {
   SALE: (tenantPrefix) => tenantPrefix,
   PROFORMA: () => "PRO",
+  QUOTATION: () => "QTN",
 };
 
 async function nextInvoiceNumber(
@@ -163,9 +164,10 @@ export interface CreateSaleInvoiceInput extends DispatchDetailsInput {
   lines: InvoiceLineInput[];
   discount?: number;
   dueDate?: Date;
-  /** SALE creates a real GST liability and posts to the ledger. PROFORMA is a quote:
-   * it still shows GST-inclusive pricing to the customer, but is non-GST-liable and
-   * never touches the ledger, since it isn't a real debt until converted to a sale. */
+  /** SALE creates a real GST liability and posts to the ledger. PROFORMA and QUOTATION
+   * are both quotes: they still show GST-inclusive pricing to the customer, but are
+   * non-GST-liable and never touch the ledger, since neither is a real debt until
+   * converted to a sale. QUOTATION is the earlier, more informal of the two. */
   type?: BillableInvoiceType;
   /** SALE-only: same numbering series and ledger treatment as any other sale invoice --
    * just prints "Service Tax Invoice" instead of "Tax Invoice". */
@@ -240,7 +242,7 @@ async function createSaleInvoiceInTx(tx: Prisma.TransactionClient, input: Create
       number,
       date,
       dueDate,
-      status: type === "PROFORMA" ? "DRAFT" : "SENT",
+      status: type === "PROFORMA" || type === "QUOTATION" ? "DRAFT" : "SENT",
       subtotal,
       discount: discountAmount,
       cgst: cgstTotal,

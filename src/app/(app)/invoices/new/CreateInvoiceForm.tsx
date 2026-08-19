@@ -103,7 +103,7 @@ export default function CreateInvoiceForm({
   initialValues,
   sites: initialSites,
 }: {
-  type: "SALE" | "PROFORMA";
+  type: "SALE" | "PROFORMA" | "QUOTATION";
   /** SALE only: same form/behavior as any other sale invoice, just prints "Service Tax
    * Invoice" instead of "Tax Invoice" -- see NewInvoicePage's ?service=1 query param. */
   isServiceInvoice?: boolean;
@@ -726,9 +726,11 @@ export default function CreateInvoiceForm({
             ? "Creating…"
             : type === "PROFORMA"
               ? "Create Proforma Invoice"
-              : isServiceInvoice
-                ? "Create Service Tax Invoice"
-                : "Create Sale Invoice"}
+              : type === "QUOTATION"
+                ? "Create Quotation"
+                : isServiceInvoice
+                  ? "Create Service Tax Invoice"
+                  : "Create Sale Invoice"}
       </button>
     </form>
   );

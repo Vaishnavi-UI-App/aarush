@@ -29,7 +29,7 @@ export default function InvoiceDetailActions({
   lines = [],
 }: {
   invoiceId: string;
-  invoiceType: "SALE" | "PROFORMA" | "CREDIT_NOTE";
+  invoiceType: "SALE" | "PROFORMA" | "QUOTATION" | "CREDIT_NOTE";
   status: string;
   customerId: string;
   amountDue: number;

@@ -62,13 +62,20 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     <div>
       <h1 className="afs-page-title">Edit {invoice.number}</h1>
       <p className="afs-page-subtitle">
-        {invoice.type === "PROFORMA" ? "Proforma Invoice" : invoice.isServiceInvoice ? "Service Tax Invoice" : "Sale Invoice"} for{" "}
+        {invoice.type === "PROFORMA"
+          ? "Proforma Invoice"
+          : invoice.type === "QUOTATION"
+            ? "Quotation"
+            : invoice.isServiceInvoice
+              ? "Service Tax Invoice"
+              : "Sale Invoice"}{" "}
+        for{" "}
         {invoice.customer.name}
       </p>
 
       <div className="afs-card">
         <CreateInvoiceForm
-          type={invoice.type === "PROFORMA" ? "PROFORMA" : "SALE"}
+          type={invoice.type === "PROFORMA" ? "PROFORMA" : invoice.type === "QUOTATION" ? "QUOTATION" : "SALE"}
           tenantStateCode={tenant.stateCode}
           customers={customers.map((c) => ({ id: c.id, name: c.name, stateCode: c.stateCode }))}
           items={items.map((i) => ({

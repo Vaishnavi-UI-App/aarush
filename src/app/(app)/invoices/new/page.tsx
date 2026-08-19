@@ -17,7 +17,7 @@ export default async function NewInvoicePage({
     prisma.site.findMany({ where: { tenantId: session!.tenantId, archivedAt: null }, orderBy: { name: "asc" } }),
   ]);
 
-  const invoiceType = type === "PROFORMA" ? "PROFORMA" : "SALE";
+  const invoiceType = type === "PROFORMA" ? "PROFORMA" : type === "QUOTATION" ? "QUOTATION" : "SALE";
   // Service invoices are a SALE variant (same numbering/ledger behavior), not a
   // separate document type -- the flag only changes the printed heading.
   const isServiceInvoice = invoiceType === "SALE" && service === "1";
@@ -25,12 +25,20 @@ export default async function NewInvoicePage({
   return (
     <div>
       <h1 className="afs-page-title">
-        {invoiceType === "PROFORMA" ? "New Proforma Invoice" : isServiceInvoice ? "New Service Tax Invoice" : "New Sale Invoice"}
+        {invoiceType === "PROFORMA"
+          ? "New Proforma Invoice"
+          : invoiceType === "QUOTATION"
+            ? "New Quotation"
+            : isServiceInvoice
+              ? "New Service Tax Invoice"
+              : "New Sale Invoice"}
       </h1>
       <p className="afs-page-subtitle">
         {invoiceType === "PROFORMA"
           ? "A quote for the customer to accept -- doesn't post to the ledger until converted to a sale invoice."
-          : "Raises a real GST invoice and posts the due amount to the customer's ledger."}
+          : invoiceType === "QUOTATION"
+            ? "An informal price quote sent before any commitment -- doesn't post to the ledger and has its own numbering series."
+            : "Raises a real GST invoice and posts the due amount to the customer's ledger."}
       </p>
 
       <div className="afs-card">

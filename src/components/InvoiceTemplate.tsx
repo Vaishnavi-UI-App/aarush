@@ -19,7 +19,13 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const summaryColSpan = hasIgst ? 13 : 11;
   const blankRows = Math.max(0, MIN_ITEM_ROWS - items.length);
   const documentTitle =
-    invoice.documentType === "PROFORMA" ? "PROFORMA INVOICE" : invoice.isServiceInvoice ? "SERVICE TAX INVOICE" : "TAX INVOICE";
+    invoice.documentType === "PROFORMA"
+      ? "PROFORMA INVOICE"
+      : invoice.documentType === "QUOTATION"
+        ? "QUOTATION"
+        : invoice.isServiceInvoice
+          ? "SERVICE TAX INVOICE"
+          : "TAX INVOICE";
 
   return (
     <div className="invoice-page">
