@@ -77,7 +77,7 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
                     <td><div className="meta-label">Transportation Mode</div><div className="meta-value">{invoice.transportationMode}</div></td>
                   </tr>
                   <tr>
-                    <td><div className="meta-label">Place Of Supply</div><div className="meta-value">{invoice.placeOfSupplySite}</div></td>
+                    <td><div className="meta-label">E Way No</div><div className="meta-value">{invoice.placeOfSupplySite}</div></td>
                     <td colSpan={2}><div className="meta-label">DELIVERD THREW</div><div className="meta-value">{invoice.deliveredThrough}</div></td>
                   </tr>
                   <tr>

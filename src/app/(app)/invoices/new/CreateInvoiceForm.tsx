@@ -432,7 +432,7 @@ export default function CreateInvoiceForm({
 
       <div className="afs-form-row">
         <div className="afs-form-field">
-          <label>Place of Supply (site)</label>
+          <label>E Way No</label>
           <input value={placeOfSupplySite} onChange={(e) => setPlaceOfSupplySite(e.target.value)} />
         </div>
         <div className="afs-form-field">
