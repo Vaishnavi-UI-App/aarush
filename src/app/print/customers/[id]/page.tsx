@@ -74,16 +74,21 @@ export default async function PrintCustomerStatementPage({ params }: { params: P
           </tr>
         </thead>
         <tbody>
-          {entries.map((e) => (
-            <tr key={e.id}>
-              <td>{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
-              <td>{e.refType}</td>
-              <td>{e.description}</td>
-              <td className="right">{Number(e.debit) > 0 ? Number(e.debit).toFixed(2) : "—"}</td>
-              <td className="right">{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
-              <td className="right">{Number(e.runningBalance).toFixed(2)}</td>
-            </tr>
-          ))}
+          {entries.map((e) => {
+            const balance = Number(e.runningBalance);
+            return (
+              <tr key={e.id}>
+                <td>{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
+                <td>{e.refType}</td>
+                <td>{e.description}</td>
+                <td className="right">{Number(e.debit) > 0 ? Number(e.debit).toFixed(2) : "—"}</td>
+                <td className="right">{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
+                <td className="right">
+                  {Math.abs(balance).toFixed(2)} {balance > 0 ? "Dr" : balance < 0 ? "Cr (advance)" : ""}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
         <tfoot>
           <tr>

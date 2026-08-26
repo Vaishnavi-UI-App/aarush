@@ -56,30 +56,41 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
         {entries.length === 0 ? (
           <div className="afs-empty">No transactions yet.</div>
         ) : (
-          <table className="afs-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Description</th>
-                <th>Debit</th>
-                <th>Credit</th>
-                <th>Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e.id}>
-                  <td data-label="Date">{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
-                  <td data-label="Type">{e.refType}</td>
-                  <td data-label="Description">{e.invoice ? <Link href={`/invoices/${e.invoiceId}`}>{e.description}</Link> : e.description}</td>
-                  <td data-label="Debit">{Number(e.debit) > 0 ? Number(e.debit).toFixed(2) : "—"}</td>
-                  <td data-label="Credit">{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
-                  <td data-label="Balance">{Number(e.runningBalance).toFixed(2)}</td>
+          <>
+            <p style={{ fontSize: 12, color: "#667", marginBottom: 10 }}>
+              Balance is the running total after each row: a positive amount is still <strong>due</strong> from the customer, a
+              negative amount is <strong>advance</strong> held on their behalf.
+            </p>
+            <table className="afs-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th>Debit</th>
+                  <th>Credit</th>
+                  <th>Balance</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {entries.map((e) => {
+                  const balance = Number(e.runningBalance);
+                  return (
+                    <tr key={e.id}>
+                      <td data-label="Date">{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
+                      <td data-label="Type">{e.refType}</td>
+                      <td data-label="Description">{e.invoice ? <Link href={`/invoices/${e.invoiceId}`}>{e.description}</Link> : e.description}</td>
+                      <td data-label="Debit">{Number(e.debit) > 0 ? Number(e.debit).toFixed(2) : "—"}</td>
+                      <td data-label="Credit">{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
+                      <td data-label="Balance" style={{ color: balance > 0 ? "var(--afs-maroon)" : balance < 0 ? "#14532d" : undefined }}>
+                        Rs. {Math.abs(balance).toFixed(2)} {balance > 0 ? "due" : balance < 0 ? "advance" : ""}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </div>

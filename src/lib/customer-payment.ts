@@ -21,8 +21,9 @@ async function recordCustomerPaymentInTx(tx: Tx, input: RecordCustomerPaymentInp
   }
 
   await tx.customer.findFirstOrThrow({ where: { id: customerId, tenantId } });
+  let invoiceNumber: string | undefined;
   if (invoiceId) {
-    await tx.invoice.findFirstOrThrow({ where: { id: invoiceId, tenantId, customerId } });
+    invoiceNumber = (await tx.invoice.findFirstOrThrow({ where: { id: invoiceId, tenantId, customerId } })).number;
   }
 
   const payment = await tx.payment.create({
@@ -38,6 +39,13 @@ async function recordCustomerPaymentInTx(tx: Tx, input: RecordCustomerPaymentInp
   const previousBalance = lastEntry ? Number(lastEntry.runningBalance) : 0;
   const runningBalance = round2(previousBalance - amount);
 
+  // Name which invoice this credit closed out (or flag it as an unapplied advance) --
+  // otherwise every payment row on the statement reads as identical "Payment
+  // received" text, and a customer with several allocations from one lump sum has no
+  // way to tell them apart.
+  const descriptionParts = [invoiceId ? `Payment received against ${invoiceNumber}` : "Payment received (advance / unapplied)"];
+  if (referenceNo) descriptionParts.push(`(${referenceNo})`);
+
   await tx.ledgerEntry.create({
     data: {
       tenantId,
@@ -49,7 +57,7 @@ async function recordCustomerPaymentInTx(tx: Tx, input: RecordCustomerPaymentInp
       debit: 0,
       credit: amount,
       runningBalance,
-      description: `Payment received${referenceNo ? ` (${referenceNo})` : ""}`,
+      description: descriptionParts.join(" "),
     },
   });
 
