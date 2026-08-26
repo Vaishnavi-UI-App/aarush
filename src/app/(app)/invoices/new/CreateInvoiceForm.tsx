@@ -112,7 +112,8 @@ export default function CreateInvoiceForm({
   items: Item[];
   defaultCustomerId?: string;
   /** When set, the form edits this existing invoice (PATCH) instead of creating a new one.
-   * The customer can't be changed on edit -- it's already posted to that customer's ledger. */
+   * The customer can be changed here too -- updateSaleInvoice moves the posted ledger
+   * entry to the new customer and replays both customers' running balances. */
   editInvoiceId?: string;
   initialValues?: InvoiceFormInitialValues;
   sites: Site[];
@@ -336,10 +337,10 @@ export default function CreateInvoiceForm({
           taxRate: Number(l.taxRate),
         })),
       };
+      body.customerId = customerId;
       if (isEdit) {
         body.date = date || undefined;
       } else {
-        body.customerId = customerId;
         body.type = type;
         body.isServiceInvoice = isServiceInvoice;
       }
@@ -369,17 +370,13 @@ export default function CreateInvoiceForm({
       <div className="afs-form-row">
         <div className="afs-form-field">
           <label>Customer *</label>
-          {isEdit ? (
-            <input readOnly value={customers.find((c) => c.id === customerId)?.name ?? ""} title="Customer can't be changed once an invoice is raised" />
-          ) : (
-            <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} required>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} (state {c.stateCode})
-                </option>
-              ))}
-            </select>
-          )}
+          <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} required>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} (state {c.stateCode})
+              </option>
+            ))}
+          </select>
         </div>
         {isEdit && (
           <div className="afs-form-field">
@@ -525,12 +522,12 @@ export default function CreateInvoiceForm({
         </>
       )}
 
-      <table className="afs-table" style={{ marginTop: 10, marginBottom: 10 }}>
+      <table className="afs-table afs-lineitem-table" style={{ marginTop: 10, marginBottom: 10 }}>
         <thead>
           <tr>
-            <th>Item</th>
-            <th>Description</th>
-            <th>HSN/SAC</th>
+            <th style={{ minWidth: 220 }}>Item</th>
+            <th style={{ minWidth: 220 }}>Description</th>
+            <th style={{ width: 140 }}>HSN/SAC</th>
             <th style={{ width: 100 }}>Unit</th>
             <th style={{ width: 70 }}>Qty</th>
             <th style={{ width: 100 }}>Rate</th>
@@ -545,21 +542,23 @@ export default function CreateInvoiceForm({
             return (
               <tr key={idx}>
                 <td data-label="Item">
-                  <input
+                  <textarea
                     required
-                    type="text"
-                    list="afs-items-datalist"
                     value={line.itemQuery}
                     onChange={(e) => onItemQueryChange(idx, e.target.value)}
-                    placeholder="Search item, or type a name manually"
+                    placeholder="Type an item name -- matches an existing item, or add a new one"
                     autoComplete="off"
+                    rows={1}
+                    style={{ resize: "vertical" }}
                   />
                 </td>
                 <td data-label="Description">
-                  <input
+                  <textarea
                     value={line.detail}
                     onChange={(e) => updateLine(idx, { detail: e.target.value })}
                     placeholder="Description / spec (optional)"
+                    rows={1}
+                    style={{ resize: "vertical" }}
                   />
                 </td>
                 <td data-label="HSN/SAC">
@@ -620,12 +619,6 @@ export default function CreateInvoiceForm({
           })}
         </tbody>
       </table>
-
-      <datalist id="afs-items-datalist">
-        {items.map((i) => (
-          <option key={i.id} value={i.name} />
-        ))}
-      </datalist>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         <button type="button" onClick={addLine} className="afs-btn afs-btn-gold">

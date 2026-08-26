@@ -316,6 +316,26 @@ export interface UpdateSaleInvoiceInput extends DispatchDetailsInput {
    * the invoice number's FY segment (e.g. "24-25") is fixed at creation and would go
    * stale otherwise. */
   date?: Date;
+  /** Re-billing the same invoice to a different customer. Moves the posted ledger entry
+   * (if any) to the new customer and replays both customers' running balances. The
+   * invoice number itself doesn't change -- it's tied to the tenant/type/FY, not the
+   * customer. */
+  customerId?: string;
+}
+
+/** Recomputes running balances for one customer's whole ledger, in entry order. Used
+ * whenever an entry's debit/credit or its presence in this customer's chain changed, so
+ * every later entry's balance reflects it. */
+async function recomputeLedgerRunningBalances(tx: Prisma.TransactionClient, tenantId: string, customerId: string) {
+  const entries = await tx.ledgerEntry.findMany({
+    where: { tenantId, customerId },
+    orderBy: { createdAt: "asc" },
+  });
+  let running = 0;
+  for (const e of entries) {
+    running = round2(running + Number(e.debit) - Number(e.credit));
+    await tx.ledgerEntry.update({ where: { id: e.id }, data: { runningBalance: running } });
+  }
 }
 
 /** Edits an existing DRAFT/SENT invoice with no successful payment against it yet.
@@ -331,6 +351,7 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
     discount = 0,
     dueDate,
     date,
+    customerId,
     poNumber,
     poDate,
     vehicleNumber,
@@ -377,9 +398,10 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
       );
     }
 
+    const targetCustomerId = customerId ?? invoice.customerId;
     const [tenant, customer] = await Promise.all([
       tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
-      tx.customer.findFirstOrThrow({ where: { id: invoice.customerId, tenantId } }),
+      tx.customer.findFirstOrThrow({ where: { id: targetCustomerId, tenantId } }),
       siteId ? tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } }) : Promise.resolve(null),
     ]);
 
@@ -397,6 +419,7 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
     const updated = await tx.invoice.update({
       where: { id: invoiceId },
       data: {
+        customerId,
         date,
         dueDate,
         subtotal,
@@ -425,31 +448,34 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
     });
 
     if (invoice.type === "SALE") {
-      // Serialize ledger writes per customer so the running balance never races.
+      const customerChanged = targetCustomerId !== invoice.customerId;
+
+      // Serialize ledger writes per customer (both, if the customer changed) so the
+      // running balance never races.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${invoice.customerId}))`;
+      if (customerChanged) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${targetCustomerId}))`;
+      }
 
       const entry = await tx.ledgerEntry.findFirst({
         where: { tenantId, invoiceId, refType: "INVOICE" },
       });
 
       if (entry) {
-        const allEntries = await tx.ledgerEntry.findMany({
-          where: { tenantId, customerId: invoice.customerId },
-          orderBy: { createdAt: "asc" },
+        await tx.ledgerEntry.update({
+          where: { id: entry.id },
+          data: {
+            debit: total,
+            ...(customerChanged ? { customerId: targetCustomerId } : {}),
+            ...(date ? { entryDate: date } : {}),
+          },
         });
 
-        let running = 0;
-        for (const e of allEntries) {
-          const debit = e.id === entry.id ? total : Number(e.debit);
-          const credit = Number(e.credit);
-          running = round2(running + debit - credit);
-          await tx.ledgerEntry.update({
-            where: { id: e.id },
-            data: {
-              ...(e.id === entry.id ? { debit: total, ...(date ? { entryDate: date } : {}) } : {}),
-              runningBalance: running,
-            },
-          });
+        // Old customer's chain no longer includes this entry (if it moved); new
+        // customer's chain now does -- both need their running balances replayed.
+        await recomputeLedgerRunningBalances(tx, tenantId, invoice.customerId);
+        if (customerChanged) {
+          await recomputeLedgerRunningBalances(tx, tenantId, targetCustomerId);
         }
       }
     }
