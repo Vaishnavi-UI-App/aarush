@@ -18,15 +18,20 @@ export default async function BankingPage() {
       invoices: {
         where: { type: "SALE", status: { not: "CANCELLED" } },
         include: { payments: { where: { status: "SUCCESS" } } },
+        // Oldest first, so the payment modal's auto-apply cascade always settles the
+        // longest-outstanding bill before a newer one.
+        orderBy: { date: "asc" },
       },
+      // All SUCCESS payments, not just ones tied to an invoice -- a general/unapplied
+      // payment (invoiceId null) is how an advance gets recorded, and it must still
+      // count toward "paid" or it vanishes from both Due and Advance below.
+      payments: { where: { status: "SUCCESS" } },
     },
   });
 
   const rows = customers.map((c) => {
     const billed = round2(c.invoices.reduce((sum, inv) => sum + Number(inv.total), 0));
-    const paid = round2(
-      c.invoices.reduce((sum, inv) => sum + inv.payments.reduce((s, p) => s + Number(p.amount), 0), 0)
-    );
+    const paid = round2(c.payments.reduce((sum, p) => sum + Number(p.amount), 0));
     const net = round2(billed - paid);
     const due = net > 0 ? net : 0;
     const advance = net < 0 ? round2(-net) : 0;
@@ -38,6 +43,13 @@ export default async function BankingPage() {
         return { id: inv.id, number: inv.number, due: round2(Number(inv.total) - invPaid) };
       });
 
+    // Most recent invoice or payment for this customer -- a single "when did we last
+    // do business with them" date for the summary row (the table has no room for a
+    // whole transaction history; that's what the customer's own ledger page is for).
+    const activityDates = [...c.invoices.map((inv) => inv.date), ...c.payments.map((p) => p.date)];
+    const lastActivity =
+      activityDates.length > 0 ? new Date(Math.max(...activityDates.map((d) => d.getTime()))).toISOString() : null;
+
     return {
       id: c.id,
       name: c.name,
@@ -48,6 +60,7 @@ export default async function BankingPage() {
       due,
       advance,
       unpaidInvoices,
+      lastActivity,
     };
   });
 

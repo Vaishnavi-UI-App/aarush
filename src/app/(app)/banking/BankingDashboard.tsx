@@ -21,6 +21,7 @@ interface CustomerRow {
   due: number;
   advance: number;
   unpaidInvoices: UnpaidInvoice[];
+  lastActivity: string | null;
 }
 
 interface Totals {
@@ -34,10 +35,14 @@ function money(n: number): string {
   return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
+function lastActivityLabel(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleDateString("en-IN") : "—";
+}
+
 function downloadCsv(rows: CustomerRow[]) {
-  const header = "Customer,Billed,Paid,Due,Advance\n";
+  const header = "Customer,Last Activity,Billed,Paid,Due,Advance\n";
   const body = rows
-    .map((r) => `"${r.name.replace(/"/g, '""')}",${r.billed},${r.paid},${r.due},${r.advance}`)
+    .map((r) => `"${r.name.replace(/"/g, '""')}",${lastActivityLabel(r.lastActivity)},${r.billed},${r.paid},${r.due},${r.advance}`)
     .join("\n");
   const blob = new Blob([header + body], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -142,6 +147,7 @@ export default function BankingDashboard({ rows, totals }: { rows: CustomerRow[]
             <thead>
               <tr>
                 <th>Customer</th>
+                <th>Last Activity</th>
                 <th>Billed</th>
                 <th>Paid</th>
                 <th>Due</th>
@@ -165,6 +171,7 @@ export default function BankingDashboard({ rows, totals }: { rows: CustomerRow[]
                 return (
                   <tr key={r.id}>
                     <td data-label="Customer">{r.name}</td>
+                    <td data-label="Last Activity">{lastActivityLabel(r.lastActivity)}</td>
                     <td data-label="Billed">{money(r.billed)}</td>
                     <td data-label="Paid" style={{ color: "#0ca30c" }}>{money(r.paid)}</td>
                     <td data-label="Due" style={{ color: r.due > 0 ? "#d03b3b" : "#889" }}>{r.due > 0 ? money(r.due) : "—"}</td>
