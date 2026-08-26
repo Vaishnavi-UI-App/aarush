@@ -283,12 +283,12 @@ export default function CreatePurchaseForm({
         </div>
       </div>
 
-      <table className="afs-table" style={{ marginTop: 10, marginBottom: 10 }}>
+      <table className="afs-table afs-lineitem-table" style={{ marginTop: 10, marginBottom: 10 }}>
         <thead>
           <tr>
-            <th>Item</th>
-            <th>Description</th>
-            <th>HSN/SAC</th>
+            <th style={{ minWidth: 180 }}>Item</th>
+            <th style={{ minWidth: 220 }}>Description</th>
+            <th style={{ width: 140 }}>HSN/SAC</th>
             <th style={{ width: 70 }}>Qty</th>
             <th style={{ width: 100 }}>Rate</th>
             <th style={{ width: 90 }}>Tax %</th>
@@ -312,10 +312,12 @@ export default function CreatePurchaseForm({
                   </select>
                 </td>
                 <td data-label="Description">
-                  <input
+                  <textarea
                     required
                     value={line.description}
                     onChange={(e) => updateLine(idx, { description: e.target.value })}
+                    rows={1}
+                    style={{ resize: "vertical" }}
                   />
                 </td>
                 <td data-label="HSN/SAC">

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { canManageUsers, getPageAccessMap } from "@/lib/permissions";
 import SidebarNav from "@/components/SidebarNav";
 import LocationPinger from "@/components/LocationPinger";
+import BackButton from "@/components/BackButton";
 import "@/app/invoice/invoice-page.css";
 import "./app-shell.css";
 
@@ -28,7 +29,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="afs-shell">
       <LocationPinger isOwner={manageUsers} />
       <SidebarNav logoUrl="/logo.jpeg" tenantName={tenant.name} pageAccess={pageAccess} manageUsers={manageUsers} />
-      <main className="afs-main">{children}</main>
+      <main className="afs-main">
+        <BackButton />
+        {children}
+      </main>
     </div>
   );
 }

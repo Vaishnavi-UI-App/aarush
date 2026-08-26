@@ -255,6 +255,31 @@
   }
 }
 
+.afs-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid #ccd2e0;
+  color: var(--afs-navy, #16305c);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 7px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 6px rgba(13, 31, 61, 0.1);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.afs-back-btn:hover {
+  background: var(--afs-navy, #16305c);
+  border-color: var(--afs-navy, #16305c);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(13, 31, 61, 0.2);
+}
+
 .afs-page-title {
   font-size: 20px;
   font-weight: 700;
@@ -325,6 +350,20 @@
 .afs-table td {
   padding: 10px 12px;
   border-bottom: 1px solid #eef0f6;
+}
+
+/* Invoice/purchase line-item tables specifically -- taller fields all round (not just
+   Description) so a long item name, HSN code, etc. has room to be typed and read back
+   without every field in the row looking like a different size. Scoped to this class
+   rather than every .afs-table, since most tables in the app (banking, ledgers) show
+   plain text with no inputs at all. */
+.afs-lineitem-table input,
+.afs-lineitem-table select,
+.afs-lineitem-table textarea {
+  width: 100%;
+  padding: 5px 8px;
+  font: inherit;
+  box-sizing: border-box;
 }
 
 .afs-table tr:hover td {
