@@ -84,6 +84,45 @@ export interface PaymentAllocation {
   amount: number;
 }
 
+/** Deletes a mistaken/duplicate payment entry: removes the Payment and its
+ * ledger row, recomputes every later ledger entry's running balance for that
+ * customer, and re-derives the invoice's status from whatever payments remain.
+ * This only corrects the books -- it doesn't reverse money in the real world,
+ * so it's meant for entry errors, not refunds. */
+export async function deleteCustomerPayment(tenantId: string, paymentId: string) {
+  return prisma.$transaction(async (tx) => {
+    const payment = await tx.payment.findFirst({ where: { id: paymentId, tenantId } });
+    if (!payment) throw new Error("Payment not found");
+
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${payment.customerId}))`;
+
+    await tx.ledgerEntry.deleteMany({ where: { tenantId, paymentId } });
+    await tx.payment.delete({ where: { id: paymentId } });
+
+    const remaining = await tx.ledgerEntry.findMany({
+      where: { tenantId, customerId: payment.customerId },
+      orderBy: { createdAt: "asc" },
+    });
+    let balance = 0;
+    for (const entry of remaining) {
+      balance = round2(balance + Number(entry.debit) - Number(entry.credit));
+      if (Number(entry.runningBalance) !== balance) {
+        await tx.ledgerEntry.update({ where: { id: entry.id }, data: { runningBalance: balance } });
+      }
+    }
+
+    if (payment.invoiceId) {
+      const successPayments = await tx.payment.findMany({ where: { invoiceId: payment.invoiceId, status: "SUCCESS" } });
+      const totalPaid = round2(successPayments.reduce((sum, p) => sum + Number(p.amount), 0));
+      const invoice = await tx.invoice.findUniqueOrThrow({ where: { id: payment.invoiceId } });
+      const newStatus = totalPaid >= Number(invoice.total) ? "PAID" : totalPaid > 0 ? "PARTIALLY_PAID" : "SENT";
+      await tx.invoice.update({ where: { id: payment.invoiceId }, data: { status: newStatus } });
+    }
+
+    return payment;
+  });
+}
+
 /** Records one payment received from a customer, split across several invoices (or
  * left as a general/unapplied credit) in a single amount the customer handed over --
  * e.g. paying off two older bills in full and putting the rest toward a third. Each

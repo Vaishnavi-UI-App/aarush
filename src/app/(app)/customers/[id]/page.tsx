@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { can } from "@/lib/permissions";
+import DeletePaymentButton from "./DeletePaymentButton";
 
 export default async function CustomerLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession();
@@ -17,6 +19,7 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
   });
 
   const currentDue = entries.length > 0 ? Number(entries[entries.length - 1].runningBalance) : 0;
+  const canDelete = await can(session!.tenantId, session!.roleId, "customers", "delete");
 
   return (
     <div>
@@ -70,6 +73,7 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
                   <th>Debit</th>
                   <th>Credit</th>
                   <th>Balance</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,6 +88,17 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
                       <td data-label="Credit">{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
                       <td data-label="Balance" style={{ color: balance > 0 ? "var(--afs-maroon)" : balance < 0 ? "#14532d" : undefined }}>
                         Rs. {Math.abs(balance).toFixed(2)} {balance > 0 ? "due" : balance < 0 ? "advance" : ""}
+                      </td>
+                      <td data-label="Actions">
+                        {canDelete && e.refType === "PAYMENT" && e.paymentId ? (
+                          <DeletePaymentButton customerId={customer.id} paymentId={e.paymentId} />
+                        ) : e.refType === "INVOICE" && e.invoiceId ? (
+                          <Link href={`/invoices/${e.invoiceId}`} style={{ fontSize: 12 }}>
+                            Delete from invoice →
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                     </tr>
                   );
