@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { TrashIcon } from "@/components/icons";
 
 interface Transaction {
   id: string;
@@ -31,6 +32,8 @@ export default function TransactionRow({
   const [selected, setSelected] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const options = transaction.type === "CREDIT" ? unmatchedPayments : unmatchedVendorPayments;
 
@@ -52,6 +55,21 @@ export default function TransactionRow({
       setError(e instanceof Error ? e.message : "Failed to match");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteTransaction() {
+    if (!window.confirm("Delete this bank statement entry? This can't be undone.")) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/bank-transactions/${transaction.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete");
+      router.refresh();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete");
+      setDeleting(false);
     }
   }
 
@@ -82,6 +100,14 @@ export default function TransactionRow({
             {error && <span style={{ color: "#b91c1c", fontSize: 11 }}>{error}</span>}
           </div>
         )}
+      </td>
+      <td data-label="Actions">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button type="button" onClick={deleteTransaction} disabled={deleting} title="Delete entry" className="afs-icon-btn danger">
+            <TrashIcon />
+          </button>
+          {deleteError && <span style={{ color: "#b91c1c", fontSize: 11 }}>{deleteError}</span>}
+        </div>
       </td>
     </tr>
   );

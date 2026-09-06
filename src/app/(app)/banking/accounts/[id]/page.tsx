@@ -62,6 +62,7 @@ export default async function BankAccountPage({ params }: { params: Promise<{ id
                 <th>Type</th>
                 <th>Amount</th>
                 <th>Match</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
