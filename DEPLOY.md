@@ -1,7 +1,12 @@
 # Deploying to a VPS
 
-Assumes: a VPS with Docker + Docker Compose already installed, and a domain's
-A record already pointed at the VPS's IP.
+Assumes: a VPS with Docker + Docker Compose already installed, a domain's A
+record already pointed at the VPS's IP, and a host-level nginx + Certbot in
+front of Docker (this VPS is shared with other apps, so nginx -- not a
+container -- owns ports 80/443 and terminates TLS for every domain on the
+box). The `app` container publishes to `127.0.0.1:3200`, and nginx proxies
+the app's domain to that port; see `/etc/nginx/sites-enabled/` on the VPS
+for the existing site config.
 
 ## 1. Get the code onto the VPS
 
@@ -24,7 +29,8 @@ Fill in every value. For production specifically:
 - `POSTGRES_PASSWORD` -- a strong password, only used between the `app` and
   `postgres` containers.
 - `DOMAIN` -- the domain pointed at this VPS (e.g. `billing.example.com`).
-  Caddy uses this to request/renew its Let's Encrypt certificate.
+  Point nginx's site config at it and issue/renew its certificate with
+  Certbot (`certbot --nginx -d <DOMAIN>`).
 - `APP_BASE_URL` -- set to `https://<DOMAIN>` (used in emails/links and the
   Razorpay webhook return URL).
 - `SESSION_SECRET` -- generate with:
@@ -37,15 +43,14 @@ Fill in every value. For production specifically:
   you need to run Prisma commands from the host.
 - Razorpay/SMTP/WhatsApp keys -- use live credentials, not test-mode ones.
 
-## 3. Open firewall ports
+## 3. Add the nginx site config
 
-Only 80 and 443 need to be reachable from the internet (Caddy terminates TLS
-and proxies to the app container internally; Postgres is not exposed).
-
-```bash
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-```
+Only 80 and 443 need to be reachable from the internet; nginx terminates TLS
+and proxies to `127.0.0.1:3200` (the app container's published port).
+Postgres is not exposed. Add a server block for `DOMAIN` under
+`/etc/nginx/sites-enabled/` (see other configs there for the pattern), then
+`certbot --nginx -d <DOMAIN>` to provision its certificate, and
+`nginx -t && systemctl reload nginx`.
 
 ## 4. Build and start
 
@@ -53,14 +58,10 @@ sudo ufw allow 443/tcp
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-This starts three containers: `postgres`, `app`, and `caddy`. The app
-container's entrypoint runs `prisma migrate deploy` automatically before
-`next start`, so schema migrations apply on every deploy without a manual
-step.
-
-Caddy requests a certificate for `DOMAIN` on first start -- this needs port 80
-reachable from the internet for the ACME HTTP challenge, and can take up to a
-minute.
+This starts two containers: `postgres` and `app`, with `app` published to
+`127.0.0.1:3200`. The app container's entrypoint runs `prisma migrate deploy`
+automatically before `next start`, so schema migrations apply on every
+deploy without a manual step.
 
 ## 5. Verify
 
