@@ -127,6 +127,40 @@ function BatchRow({
   );
 }
 
+/** A payment that wasn't split across multiple invoices still collapses to a plain
+ * "Payment received" line by default -- click it to reveal which invoice (if any)
+ * it was applied against, same interaction as an expanded batch row. */
+function SinglePaymentRow({
+  customerId,
+  entry,
+  canDelete,
+  onChanged,
+}: {
+  customerId: string;
+  entry: LedgerEntryView;
+  canDelete: boolean;
+  onChanged?: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <tr style={{ cursor: "pointer", background: expanded ? "#f7f9fc" : undefined }} onClick={() => setExpanded((v) => !v)}>
+      <td data-label="Date">{new Date(entry.entryDate).toLocaleDateString("en-IN")}</td>
+      <td data-label="Type">{entry.refType}</td>
+      <td data-label="Description">
+        <span style={{ marginRight: 6 }}>{expanded ? "▾" : "▸"}</span>
+        {expanded ? entry.description : "Payment received"}
+      </td>
+      <td data-label="Debit">{entry.debit > 0 ? money(entry.debit) : "—"}</td>
+      <td data-label="Credit">{entry.credit > 0 ? money(entry.credit) : "—"}</td>
+      <BalanceCell balance={entry.runningBalance} />
+      <td data-label="Actions" onClick={(e) => e.stopPropagation()}>
+        <EntryActions customerId={customerId} entry={entry} canDelete={canDelete} onChanged={onChanged} />
+      </td>
+    </tr>
+  );
+}
+
 export default function CustomerLedgerTable({
   customerId,
   rows,
@@ -155,10 +189,14 @@ export default function CustomerLedgerTable({
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) =>
-          row.kind === "batch" ? (
-            <BatchRow key={row.batchId} customerId={customerId} batchId={row.batchId} entries={row.entries} canDelete={canDelete} onChanged={onChanged} />
-          ) : (
+        {rows.map((row) => {
+          if (row.kind === "batch") {
+            return <BatchRow key={row.batchId} customerId={customerId} batchId={row.batchId} entries={row.entries} canDelete={canDelete} onChanged={onChanged} />;
+          }
+          if (row.entry.refType === "PAYMENT") {
+            return <SinglePaymentRow key={row.entry.id} customerId={customerId} entry={row.entry} canDelete={canDelete} onChanged={onChanged} />;
+          }
+          return (
             <tr key={row.entry.id}>
               <td data-label="Date">{new Date(row.entry.entryDate).toLocaleDateString("en-IN")}</td>
               <td data-label="Type">{row.entry.refType}</td>
@@ -172,8 +210,8 @@ export default function CustomerLedgerTable({
                 <EntryActions customerId={customerId} entry={row.entry} canDelete={canDelete} onChanged={onChanged} />
               </td>
             </tr>
-          )
-        )}
+          );
+        })}
       </tbody>
     </table>
   );

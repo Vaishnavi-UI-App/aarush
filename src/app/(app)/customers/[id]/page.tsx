@@ -79,8 +79,8 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
           <>
             <p style={{ fontSize: 12, color: "#667", marginBottom: 10 }}>
               Balance is the running total after each row: a positive amount is still <strong>due</strong> from the customer, a
-              negative amount is <strong>advance</strong> held on their behalf. A payment applied across several invoices at once
-              shows as one row -- click it to see the breakdown.
+              negative amount is <strong>advance</strong> held on their behalf. Every payment row starts collapsed --
+              click one to see which invoice(s) it was applied against.
             </p>
             <CustomerLedgerTable customerId={customer.id} rows={rows} canDelete={canDelete} />
           </>
