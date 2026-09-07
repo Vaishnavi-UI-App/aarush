@@ -24,7 +24,7 @@ export default async function PrintAllCustomersStatementPage() {
       include: {
         ledgerEntries: {
           orderBy: { createdAt: "asc" },
-          include: { invoice: { select: { number: true } }, payment: { select: { mode: true, referenceNo: true } } },
+          include: { invoice: { select: { number: true } }, payment: { select: { mode: true, referenceNo: true, batchId: true } } },
         },
       },
     }),
@@ -68,6 +68,7 @@ export default async function PrintAllCustomersStatementPage() {
             invoiceNumber: e.invoice?.number,
             paymentMode: e.payment?.mode,
             paymentReferenceNo: e.payment?.referenceNo,
+            paymentBatchId: e.payment?.batchId,
           }))
         );
         if (rows.length === 0) return null;

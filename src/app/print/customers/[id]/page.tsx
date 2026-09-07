@@ -24,7 +24,7 @@ export default async function PrintCustomerStatementPage({ params }: { params: P
     prisma.ledgerEntry.findMany({
       where: { tenantId: session.tenantId, customerId },
       orderBy: { createdAt: "asc" },
-      include: { invoice: { select: { number: true } }, payment: { select: { mode: true, referenceNo: true } } },
+      include: { invoice: { select: { number: true } }, payment: { select: { mode: true, referenceNo: true, batchId: true } } },
     }),
   ]);
 
@@ -39,6 +39,7 @@ export default async function PrintCustomerStatementPage({ params }: { params: P
       invoiceNumber: e.invoice?.number,
       paymentMode: e.payment?.mode,
       paymentReferenceNo: e.payment?.referenceNo,
+      paymentBatchId: e.payment?.batchId,
     }))
   );
   const totalDebit = rows.reduce((s, r) => s + r.debit, 0);

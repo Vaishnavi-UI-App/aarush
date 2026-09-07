@@ -10,6 +10,10 @@ export interface RawLedgerEntry {
   invoiceNumber?: string | null;
   paymentMode?: string | null;
   paymentReferenceNo?: string | null;
+  // A payment split across several invoices in one "Record Payment" submission
+  // shares this -- lets buildTallyLedgerRows fold them back into the one receipt
+  // they really were, instead of one line per invoice it happened to be applied to.
+  paymentBatchId?: string | null;
 }
 
 export interface TallyLedgerRow {
@@ -36,27 +40,49 @@ function titleCase(s: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+interface RowAccumulator extends TallyLedgerRow {
+  _batchId?: string | null;
+}
+
 /** Reshapes raw ledger entries into the Date/Particulars/Vch Type/Vch No./Debit/Credit
  * rows of a traditional "Ledger Account" statement (the format Tally and similar
  * accounting software print) -- as opposed to this app's own running-balance table.
  * Vch No. for a receipt is a per-statement sequential counter (1, 2, 3...), matching
  * how such statements read, since individual payments here aren't assigned a
- * persistent receipt number of their own. */
+ * persistent receipt number of their own. A batched payment collapses to the single
+ * receipt it really was, same as the on-screen ledger's collapsible batch row. */
 export function buildTallyLedgerRows(entries: RawLedgerEntry[]): TallyLedgerRow[] {
   let receiptNo = 0;
-  return entries.map((e) => {
+  const rows: RowAccumulator[] = [];
+  for (const e of entries) {
     if (e.refType === "INVOICE") {
-      return { date: e.entryDate, particulars: "To Sales", vchType: "Sales", vchNo: e.invoiceNumber ?? "", debit: e.debit, credit: e.credit };
+      rows.push({ date: e.entryDate, particulars: "To Sales", vchType: "Sales", vchNo: e.invoiceNumber ?? "", debit: e.debit, credit: e.credit });
+      continue;
     }
     if (e.refType === "PAYMENT") {
+      const last = rows[rows.length - 1];
+      if (e.paymentBatchId && last?.vchType === "Receipt" && last._batchId === e.paymentBatchId) {
+        last.credit = round2(last.credit + e.credit);
+        continue;
+      }
       receiptNo += 1;
       const modeLabel = e.paymentMode ? (PAYMENT_MODE_LABELS[e.paymentMode] ?? e.paymentMode) : "Payment";
       const particulars = e.paymentReferenceNo ? `By ${modeLabel} (${e.paymentReferenceNo})` : `By ${modeLabel}`;
-      return { date: e.entryDate, particulars, vchType: "Receipt", vchNo: String(receiptNo), debit: e.debit, credit: e.credit };
+      rows.push({
+        date: e.entryDate,
+        particulars,
+        vchType: "Receipt",
+        vchNo: String(receiptNo),
+        debit: e.debit,
+        credit: e.credit,
+        _batchId: e.paymentBatchId,
+      });
+      continue;
     }
     const label = titleCase(e.refType);
-    return { date: e.entryDate, particulars: `${e.debit > 0 ? "To" : "By"} ${label}`, vchType: label, vchNo: "", debit: e.debit, credit: e.credit };
-  });
+    rows.push({ date: e.entryDate, particulars: `${e.debit > 0 ? "To" : "By"} ${label}`, vchType: label, vchNo: "", debit: e.debit, credit: e.credit });
+  }
+  return rows.map((r) => ({ date: r.date, particulars: r.particulars, vchType: r.vchType, vchNo: r.vchNo, debit: r.debit, credit: r.credit }));
 }
 
 /** The plug row that balances the Debit/Credit totals at the foot of the statement --

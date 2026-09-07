@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const entries = await prisma.ledgerEntry.findMany({
     where: { tenantId: session.tenantId, customerId },
     orderBy: { createdAt: "asc" },
-    include: { invoice: { select: { number: true } }, payment: { select: { mode: true, referenceNo: true } } },
+    include: { invoice: { select: { number: true } }, payment: { select: { mode: true, referenceNo: true, batchId: true } } },
   });
 
   const rows = buildTallyLedgerRows(
@@ -33,6 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       invoiceNumber: e.invoice?.number,
       paymentMode: e.payment?.mode,
       paymentReferenceNo: e.payment?.referenceNo,
+      paymentBatchId: e.payment?.batchId,
     }))
   );
 
