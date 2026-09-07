@@ -25,6 +25,12 @@ function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+function todayLocal(): string {
+  const d = new Date();
+  const offsetMs = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - offsetMs).toISOString().slice(0, 10);
+}
+
 export default function RecordPaymentModal({ customers, onClose }: { customers: CustomerOption[]; onClose: () => void }) {
   const router = useRouter();
   const [customerId, setCustomerId] = useState(customers[0]?.id ?? "");
@@ -37,6 +43,7 @@ export default function RecordPaymentModal({ customers, onClose }: { customers: 
   // Invoices the oldest-first cascade would otherwise cover, but the user unticked --
   // their share flows to the next invoice in line instead.
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+  const [date, setDate] = useState(todayLocal());
   const [mode, setMode] = useState("CASH");
   const [referenceNo, setReferenceNo] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +150,7 @@ export default function RecordPaymentModal({ customers, onClose }: { customers: 
       const res = await fetch(`/api/customers/${customerId}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ allocations, mode, referenceNo: referenceNo || undefined }),
+        body: JSON.stringify({ allocations, mode, referenceNo: referenceNo || undefined, date }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to record payment");
@@ -270,6 +277,11 @@ export default function RecordPaymentModal({ customers, onClose }: { customers: 
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, marginBottom: 12, padding: "8px 0", borderTop: "1px solid #eee" }}>
             <span>Total to record</span>
             <span>Rs. {money(total)}</span>
+          </div>
+
+          <div className="afs-form-field" style={{ marginBottom: 12 }}>
+            <label>Date *</label>
+            <input required type="date" value={date} max={todayLocal()} onChange={(e) => setDate(e.target.value)} />
           </div>
 
           <div className="afs-form-field" style={{ marginBottom: 12 }}>

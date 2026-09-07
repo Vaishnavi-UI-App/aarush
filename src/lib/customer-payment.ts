@@ -15,6 +15,12 @@ export interface RecordCustomerPaymentInput {
   // Correlates the several Payment rows created from one multi-invoice "Record
   // Payment" submission, so the customer statement can show them as one entry.
   batchId?: string;
+  // When the money actually changed hands, if different from today -- e.g. entering
+  // a cheque that cleared a few days ago. Only affects Payment.date and the ledger
+  // row's display date; it's still appended at the end of the ledger's append-only
+  // sequence (today's position), not spliced in chronologically, so the running
+  // balance is unaffected. Defaults to now.
+  date?: Date;
 }
 
 /** Re-derives one invoice's status from whichever of its payments are still
@@ -45,7 +51,7 @@ async function recomputeCustomerLedgerBalances(tx: Tx, tenantId: string, custome
 }
 
 async function recordCustomerPaymentInTx(tx: Tx, input: RecordCustomerPaymentInput) {
-  const { tenantId, customerId, invoiceId, amount, mode, referenceNo, batchId } = input;
+  const { tenantId, customerId, invoiceId, amount, mode, referenceNo, batchId, date } = input;
 
   if (!(amount > 0)) {
     throw new Error("Payment amount must be greater than zero");
@@ -58,7 +64,7 @@ async function recordCustomerPaymentInTx(tx: Tx, input: RecordCustomerPaymentInp
   }
 
   const payment = await tx.payment.create({
-    data: { tenantId, customerId, invoiceId, amount, mode, status: "SUCCESS", referenceNo, batchId },
+    data: { tenantId, customerId, invoiceId, amount, mode, status: "SUCCESS", referenceNo, batchId, ...(date ? { date } : {}) },
   });
 
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${customerId}))`;
@@ -89,6 +95,7 @@ async function recordCustomerPaymentInTx(tx: Tx, input: RecordCustomerPaymentInp
       credit: amount,
       runningBalance,
       description: descriptionParts.join(" "),
+      ...(date ? { entryDate: date } : {}),
     },
   });
 
@@ -172,7 +179,8 @@ export async function recordCustomerPaymentAllocations(
   customerId: string,
   mode: RecordCustomerPaymentInput["mode"],
   referenceNo: string | undefined,
-  allocations: PaymentAllocation[]
+  allocations: PaymentAllocation[],
+  date?: Date
 ) {
   if (allocations.length === 0) {
     throw new Error("At least one payment allocation is required");
@@ -197,6 +205,7 @@ export async function recordCustomerPaymentAllocations(
           mode,
           referenceNo,
           batchId,
+          date,
         })
       );
     }

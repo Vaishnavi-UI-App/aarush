@@ -16,6 +16,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id: customerId } = await params;
   const body = await request.json();
 
+  let date: Date | undefined;
+  if (body.date) {
+    date = new Date(body.date);
+    if (Number.isNaN(date.getTime())) {
+      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+    }
+  }
+
   // A single payment split across several invoices (or a general/unapplied credit
   // when an entry omits invoiceId) -- e.g. clearing two older bills and putting the
   // rest toward a third, all from one amount the customer handed over.
@@ -37,7 +45,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         body.allocations.map((a: { invoiceId?: string; amount: number }) => ({
           invoiceId: a.invoiceId || undefined,
           amount: a.amount,
-        }))
+        })),
+        date
       );
       return NextResponse.json(payments, { status: 201 });
     } catch (e) {
@@ -58,6 +67,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       amount: body.amount,
       mode: body.mode,
       referenceNo: body.referenceNo || undefined,
+      date,
     });
     return NextResponse.json(payment, { status: 201 });
   } catch (e) {
