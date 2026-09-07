@@ -25,7 +25,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     orderBy: { createdAt: "asc" },
     include: {
       invoice: { select: { id: true, number: true, status: true } },
-      payment: { select: { id: true, mode: true, referenceNo: true } },
+      // batchId is what lets the caller fold a multi-invoice payment's rows back into
+      // the single receipt it was -- without it the Banking dashboard's inline ledger
+      // modal shows one row per invoice the payment touched.
+      payment: { select: { id: true, mode: true, referenceNo: true, batchId: true } },
     },
   });
 
