@@ -87,6 +87,16 @@ export default function BankingDashboard({ rows, totals }: { rows: CustomerRow[]
           <button type="button" className="afs-btn afs-btn-gold" onClick={() => downloadCsv(filtered)}>
             ⬇ Download Report
           </button>
+          <a
+            href={customerFilter === "all" ? "/api/customers/statement/pdf" : `/api/customers/${customerFilter}/statement/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="afs-btn"
+            style={{ background: "#e5e7eb", color: "#333" }}
+            title="Tally-style ledger statement -- all customers, or just the one selected above"
+          >
+            ⬇ Ledger PDF
+          </a>
           <button type="button" className="afs-btn afs-btn-primary" onClick={() => setModalOpen(true)}>
             + Record Payment
           </button>
