@@ -916,6 +916,11 @@ model Payment {
   status      PaymentStatus @default(PENDING)
   referenceNo String?
   date        DateTime      @default(now())
+  // Groups the several Payment rows created from one "Record Payment" submission
+  // that splits a single amount received across multiple invoices, so the customer
+  // statement can show them as one entry instead of one row per invoice. Null for
+  // a payment that was always just one allocation (nothing to group).
+  batchId     String?
 
   // Razorpay specific fields
   razorpayPaymentLinkId String? @unique
@@ -929,6 +934,7 @@ model Payment {
   bankTransaction BankTransaction?
 
   @@index([tenantId, customerId])
+  @@index([batchId])
   @@map("payments")
 }
 

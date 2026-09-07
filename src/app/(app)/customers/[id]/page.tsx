@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
-import DeletePaymentButton from "./DeletePaymentButton";
+import CustomerLedgerTable, { LedgerRow } from "./CustomerLedgerTable";
 
 export default async function CustomerLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession();
@@ -14,12 +14,39 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
 
   const entries = await prisma.ledgerEntry.findMany({
     where: { tenantId: session!.tenantId, customerId: id },
-    include: { invoice: { select: { number: true } } },
+    include: { invoice: { select: { number: true } }, payment: { select: { batchId: true } } },
     orderBy: { createdAt: "asc" },
   });
 
   const currentDue = entries.length > 0 ? Number(entries[entries.length - 1].runningBalance) : 0;
   const canDelete = await can(session!.tenantId, session!.roleId, "customers", "delete");
+
+  // A payment split across several invoices in one "Record Payment" submission
+  // shares a batchId -- fold its consecutive ledger rows into one collapsible entry
+  // instead of showing one row per invoice it touched.
+  const rows: LedgerRow[] = [];
+  for (const e of entries) {
+    const view = {
+      id: e.id,
+      entryDate: e.entryDate.toISOString(),
+      refType: e.refType,
+      description: e.description,
+      invoiceId: e.invoiceId,
+      paymentId: e.paymentId,
+      debit: Number(e.debit),
+      credit: Number(e.credit),
+      runningBalance: Number(e.runningBalance),
+    };
+    const batchId = e.refType === "PAYMENT" ? (e.payment?.batchId ?? null) : null;
+    const last = rows[rows.length - 1];
+    if (batchId && last?.kind === "batch" && last.batchId === batchId) {
+      last.entries.push(view);
+    } else if (batchId) {
+      rows.push({ kind: "batch", batchId, entries: [view] });
+    } else {
+      rows.push({ kind: "single", entry: view });
+    }
+  }
 
   return (
     <div>
@@ -62,49 +89,10 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
           <>
             <p style={{ fontSize: 12, color: "#667", marginBottom: 10 }}>
               Balance is the running total after each row: a positive amount is still <strong>due</strong> from the customer, a
-              negative amount is <strong>advance</strong> held on their behalf.
+              negative amount is <strong>advance</strong> held on their behalf. A payment applied across several invoices at once
+              shows as one row -- click it to see the breakdown.
             </p>
-            <table className="afs-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Description</th>
-                  <th>Debit</th>
-                  <th>Credit</th>
-                  <th>Balance</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((e) => {
-                  const balance = Number(e.runningBalance);
-                  return (
-                    <tr key={e.id}>
-                      <td data-label="Date">{new Date(e.entryDate).toLocaleDateString("en-IN")}</td>
-                      <td data-label="Type">{e.refType}</td>
-                      <td data-label="Description">{e.invoice ? <Link href={`/invoices/${e.invoiceId}`}>{e.description}</Link> : e.description}</td>
-                      <td data-label="Debit">{Number(e.debit) > 0 ? Number(e.debit).toFixed(2) : "—"}</td>
-                      <td data-label="Credit">{Number(e.credit) > 0 ? Number(e.credit).toFixed(2) : "—"}</td>
-                      <td data-label="Balance" style={{ color: balance > 0 ? "var(--afs-maroon)" : balance < 0 ? "#14532d" : undefined }}>
-                        Rs. {Math.abs(balance).toFixed(2)} {balance > 0 ? "due" : balance < 0 ? "advance" : ""}
-                      </td>
-                      <td data-label="Actions">
-                        {canDelete && e.refType === "PAYMENT" && e.paymentId ? (
-                          <DeletePaymentButton customerId={customer.id} paymentId={e.paymentId} />
-                        ) : e.refType === "INVOICE" && e.invoiceId ? (
-                          <Link href={`/invoices/${e.invoiceId}`} style={{ fontSize: 12 }}>
-                            Delete from invoice →
-                          </Link>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <CustomerLedgerTable customerId={customer.id} rows={rows} canDelete={canDelete} />
           </>
         )}
       </div>
