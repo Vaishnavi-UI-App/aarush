@@ -130,6 +130,10 @@ export default function CreateInvoiceForm({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Which line's item picker currently has its suggestion list open -- only one at a
+  // time, since it's keyed by row index and closes on blur.
+  const [openItemRow, setOpenItemRow] = useState<number | null>(null);
+
   const [showNewItemForm, setShowNewItemForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", description: "", hsnCode: "", unit: "NOS", salePrice: "", taxRate: "18" });
   const [newItemError, setNewItemError] = useState<string | null>(null);
@@ -541,16 +545,63 @@ export default function CreateInvoiceForm({
             const taxable = round2((Number(line.qty) || 0) * (Number(line.rate) || 0));
             return (
               <tr key={idx}>
-                <td data-label="Item">
+                <td data-label="Item" style={{ position: "relative" }}>
                   <textarea
                     required
                     value={line.itemQuery}
                     onChange={(e) => onItemQueryChange(idx, e.target.value)}
+                    onFocus={() => setOpenItemRow(idx)}
+                    onBlur={() => setOpenItemRow(null)}
                     placeholder="Type an item name -- matches an existing item, or add a new one"
                     autoComplete="off"
                     rows={1}
                     style={{ resize: "vertical" }}
                   />
+                  {openItemRow === idx &&
+                    (() => {
+                      const query = line.itemQuery.trim().toLowerCase();
+                      const matches = query ? items.filter((i) => i.name.toLowerCase().includes(query)) : items;
+                      if (matches.length === 0) return null;
+                      return (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            right: 0,
+                            zIndex: 20,
+                            background: "#fff",
+                            border: "1px solid #ccd2e0",
+                            borderRadius: 6,
+                            marginTop: 2,
+                            maxHeight: 220,
+                            overflowY: "auto",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                          }}
+                        >
+                          {matches.map((item) => (
+                            <div
+                              key={item.id}
+                              // onMouseDown (not onClick) so this fires before the textarea's
+                              // onBlur would otherwise close the list first.
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                pickItem(idx, item.id);
+                                setOpenItemRow(null);
+                              }}
+                              style={{ padding: "6px 10px", fontSize: 13, cursor: "pointer", borderBottom: "1px solid #f0f1f5" }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "#f2f4fa")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+                            >
+                              <div style={{ fontWeight: 600 }}>{item.name}</div>
+                              <div style={{ color: "#667", fontSize: 11 }}>
+                                HSN {item.hsnCode} · Rs. {item.salePrice.toFixed(2)} · {item.taxRate}%
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                 </td>
                 <td data-label="Description">
                   <textarea
