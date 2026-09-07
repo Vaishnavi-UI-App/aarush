@@ -4,22 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DeletePaymentButton from "./DeletePaymentButton";
+import { LedgerEntryView, LedgerRow } from "@/lib/customer-ledger-rows";
 
-export interface LedgerEntryView {
-  id: string;
-  entryDate: string;
-  refType: string;
-  description: string;
-  invoiceId: string | null;
-  paymentId: string | null;
-  debit: number;
-  credit: number;
-  runningBalance: number;
-}
-
-export type LedgerRow =
-  | { kind: "single"; entry: LedgerEntryView }
-  | { kind: "batch"; batchId: string; entries: LedgerEntryView[] };
+export type { LedgerEntryView, LedgerRow };
 
 function money(n: number): string {
   return Math.abs(n).toFixed(2);
@@ -33,9 +20,19 @@ function BalanceCell({ balance }: { balance: number }) {
   );
 }
 
-function EntryActions({ customerId, entry, canDelete }: { customerId: string; entry: LedgerEntryView; canDelete: boolean }) {
+function EntryActions({
+  customerId,
+  entry,
+  canDelete,
+  onChanged,
+}: {
+  customerId: string;
+  entry: LedgerEntryView;
+  canDelete: boolean;
+  onChanged?: () => void;
+}) {
   if (canDelete && entry.refType === "PAYMENT" && entry.paymentId) {
-    return <DeletePaymentButton customerId={customerId} paymentId={entry.paymentId} />;
+    return <DeletePaymentButton customerId={customerId} paymentId={entry.paymentId} onDeleted={onChanged} />;
   }
   if (entry.refType === "INVOICE" && entry.invoiceId) {
     return (
@@ -47,7 +44,19 @@ function EntryActions({ customerId, entry, canDelete }: { customerId: string; en
   return <>—</>;
 }
 
-function BatchRow({ customerId, batchId, entries, canDelete }: { customerId: string; batchId: string; entries: LedgerEntryView[]; canDelete: boolean }) {
+function BatchRow({
+  customerId,
+  batchId,
+  entries,
+  canDelete,
+  onChanged,
+}: {
+  customerId: string;
+  batchId: string;
+  entries: LedgerEntryView[];
+  canDelete: boolean;
+  onChanged?: () => void;
+}) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -66,6 +75,7 @@ function BatchRow({ customerId, batchId, entries, canDelete }: { customerId: str
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete payment");
       router.refresh();
+      onChanged?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete payment");
       setDeleting(false);
@@ -109,7 +119,7 @@ function BatchRow({ customerId, batchId, entries, canDelete }: { customerId: str
             <td data-label="Credit">{entry.credit > 0 ? money(entry.credit) : "—"}</td>
             <BalanceCell balance={entry.runningBalance} />
             <td data-label="Actions">
-              <EntryActions customerId={customerId} entry={entry} canDelete={canDelete} />
+              <EntryActions customerId={customerId} entry={entry} canDelete={canDelete} onChanged={onChanged} />
             </td>
           </tr>
         ))}
@@ -117,7 +127,20 @@ function BatchRow({ customerId, batchId, entries, canDelete }: { customerId: str
   );
 }
 
-export default function CustomerLedgerTable({ customerId, rows, canDelete }: { customerId: string; rows: LedgerRow[]; canDelete: boolean }) {
+export default function CustomerLedgerTable({
+  customerId,
+  rows,
+  canDelete,
+  onChanged,
+}: {
+  customerId: string;
+  rows: LedgerRow[];
+  canDelete: boolean;
+  /** Called after any row's payment/batch is deleted, in addition to router.refresh()
+   * -- lets a client-fetched consumer (the Banking dashboard's ledger modal) know to
+   * re-fetch its own data. Server-rendered pages can leave this unset. */
+  onChanged?: () => void;
+}) {
   return (
     <table className="afs-table">
       <thead>
@@ -134,7 +157,7 @@ export default function CustomerLedgerTable({ customerId, rows, canDelete }: { c
       <tbody>
         {rows.map((row) =>
           row.kind === "batch" ? (
-            <BatchRow key={row.batchId} customerId={customerId} batchId={row.batchId} entries={row.entries} canDelete={canDelete} />
+            <BatchRow key={row.batchId} customerId={customerId} batchId={row.batchId} entries={row.entries} canDelete={canDelete} onChanged={onChanged} />
           ) : (
             <tr key={row.entry.id}>
               <td data-label="Date">{new Date(row.entry.entryDate).toLocaleDateString("en-IN")}</td>
@@ -146,7 +169,7 @@ export default function CustomerLedgerTable({ customerId, rows, canDelete }: { c
               <td data-label="Credit">{row.entry.credit > 0 ? money(row.entry.credit) : "—"}</td>
               <BalanceCell balance={row.entry.runningBalance} />
               <td data-label="Actions">
-                <EntryActions customerId={customerId} entry={row.entry} canDelete={canDelete} />
+                <EntryActions customerId={customerId} entry={row.entry} canDelete={canDelete} onChanged={onChanged} />
               </td>
             </tr>
           )

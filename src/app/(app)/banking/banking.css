@@ -89,6 +89,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
+  border: none;
+  cursor: pointer;
   text-decoration: none;
   transition: transform 0.1s ease, opacity 0.1s ease;
 }
@@ -158,4 +160,11 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   box-shadow: 0 12px 40px rgba(13, 31, 61, 0.25);
+}
+
+/* The inline customer-ledger modal needs room for a full Date/Type/Description/
+   Debit/Credit/Balance/Actions table -- the default 380px is sized for the
+   Record Payment form's single-column fields. */
+.bk-modal-wide {
+  width: 1000px;
 }

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import RecordPaymentModal from "./RecordPaymentModal";
+import CustomerLedgerModal from "../customers/[id]/CustomerLedgerModal";
 import { WhatsAppIcon, MailIcon, HistoryIcon } from "@/components/icons";
 
 interface UnpaidInvoice {
@@ -55,10 +56,19 @@ function downloadCsv(rows: CustomerRow[]) {
   URL.revokeObjectURL(url);
 }
 
-export default function BankingDashboard({ rows, totals }: { rows: CustomerRow[]; totals: Totals }) {
+export default function BankingDashboard({
+  rows,
+  totals,
+  canDeletePayments,
+}: {
+  rows: CustomerRow[];
+  totals: Totals;
+  canDeletePayments: boolean;
+}) {
   const [search, setSearch] = useState("");
   const [customerFilter, setCustomerFilter] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
+  const [viewingCustomer, setViewingCustomer] = useState<CustomerRow | null>(null);
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -206,9 +216,14 @@ export default function BankingDashboard({ rows, totals }: { rows: CustomerRow[]
                         >
                           <MailIcon />
                         </a>
-                        <Link href={`/customers/${r.id}`} className="bk-icon-btn history" title="View full ledger history">
+                        <button
+                          type="button"
+                          onClick={() => setViewingCustomer(r)}
+                          className="bk-icon-btn history"
+                          title="View ledger history"
+                        >
                           <HistoryIcon />
-                        </Link>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -220,6 +235,14 @@ export default function BankingDashboard({ rows, totals }: { rows: CustomerRow[]
       </div>
 
       {modalOpen && <RecordPaymentModal customers={rows} onClose={() => setModalOpen(false)} />}
+      {viewingCustomer && (
+        <CustomerLedgerModal
+          customerId={viewingCustomer.id}
+          customerName={viewingCustomer.name}
+          canDelete={canDeletePayments}
+          onClose={() => setViewingCustomer(null)}
+        />
+      )}
     </div>
   );
 }

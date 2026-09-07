@@ -3,7 +3,8 @@ import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
-import CustomerLedgerTable, { LedgerRow } from "./CustomerLedgerTable";
+import { groupLedgerRows } from "@/lib/customer-ledger-rows";
+import CustomerLedgerTable from "./CustomerLedgerTable";
 
 export default async function CustomerLedgerPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession();
@@ -21,12 +22,9 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
   const currentDue = entries.length > 0 ? Number(entries[entries.length - 1].runningBalance) : 0;
   const canDelete = await can(session!.tenantId, session!.roleId, "customers", "delete");
 
-  // A payment split across several invoices in one "Record Payment" submission
-  // shares a batchId -- fold its consecutive ledger rows into one collapsible entry
-  // instead of showing one row per invoice it touched.
-  const rows: LedgerRow[] = [];
-  for (const e of entries) {
-    const view = {
+  const batchIdByPaymentId = new Map(entries.filter((e) => e.paymentId).map((e) => [e.paymentId!, e.payment?.batchId ?? null]));
+  const rows = groupLedgerRows(
+    entries.map((e) => ({
       id: e.id,
       entryDate: e.entryDate.toISOString(),
       refType: e.refType,
@@ -36,17 +34,9 @@ export default async function CustomerLedgerPage({ params }: { params: Promise<{
       debit: Number(e.debit),
       credit: Number(e.credit),
       runningBalance: Number(e.runningBalance),
-    };
-    const batchId = e.refType === "PAYMENT" ? (e.payment?.batchId ?? null) : null;
-    const last = rows[rows.length - 1];
-    if (batchId && last?.kind === "batch" && last.batchId === batchId) {
-      last.entries.push(view);
-    } else if (batchId) {
-      rows.push({ kind: "batch", batchId, entries: [view] });
-    } else {
-      rows.push({ kind: "single", entry: view });
-    }
-  }
+    })),
+    batchIdByPaymentId
+  );
 
   return (
     <div>

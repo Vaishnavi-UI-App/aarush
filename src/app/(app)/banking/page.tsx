@@ -10,6 +10,7 @@ export default async function BankingPage() {
   const session = await getServerSession();
   if (!(await can(session!.tenantId, session!.roleId, "banking", "view"))) redirect("/dashboard");
   const tenantId = session!.tenantId;
+  const canDeletePayments = await can(session!.tenantId, session!.roleId, "customers", "delete");
 
   const customers = await prisma.customer.findMany({
     where: { tenantId },
@@ -74,5 +75,5 @@ export default async function BankingPage() {
     { billed: 0, paid: 0, due: 0, advance: 0 }
   );
 
-  return <BankingDashboard rows={rows} totals={totals} />;
+  return <BankingDashboard rows={rows} totals={totals} canDeletePayments={canDeletePayments} />;
 }
