@@ -43,22 +43,25 @@ export default function CustomerLedgerModal({
       if (!res.ok) throw new Error(data.error || "Failed to load ledger");
       const entries: RawEntry[] = data.entries;
       const batchIdByPaymentId = new Map(entries.filter((e) => e.paymentId).map((e) => [e.paymentId!, e.payment?.batchId ?? null]));
-      setRows(
-        groupLedgerRows(
-          entries.map((e) => ({
-            id: e.id,
-            entryDate: e.entryDate,
-            refType: e.refType,
-            description: e.description,
-            invoiceId: e.invoiceId,
-            paymentId: e.paymentId,
-            debit: Number(e.debit),
-            credit: Number(e.credit),
-            runningBalance: Number(e.runningBalance),
-          })),
-          batchIdByPaymentId
-        )
+      const grouped = groupLedgerRows(
+        entries.map((e) => ({
+          id: e.id,
+          entryDate: e.entryDate,
+          refType: e.refType,
+          description: e.description,
+          invoiceId: e.invoiceId,
+          paymentId: e.paymentId,
+          debit: Number(e.debit),
+          credit: Number(e.credit),
+          runningBalance: Number(e.runningBalance),
+        })),
+        batchIdByPaymentId
       );
+      // Payments only here -- this view answers "what came in and against which
+      // bills", and the invoices themselves are already listed under Invoices.
+      // Expanding a payment still names every invoice it was applied to. The full
+      // customer page keeps the complete ledger, invoice rows included.
+      setRows(grouped.filter((row) => row.kind === "batch" || row.entry.refType === "PAYMENT"));
       setCurrentDue(Number(data.currentDue));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load ledger");
@@ -95,11 +98,17 @@ export default function CustomerLedgerModal({
         {rows === null ? (
           <div className="afs-empty">Loading…</div>
         ) : rows.length === 0 ? (
-          <div className="afs-empty">No transactions yet.</div>
+          <div className="afs-empty">No payments recorded yet.</div>
         ) : (
-          <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
-            <CustomerLedgerTable customerId={customerId} rows={rows} canDelete={canDelete} onChanged={load} />
-          </div>
+          <>
+            <p style={{ fontSize: 12, color: "#667", marginBottom: 10 }}>
+              Payments received -- click one to see which invoice(s) it was applied against. Invoices themselves are listed
+              under Invoices, or on the customer&apos;s full ledger page.
+            </p>
+            <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+              <CustomerLedgerTable customerId={customerId} rows={rows} canDelete={canDelete} onChanged={load} />
+            </div>
+          </>
         )}
       </div>
     </div>
