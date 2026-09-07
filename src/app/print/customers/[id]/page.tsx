@@ -45,7 +45,10 @@ export default async function PrintCustomerStatementPage({ params }: { params: P
   const totalDebit = rows.reduce((s, r) => s + r.debit, 0);
   const totalCredit = rows.reduce((s, r) => s + r.credit, 0);
   const plug = closingBalancePlug(rows);
-  const grandTotal = Math.max(totalDebit, totalCredit) + plug.amount;
+  // The closing balance is a plug that brings the *smaller* column up to the larger
+  // one, so both sides foot to the larger column -- adding it on top would overstate
+  // the grand total by the balance itself.
+  const grandTotal = Math.max(totalDebit, totalCredit);
 
   const periodStart = rows.length > 0 ? rows[0].date : new Date();
 
