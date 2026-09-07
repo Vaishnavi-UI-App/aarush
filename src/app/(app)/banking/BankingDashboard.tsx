@@ -8,6 +8,8 @@ import { WhatsAppIcon, MailIcon, HistoryIcon } from "@/components/icons";
 interface UnpaidInvoice {
   id: string;
   number: string;
+  total: number;
+  paid: number;
   due: number;
 }
 

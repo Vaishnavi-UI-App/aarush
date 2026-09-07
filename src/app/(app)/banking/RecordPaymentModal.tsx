@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 interface UnpaidInvoice {
   id: string;
   number: string;
+  total: number;
+  paid: number;
   due: number;
 }
 
@@ -229,7 +231,13 @@ export default function RecordPaymentModal({ customers, onClose }: { customers: 
                     <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
                       <div style={{ fontWeight: 600 }}>{inv.number}</div>
                       <div style={{ color: "#667", fontSize: 12 }}>
-                        due Rs. {money(inv.due)}
+                        {inv.paid > 0 ? (
+                          <>
+                            Total Rs. {money(inv.total)} · Rs. {money(inv.paid)} already paid · due Rs. {money(inv.due)}
+                          </>
+                        ) : (
+                          <>due Rs. {money(inv.due)}</>
+                        )}
                         {checked && !isManual && <span style={{ color: "#a16207" }}> · auto-applied</span>}
                         {disabled && <span> · no amount left to apply</span>}
                       </div>

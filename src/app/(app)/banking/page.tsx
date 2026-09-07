@@ -40,7 +40,7 @@ export default async function BankingPage() {
       .filter((inv) => inv.status !== "PAID")
       .map((inv) => {
         const invPaid = round2(inv.payments.reduce((s, p) => s + Number(p.amount), 0));
-        return { id: inv.id, number: inv.number, due: round2(Number(inv.total) - invPaid) };
+        return { id: inv.id, number: inv.number, total: Number(inv.total), paid: invPaid, due: round2(Number(inv.total) - invPaid) };
       });
 
     // Most recent invoice or payment for this customer -- a single "when did we last
