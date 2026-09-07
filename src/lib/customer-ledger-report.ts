@@ -50,11 +50,19 @@ interface RowAccumulator extends TallyLedgerRow {
  * Vch No. for a receipt is a per-statement sequential counter (1, 2, 3...), matching
  * how such statements read, since individual payments here aren't assigned a
  * persistent receipt number of their own. A batched payment collapses to the single
- * receipt it really was, same as the on-screen ledger's collapsible batch row. */
+ * receipt it really was, same as the on-screen ledger's collapsible batch row.
+ *
+ * Rows come out in transaction-date order, not the order they were entered into the
+ * system -- a backdated payment belongs where it actually happened, the way a printed
+ * ledger reads. Safe to reorder here because this statement has no running-balance
+ * column: its totals and closing balance are plain sums. The sort is stable, so
+ * same-date entries keep their insertion order (which is how the callers fetch them),
+ * and a batch's allocations stay adjacent for the grouping below. */
 export function buildTallyLedgerRows(entries: RawLedgerEntry[]): TallyLedgerRow[] {
   let receiptNo = 0;
   const rows: RowAccumulator[] = [];
-  for (const e of entries) {
+  const chronological = [...entries].sort((a, b) => a.entryDate.getTime() - b.entryDate.getTime());
+  for (const e of chronological) {
     if (e.refType === "INVOICE") {
       rows.push({ date: e.entryDate, particulars: "To Sales", vchType: "Sales", vchNo: e.invoiceNumber ?? "", debit: e.debit, credit: e.credit });
       continue;
