@@ -42,47 +42,63 @@ export default function RecordPaymentModal({ customers, onClose }: { customers: 
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
 
-  // Walks the customer's unpaid invoices oldest-first, handing each one whatever's
-  // left of the amount above (capped at what it's actually due), so no invoice can
-  // ever be allocated more than it needs or more than was received. A manually typed
-  // amount overrides the default for that invoice; an excluded one is skipped and its
-  // share rolls forward. `availableBefore` records the budget left at each invoice's
-  // turn, which both caps manual edits and decides whether an untouched invoice can
-  // still be ticked at all.
+  // Invoices you pick yourself -- by ticking one directly or typing into its box --
+  // get first claim on the amount above, in invoice order; whatever's left over then
+  // auto-cascades oldest-first through the rest. That priority is what lets you tick
+  // a later, smaller invoice and have it actually take the money: it doesn't wait for
+  // the auto-cascade to free up room on its own, it takes priority and the auto pass
+  // simply has less left to work with. `availableBefore` records the budget at each
+  // invoice's turn in its own pass, which caps manual edits (against other manual
+  // picks) and decides whether an untouched invoice can still be ticked at all
+  // (against every manual pick, since those always win first).
   const allocation = useMemo(() => {
-    let remaining = Number(amount) || 0;
+    const totalAmount = Number(amount) || 0;
     const applied: Record<string, number> = {};
     const availableBefore: Record<string, number> = {};
+
     if (selectedCustomer) {
+      let remaining = totalAmount;
       for (const inv of selectedCustomer.unpaidInvoices) {
+        if (!(inv.id in manualAmounts)) continue;
         availableBefore[inv.id] = remaining;
-        if (excludedIds.has(inv.id)) continue;
-        if (inv.id in manualAmounts) {
-          const amt = round2(Math.min(Number(manualAmounts[inv.id]) || 0, inv.due, remaining));
-          if (amt > 0) {
-            applied[inv.id] = amt;
-            remaining = round2(remaining - amt);
-          }
-          continue;
+        const amt = round2(Math.min(Number(manualAmounts[inv.id]) || 0, inv.due, remaining));
+        if (amt > 0) {
+          applied[inv.id] = amt;
+          remaining = round2(remaining - amt);
         }
-        if (remaining <= 0) continue;
+      }
+      // What every existing manual pick left behind -- the most a brand-new manual
+      // pick could ever claim, since manual picks always process before the cascade.
+      const afterManual = remaining;
+      for (const inv of selectedCustomer.unpaidInvoices) {
+        if (inv.id in manualAmounts) continue;
+        availableBefore[inv.id] = remaining;
+        if (excludedIds.has(inv.id) || remaining <= 0) continue;
         const amt = round2(Math.min(remaining, inv.due));
         if (amt > 0) {
           applied[inv.id] = amt;
           remaining = round2(remaining - amt);
         }
       }
+      return { applied, availableBefore, afterManual, unapplied: round2(Math.max(remaining, 0)) };
     }
-    return { applied, availableBefore, unapplied: round2(Math.max(remaining, 0)) };
+    return { applied, availableBefore, afterManual: totalAmount, unapplied: round2(Math.max(totalAmount, 0)) };
   }, [amount, manualAmounts, excludedIds, selectedCustomer]);
 
   function toggleInvoice(inv: UnpaidInvoice, checked: boolean) {
     if (checked) {
+      // Ticking an invoice always pins it as a manual pick, taking priority over the
+      // auto-cascade -- even one the auto-cascade had no room left for. Default to
+      // its due capped at what every other manual pick has left behind, so the box
+      // shows what will actually be applied rather than an amount that gets silently
+      // clamped down once the auto-cascade sees it.
       setExcludedIds((prev) => {
         const next = new Set(prev);
         next.delete(inv.id);
         return next;
       });
+      const ceiling = round2(Math.min(inv.due, allocation.afterManual));
+      setManualAmounts((prev) => ({ ...prev, [inv.id]: Math.max(ceiling, 0).toFixed(2) }));
     } else {
       setExcludedIds((prev) => new Set(prev).add(inv.id));
       setManualAmounts((prev) => {
@@ -181,7 +197,12 @@ export default function RecordPaymentModal({ customers, onClose }: { customers: 
                 // typed value is momentarily blank or zero -- otherwise clearing the field to
                 // retype a new amount would uncheck the invoice out from under the user.
                 const checked = isManual || (appliedAmt !== undefined && appliedAmt > 0);
-                const disabled = !checked && !excludedIds.has(inv.id) && allocation.availableBefore[inv.id] <= 0;
+                // Only truly unreachable once every existing manual pick has already
+                // claimed the whole amount -- ticking this one would still get nothing,
+                // since manual picks can't take from each other. Anything the auto-cascade
+                // merely hasn't gotten to yet stays tickable: ticking it pins it with
+                // priority and the cascade simply has less left for the rest.
+                const disabled = !checked && allocation.afterManual <= 0;
                 const displayValue = manualVal ?? (appliedAmt !== undefined ? appliedAmt.toFixed(2) : "");
                 const maxForInvoice = round2(Math.min(inv.due, allocation.availableBefore[inv.id] + (appliedAmt ?? 0)));
                 return (
