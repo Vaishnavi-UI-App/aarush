@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { round2 } from "@/lib/gst-invoice";
+import { recomputeCustomerLedgerBalances } from "@/lib/ledger-balance";
 
 type Tx = Prisma.TransactionClient;
 
@@ -31,23 +32,6 @@ async function recomputeInvoiceStatus(tx: Tx, invoiceId: string) {
   const invoice = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId } });
   const newStatus = totalPaid >= Number(invoice.total) ? "PAID" : totalPaid > 0 ? "PARTIALLY_PAID" : "SENT";
   await tx.invoice.update({ where: { id: invoiceId }, data: { status: newStatus } });
-}
-
-/** Recomputes every ledger entry's running balance for a customer from scratch, in
- * date order -- used after deleting a payment from the middle of the history, since
- * every entry after it is now off by that amount. */
-async function recomputeCustomerLedgerBalances(tx: Tx, tenantId: string, customerId: string) {
-  const entries = await tx.ledgerEntry.findMany({
-    where: { tenantId, customerId },
-    orderBy: { createdAt: "asc" },
-  });
-  let balance = 0;
-  for (const entry of entries) {
-    balance = round2(balance + Number(entry.debit) - Number(entry.credit));
-    if (Number(entry.runningBalance) !== balance) {
-      await tx.ledgerEntry.update({ where: { id: entry.id }, data: { runningBalance: balance } });
-    }
-  }
 }
 
 async function recordCustomerPaymentInTx(tx: Tx, input: RecordCustomerPaymentInput) {

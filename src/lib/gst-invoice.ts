@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { recomputeCustomerLedgerBalances } from "@/lib/ledger-balance";
 
 /** Round to 2 decimal places using standard half-up rounding (paise-safe). */
 export function round2(n: number): number {
@@ -304,6 +305,54 @@ async function createSaleInvoiceInTx(tx: Prisma.TransactionClient, input: Create
 
 export async function createSaleInvoice(input: CreateSaleInvoiceInput) {
   return prisma.$transaction((tx) => createSaleInvoiceInTx(tx, input));
+}
+
+/** Takes an archived ("deleted") invoice's amount off the customer's books.
+ *
+ * Archiving used to only hide the invoice from lists, leaving the debit it posted
+ * still counted as owed -- so deleting an invoice never changed what the customer
+ * appeared to owe. Any payments already applied to it stay exactly as they are: that
+ * money really was received, it just becomes unapplied credit once the bill it was
+ * settling no longer exists. */
+export async function removeInvoiceFromLedger(tenantId: string, invoiceId: string) {
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findFirstOrThrow({ where: { id: invoiceId, tenantId }, select: { customerId: true } });
+
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${invoice.customerId}))`;
+    await tx.ledgerEntry.deleteMany({ where: { tenantId, invoiceId, refType: "INVOICE" } });
+    await recomputeCustomerLedgerBalances(tx, tenantId, invoice.customerId);
+  });
+}
+
+/** Puts a restored invoice's amount back on the books -- the counterpart to
+ * removeInvoiceFromLedger. Only SALE invoices post to the ledger at all, and an
+ * entry that's somehow still there is left alone rather than duplicated. */
+export async function restoreInvoiceToLedger(tenantId: string, invoiceId: string) {
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findFirstOrThrow({ where: { id: invoiceId, tenantId } });
+    if (invoice.type !== "SALE") return;
+
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${invoice.customerId}))`;
+    const existing = await tx.ledgerEntry.findFirst({ where: { tenantId, invoiceId, refType: "INVOICE" } });
+    if (existing) return;
+
+    await tx.ledgerEntry.create({
+      data: {
+        tenantId,
+        partyType: "CUSTOMER",
+        customerId: invoice.customerId,
+        refType: "INVOICE",
+        invoiceId: invoice.id,
+        debit: invoice.total,
+        credit: 0,
+        // Placeholder -- the recompute below sets every entry's real balance.
+        runningBalance: 0,
+        description: `Invoice ${invoice.number} raised`,
+        entryDate: invoice.date,
+      },
+    });
+    await recomputeCustomerLedgerBalances(tx, tenantId, invoice.customerId);
+  });
 }
 
 export interface UpdateSaleInvoiceInput extends DispatchDetailsInput {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
+import { restoreInvoiceToLedger } from "@/lib/gst-invoice";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -24,6 +25,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     where: { id },
     data: { archivedAt: null, archiveNote: null },
   });
+  // Bringing the invoice back puts its amount back on the customer's books.
+  await restoreInvoiceToLedger(session.tenantId, id);
 
   return NextResponse.json(updated);
 }

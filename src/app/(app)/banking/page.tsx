@@ -17,7 +17,9 @@ export default async function BankingPage() {
     orderBy: { name: "asc" },
     include: {
       invoices: {
-        where: { type: "SALE", status: { not: "CANCELLED" } },
+        // archivedAt filter matters: a deleted invoice must not count toward billed
+        // or due here, the same way the dashboard and ageing report already exclude it.
+        where: { type: "SALE", status: { not: "CANCELLED" }, archivedAt: null },
         include: { payments: { where: { status: "SUCCESS" } } },
         // Oldest first, so the payment modal's auto-apply cascade always settles the
         // longest-outstanding bill before a newer one.

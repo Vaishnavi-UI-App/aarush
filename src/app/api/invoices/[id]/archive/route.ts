@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
+import { removeInvoiceFromLedger } from "@/lib/gst-invoice";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   let session;
@@ -26,6 +27,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     where: { id },
     data: { archivedAt: new Date(), archiveNote: note || null },
   });
+  // Deleting an invoice has to take its amount off what the customer owes, not just
+  // hide it from the lists.
+  await removeInvoiceFromLedger(session.tenantId, id);
 
   return NextResponse.json(updated);
 }
