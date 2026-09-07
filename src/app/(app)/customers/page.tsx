@@ -18,8 +18,26 @@ export default async function CustomersPage() {
 
   return (
     <div>
-      <h1 className="afs-page-title">Customers</h1>
-      <p className="afs-page-subtitle">Everyone you bill, and their GST state for CGST/SGST vs IGST</p>
+      <div className="afs-page-header">
+        <div>
+          <h1 className="afs-page-title">Customers</h1>
+          <p className="afs-page-subtitle">Everyone you bill, and their GST state for CGST/SGST vs IGST</p>
+        </div>
+        <div className="afs-page-header-actions">
+          <a
+            href="/api/customers/statement/export"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="afs-btn"
+            style={{ background: "#e5e7eb", color: "#333" }}
+          >
+            ⬇ All Ledgers (CSV)
+          </a>
+          <a href="/api/customers/statement/pdf" target="_blank" rel="noopener noreferrer" className="afs-btn afs-btn-primary">
+            ⬇ All Ledgers (PDF)
+          </a>
+        </div>
+      </div>
 
       <div className="afs-card" style={{ marginBottom: 20 }}>
         <NewCustomerForm />
