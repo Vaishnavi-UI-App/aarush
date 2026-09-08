@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
       poDate: body.poDate ? new Date(body.poDate) : undefined,
       vehicleNumber: body.vehicleNumber,
       date,
+      createdById: session.userId,
       lines: body.lines,
     });
     return NextResponse.json(challan, { status: 201 });

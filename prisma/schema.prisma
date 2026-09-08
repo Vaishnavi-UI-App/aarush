@@ -210,6 +210,7 @@ model User {
   regularizationsReviewed  AttendanceRegularization[] @relation("RegularizationReviewedBy")
   payslips                 Payslip[]                  @relation("PayslipOwner")
   payslipsFinalized        Payslip[]                  @relation("PayslipFinalizedBy")
+  deliveryChallansCreated  DeliveryChallan[]          @relation("DeliveryChallansCreated")
 
   @@index([tenantId])
   @@index([roleId])
@@ -550,6 +551,11 @@ model DeliveryChallan {
   poDate        DateTime?
   vehicleNumber String?
 
+  // Who raised this challan. Nullable because challans created before this was
+  // tracked have no one to attribute them to -- those show a dash in the list.
+  createdById String?
+  createdBy   User?   @relation("DeliveryChallansCreated", fields: [createdById], references: [id])
+
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   archivedAt DateTime?
@@ -559,6 +565,7 @@ model DeliveryChallan {
   @@unique([tenantId, number])
   @@index([tenantId, customerId])
   @@index([tenantId, siteId])
+  @@index([tenantId, createdById])
   @@map("delivery_challans")
 }
 

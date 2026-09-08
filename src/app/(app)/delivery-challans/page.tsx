@@ -10,7 +10,11 @@ export default async function DeliveryChallansPage() {
   const [challans, canDelete] = await Promise.all([
     prisma.deliveryChallan.findMany({
       where: { tenantId: session!.tenantId, archivedAt: null },
-      include: { customer: { select: { name: true } }, lines: true },
+      include: {
+        customer: { select: { name: true } },
+        createdBy: { select: { name: true, email: true } },
+        lines: true,
+      },
       orderBy: { createdAt: "desc" },
     }),
     can(session!.tenantId, session!.roleId, "deliveryChallans", "delete"),
@@ -42,6 +46,7 @@ export default async function DeliveryChallansPage() {
                 <th>To</th>
                 <th>Vehicle No.</th>
                 <th>Total Qty</th>
+                <th>Created By</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -57,6 +62,7 @@ export default async function DeliveryChallansPage() {
                     <td data-label="To">{c.toName ?? c.customer?.name ?? "—"}</td>
                     <td data-label="Vehicle No.">{c.vehicleNumber ?? "—"}</td>
                     <td data-label="Total Qty">{totalQty}</td>
+                    <td data-label="Created By">{c.createdBy?.name || c.createdBy?.email || "—"}</td>
                     <td>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <Link href={`/delivery-challans/${c.id}`} className="afs-icon-btn view" title="View">

@@ -23,6 +23,9 @@ export interface CreateDeliveryChallanInput {
    * numbering series the challan lands in, so a backdated one is numbered in the
    * year it belongs to. Defaults to now. */
   date?: Date;
+  /** The logged-in user raising this challan, recorded so the list can show who
+   * created it. Comes from the verified session, never from the request body. */
+  createdById?: string;
   lines: DeliveryChallanLineInput[];
 }
 
@@ -107,7 +110,7 @@ export async function updateDeliveryChallan(input: UpdateDeliveryChallanInput) {
 }
 
 export async function createDeliveryChallan(input: CreateDeliveryChallanInput) {
-  const { tenantId, customerId, siteId, toName, toAddress, poNumber, poDate, vehicleNumber, lines } = input;
+  const { tenantId, customerId, siteId, toName, toAddress, poNumber, poDate, vehicleNumber, createdById, lines } = input;
   const date = input.date ?? new Date();
 
   if (lines.length === 0) {
@@ -136,6 +139,7 @@ export async function createDeliveryChallan(input: CreateDeliveryChallanInput) {
         poNumber,
         poDate,
         vehicleNumber,
+        createdById,
         lines: {
           create: lines.map((line, i) => ({
             srNo: i + 1,
