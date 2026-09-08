@@ -35,6 +35,7 @@ interface UpdateDeliveryChallanBody {
   poNumber?: string;
   poDate?: string;
   vehicleNumber?: string;
+  date?: string;
   lines: DeliveryChallanLineInput[];
 }
 
@@ -60,6 +61,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
+  let date: Date | undefined;
+  if (body.date) {
+    date = new Date(body.date);
+    if (Number.isNaN(date.getTime())) {
+      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+    }
+  }
+
   try {
     const challan = await updateDeliveryChallan({
       tenantId: session.tenantId,
@@ -71,6 +80,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       poNumber: body.poNumber,
       poDate: body.poDate ? new Date(body.poDate) : undefined,
       vehicleNumber: body.vehicleNumber,
+      date,
       lines: body.lines,
     });
     return NextResponse.json(challan);

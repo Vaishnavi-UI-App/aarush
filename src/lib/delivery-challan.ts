@@ -18,6 +18,11 @@ export interface CreateDeliveryChallanInput {
   poNumber?: string;
   poDate?: Date;
   vehicleNumber?: string;
+  /** The date goods actually went out, when that isn't today -- e.g. entering a
+   * challan a day or two after the delivery. Also decides which financial year's
+   * numbering series the challan lands in, so a backdated one is numbered in the
+   * year it belongs to. Defaults to now. */
+  date?: Date;
   lines: DeliveryChallanLineInput[];
 }
 
@@ -46,11 +51,14 @@ export interface UpdateDeliveryChallanInput {
   poNumber?: string;
   poDate?: Date;
   vehicleNumber?: string;
+  /** Corrects the challan's own date. The number it was already issued under stays
+   * as-is -- an existing document doesn't get renumbered. */
+  date?: Date;
   lines: DeliveryChallanLineInput[];
 }
 
 export async function updateDeliveryChallan(input: UpdateDeliveryChallanInput) {
-  const { tenantId, challanId, customerId, siteId, toName, toAddress, poNumber, poDate, vehicleNumber, lines } = input;
+  const { tenantId, challanId, customerId, siteId, toName, toAddress, poNumber, poDate, vehicleNumber, date, lines } = input;
 
   if (lines.length === 0) {
     throw new Error("Delivery challan must have at least one line item");
@@ -83,6 +91,7 @@ export async function updateDeliveryChallan(input: UpdateDeliveryChallanInput) {
         poNumber,
         poDate,
         vehicleNumber,
+        ...(date ? { date } : {}),
         lines: {
           create: lines.map((line, i) => ({
             srNo: i + 1,
@@ -99,6 +108,7 @@ export async function updateDeliveryChallan(input: UpdateDeliveryChallanInput) {
 
 export async function createDeliveryChallan(input: CreateDeliveryChallanInput) {
   const { tenantId, customerId, siteId, toName, toAddress, poNumber, poDate, vehicleNumber, lines } = input;
+  const date = input.date ?? new Date();
 
   if (lines.length === 0) {
     throw new Error("Delivery challan must have at least one line item");
@@ -112,7 +122,6 @@ export async function createDeliveryChallan(input: CreateDeliveryChallanInput) {
       await tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } });
     }
 
-    const date = new Date();
     const number = await nextChallanNumber(tx, tenantId, date);
 
     return tx.deliveryChallan.create({

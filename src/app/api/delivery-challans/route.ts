@@ -30,6 +30,7 @@ interface CreateDeliveryChallanBody {
   poNumber?: string;
   poDate?: string;
   vehicleNumber?: string;
+  date?: string;
   lines: DeliveryChallanLineInput[];
 }
 
@@ -54,6 +55,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  let date: Date | undefined;
+  if (body.date) {
+    date = new Date(body.date);
+    if (Number.isNaN(date.getTime())) {
+      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+    }
+  }
+
   try {
     // tenantId comes from the verified session, never from the request body.
     const challan = await createDeliveryChallan({
@@ -65,6 +74,7 @@ export async function POST(request: NextRequest) {
       poNumber: body.poNumber,
       poDate: body.poDate ? new Date(body.poDate) : undefined,
       vehicleNumber: body.vehicleNumber,
+      date,
       lines: body.lines,
     });
     return NextResponse.json(challan, { status: 201 });

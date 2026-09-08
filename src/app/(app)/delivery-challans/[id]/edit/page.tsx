@@ -59,6 +59,7 @@ export default async function EditDeliveryChallanPage({ params }: { params: Prom
             poNumber: challan.poNumber ?? "",
             poDate: dateInputValue(challan.poDate),
             vehicleNumber: challan.vehicleNumber ?? "",
+            date: dateInputValue(challan.date),
             lines: challan.lines.map((l) => ({
               particulars: l.particulars,
               qty: Number(l.qty).toString(),

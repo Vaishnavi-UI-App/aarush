@@ -34,7 +34,13 @@ export interface DeliveryChallanFormInitialValues {
   poNumber: string;
   poDate: string;
   vehicleNumber: string;
+  date: string;
   lines: Line[];
+}
+
+function todayLocal(): string {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
 export default function NewDeliveryChallanForm({
@@ -57,6 +63,7 @@ export default function NewDeliveryChallanForm({
   const [poNumber, setPoNumber] = useState(initialValues?.poNumber ?? "");
   const [poDate, setPoDate] = useState(initialValues?.poDate ?? "");
   const [vehicleNumber, setVehicleNumber] = useState(initialValues?.vehicleNumber ?? "");
+  const [date, setDate] = useState(initialValues?.date || todayLocal());
   const [siteId, setSiteId] = useState(initialValues?.siteId ?? "");
   const [lines, setLines] = useState<Line[]>(initialValues?.lines ?? [emptyLine()]);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +106,7 @@ export default function NewDeliveryChallanForm({
           poNumber: poNumber || undefined,
           poDate: poDate || undefined,
           vehicleNumber: vehicleNumber || undefined,
+          date: date || undefined,
           lines: lines.map((l) => ({ particulars: l.particulars, qty: Number(l.qty), unit: l.unit })),
         }),
       });
@@ -116,6 +124,10 @@ export default function NewDeliveryChallanForm({
   return (
     <form onSubmit={onSubmit}>
       <div className="afs-form-row">
+        <div className="afs-form-field">
+          <label>Challan Date *</label>
+          <input required type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
         <div className="afs-form-field">
           <label>Customer</label>
           <select value={customerId} onChange={(e) => pickCustomer(e.target.value)}>
