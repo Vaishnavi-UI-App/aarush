@@ -189,7 +189,7 @@ export default function AccountsDashboard({ sales, customers }: { sales: Sale[];
     <div>
       <div className="ac-toolbar">
         <div>
-          <h1 className="afs-page-title">Accounts</h1>
+          <h1 className="afs-page-title">Sales</h1>
           <p className="afs-page-subtitle">Sales by month and by customer, with what&apos;s been received against each</p>
         </div>
         <button type="button" className="afs-btn afs-btn-gold" onClick={exportCurrentTab}>

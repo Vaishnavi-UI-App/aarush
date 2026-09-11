@@ -148,7 +148,16 @@ const icons: Record<string, ReactNode> = {
   ),
 };
 
-const links: { href: string; label: string; pages?: PageKey[]; ownerOnly?: boolean }[] = [
+interface NavLink {
+  href: string;
+  label: string;
+  pages?: PageKey[];
+  ownerOnly?: boolean;
+  /** Renders this entry as an expandable section instead of a link of its own. */
+  children?: NavLink[];
+}
+
+const links: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", pages: ["dashboard"] },
   { href: "/invoices", label: "Invoices", pages: ["invoices"] },
   { href: "/delivery-challans", label: "Delivery Challans", pages: ["deliveryChallans"] },
@@ -157,7 +166,12 @@ const links: { href: string; label: string; pages?: PageKey[]; ownerOnly?: boole
   { href: "/purchases", label: "Purchases", pages: ["purchases"] },
   { href: "/vendors", label: "Vendors", pages: ["vendors"] },
   { href: "/banking", label: "Banking", pages: ["banking"] },
-  { href: "/accounts", label: "Accounts", pages: ["accounts"] },
+  {
+    href: "/accounts",
+    label: "Accounts",
+    pages: ["accounts"],
+    children: [{ href: "/accounts/sales", label: "Sales", pages: ["accounts"] }],
+  },
   { href: "/reports/ageing", label: "Ageing Report", pages: ["ageing"] },
   { href: "/attendance", label: "Attendance", pages: ["myAttendance", "allAttendance"] },
   { href: "/expenses", label: "Expenses", pages: ["expenses"] },
@@ -182,11 +196,23 @@ export default function SidebarNav({
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const visibleLinks = links.filter(
-    (link) =>
-      (!link.ownerOnly || manageUsers) &&
-      (!link.pages || link.pages.some((p) => pageAccess[p]?.canView))
-  );
+  const [expanded, setExpanded] = useState<string[]>([]);
+
+  const canSee = (link: NavLink) =>
+    (!link.ownerOnly || manageUsers) && (!link.pages || link.pages.some((p) => pageAccess[p]?.canView));
+
+  const visibleLinks = links.filter(canSee).map((link) => ({
+    ...link,
+    children: link.children?.filter(canSee),
+  }));
+
+  // A section stays open while you're inside it, and otherwise remembers whatever
+  // you last toggled by hand.
+  const isExpanded = (link: NavLink) => pathname.startsWith(link.href) || expanded.includes(link.href);
+
+  function toggleSection(href: string) {
+    setExpanded((prev) => (prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href]));
+  }
 
   useEffect(() => {
     setOpen(false);
@@ -220,12 +246,38 @@ export default function SidebarNav({
           <span>{tenantName}</span>
         </div>
         <nav className="afs-nav">
-          {visibleLinks.map((link) => (
-            <Link key={link.href} href={link.href} className={pathname.startsWith(link.href) ? "active" : ""}>
-              {icons[link.href]}
-              <span>{link.label}</span>
-            </Link>
-          ))}
+          {visibleLinks.map((link) =>
+            link.children && link.children.length > 0 ? (
+              <div key={link.href} className="afs-nav-section">
+                <button
+                  type="button"
+                  className={`afs-nav-section-toggle${pathname.startsWith(link.href) ? " active" : ""}`}
+                  onClick={() => toggleSection(link.href)}
+                  aria-expanded={isExpanded(link)}
+                >
+                  {icons[link.href]}
+                  <span>{link.label}</span>
+                  <span className={`afs-nav-caret${isExpanded(link) ? " open" : ""}`} aria-hidden="true">
+                    ▾
+                  </span>
+                </button>
+                {isExpanded(link) && (
+                  <div className="afs-nav-sublinks">
+                    {link.children.map((child) => (
+                      <Link key={child.href} href={child.href} className={pathname.startsWith(child.href) ? "active" : ""}>
+                        <span>{child.label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link key={link.href} href={link.href} className={pathname.startsWith(link.href) ? "active" : ""}>
+                {icons[link.href]}
+                <span>{link.label}</span>
+              </Link>
+            )
+          )}
         </nav>
         <div className="afs-sidebar-footer">
           <Link href="/profile" className={pathname.startsWith("/profile") ? "active" : ""} style={{ display: "block", marginBottom: 10 }}>
