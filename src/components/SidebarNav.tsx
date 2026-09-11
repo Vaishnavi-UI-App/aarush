@@ -86,6 +86,12 @@ const icons: Record<string, ReactNode> = {
       <path d="M2 21h20" />
     </Icon>
   ),
+  "/accounts": (
+    <Icon>
+      <path d="M3 3v18h18" />
+      <path d="M7 15l4-5 3 3 5-7" />
+    </Icon>
+  ),
   "/reports/ageing": (
     <Icon>
       <path d="M4 20V10M11 20V4M18 20v-7" />
@@ -151,6 +157,7 @@ const links: { href: string; label: string; pages?: PageKey[]; ownerOnly?: boole
   { href: "/purchases", label: "Purchases", pages: ["purchases"] },
   { href: "/vendors", label: "Vendors", pages: ["vendors"] },
   { href: "/banking", label: "Banking", pages: ["banking"] },
+  { href: "/accounts", label: "Accounts", pages: ["accounts"] },
   { href: "/reports/ageing", label: "Ageing Report", pages: ["ageing"] },
   { href: "/attendance", label: "Attendance", pages: ["myAttendance", "allAttendance"] },
   { href: "/expenses", label: "Expenses", pages: ["expenses"] },

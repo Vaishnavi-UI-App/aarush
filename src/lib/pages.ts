@@ -10,6 +10,7 @@ export type PageKey =
   | "customers"
   | "vendors"
   | "banking"
+  | "accounts"
   | "ageing"
   | "sites"
   | "expenses"
@@ -28,6 +29,7 @@ export const PAGE_KEYS: PageKey[] = [
   "customers",
   "vendors",
   "banking",
+  "accounts",
   "ageing",
   "sites",
   "expenses",
@@ -45,6 +47,7 @@ export const PAGE_LABELS: Record<PageKey, string> = {
   customers: "Customers",
   vendors: "Vendors",
   banking: "Banking",
+  accounts: "Accounts",
   ageing: "Ageing Report",
   sites: "Sites",
   expenses: "Expense Tracker",

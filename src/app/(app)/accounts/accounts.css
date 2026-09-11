@@ -1,0 +1,145 @@
+.ac-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.ac-filters {
+  margin-bottom: 20px;
+}
+
+.ac-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ac-chip {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #d7dbe6;
+  background: #fff;
+  color: #445;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.ac-chip:hover {
+  border-color: var(--afs-navy);
+}
+
+.ac-chip.active {
+  background: var(--afs-navy);
+  border-color: var(--afs-navy);
+  color: #fff;
+}
+
+.ac-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ac-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #667;
+}
+
+.ac-field-grow {
+  flex: 1 1 220px;
+}
+
+.ac-field input,
+.ac-field select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #d7dbe6;
+  font-size: 13px;
+  background: #fff;
+  min-width: 170px;
+}
+
+.ac-field-grow input {
+  width: 100%;
+  min-width: 0;
+}
+
+.ac-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ac-stat-card {
+  background: #fff;
+  border: 1px solid rgba(13, 31, 61, 0.08);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.ac-stat-label {
+  font-size: 12px;
+  color: #667;
+  margin-bottom: 6px;
+}
+
+.ac-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.ac-stat-sub {
+  font-size: 11px;
+  color: #99a1b0;
+  margin-top: 4px;
+}
+
+.ac-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.ac-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid #e6e9f2;
+  margin-bottom: 14px;
+}
+
+.ac-tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: #667;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.ac-tab:hover {
+  color: var(--afs-navy);
+}
+
+.ac-tab.active {
+  color: var(--afs-navy);
+  font-weight: 700;
+  border-bottom-color: var(--afs-gold);
+}
+
+.afs-table tfoot td {
+  font-weight: 700;
+  background: #f7f9fc;
+}
