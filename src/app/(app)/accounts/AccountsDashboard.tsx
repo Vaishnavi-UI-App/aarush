@@ -277,11 +277,6 @@ export default function AccountsDashboard({ sales, customers }: { sales: Sale[];
       </div>
 
       <div className="afs-card" style={{ marginBottom: 20 }}>
-        <div className="ac-section-title">Sales by month</div>
-        <MonthlySalesChart data={chartData} />
-      </div>
-
-      <div className="afs-card">
         <div className="ac-tabs">
           <button type="button" className={`ac-tab ${tab === "months" ? "active" : ""}`} onClick={() => setTab("months")}>
             Month-wise
@@ -406,6 +401,11 @@ export default function AccountsDashboard({ sales, customers }: { sales: Sale[];
             </tfoot>
           </table>
         )}
+      </div>
+
+      <div className="afs-card">
+        <div className="ac-section-title">Sales by month</div>
+        <MonthlySalesChart data={chartData} />
       </div>
     </div>
   );
