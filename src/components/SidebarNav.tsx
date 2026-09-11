@@ -165,12 +165,13 @@ const links: NavLink[] = [
   { href: "/items", label: "Items", pages: ["items"] },
   { href: "/purchases", label: "Purchases", pages: ["purchases"] },
   { href: "/vendors", label: "Vendors", pages: ["vendors"] },
-  { href: "/banking", label: "Banking", pages: ["banking"] },
   {
     href: "/accounts",
     label: "Accounts",
-    pages: ["accounts"],
-    children: [{ href: "/accounts/sales", label: "Sales", pages: ["accounts"] }],
+    children: [
+      { href: "/accounts/sales", label: "Sales", pages: ["accounts"] },
+      { href: "/banking", label: "Banking", pages: ["banking"] },
+    ],
   },
   { href: "/reports/ageing", label: "Ageing Report", pages: ["ageing"] },
   { href: "/attendance", label: "Attendance", pages: ["myAttendance", "allAttendance"] },
@@ -201,14 +202,22 @@ export default function SidebarNav({
   const canSee = (link: NavLink) =>
     (!link.ownerOnly || manageUsers) && (!link.pages || link.pages.some((p) => pageAccess[p]?.canView));
 
-  const visibleLinks = links.filter(canSee).map((link) => ({
-    ...link,
-    children: link.children?.filter(canSee),
-  }));
+  // A section earns its place from its children -- it's worth showing as long as at
+  // least one thing inside it is visible, whatever its own path happens to be.
+  const visibleLinks = links
+    .map((link) => ({ ...link, children: link.children?.filter(canSee) }))
+    .filter((link) =>
+      link.children ? link.children.length > 0 && (!link.ownerOnly || manageUsers) : canSee(link)
+    );
+
+  // Children don't have to live under the parent's path (Banking sits at /banking),
+  // so "am I in this section?" has to consider every child too.
+  const isInSection = (link: NavLink) =>
+    pathname.startsWith(link.href) || (link.children ?? []).some((c) => pathname.startsWith(c.href));
 
   // A section stays open while you're inside it, and otherwise remembers whatever
   // you last toggled by hand.
-  const isExpanded = (link: NavLink) => pathname.startsWith(link.href) || expanded.includes(link.href);
+  const isExpanded = (link: NavLink) => isInSection(link) || expanded.includes(link.href);
 
   function toggleSection(href: string) {
     setExpanded((prev) => (prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href]));
@@ -251,7 +260,7 @@ export default function SidebarNav({
               <div key={link.href} className="afs-nav-section">
                 <button
                   type="button"
-                  className={`afs-nav-section-toggle${pathname.startsWith(link.href) ? " active" : ""}`}
+                  className={`afs-nav-section-toggle${isInSection(link) ? " active" : ""}`}
                   onClick={() => toggleSection(link.href)}
                   aria-expanded={isExpanded(link)}
                 >
