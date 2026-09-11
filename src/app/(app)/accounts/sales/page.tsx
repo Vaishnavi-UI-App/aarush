@@ -3,10 +3,27 @@ import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { round2 } from "@/lib/gst-invoice";
 import { can } from "@/lib/permissions";
-import AccountsDashboard from "./AccountsDashboard";
-import "./accounts.css";
+import ReportDashboard, { ReportConfig } from "../ReportDashboard";
+import "../accounts.css";
 
-export default async function AccountsPage() {
+const CONFIG: ReportConfig = {
+  title: "Sales",
+  subtitle: "Sales by month and by customer, with what's been received against each",
+  partyLabel: "Customer",
+  partyHrefBase: "/customers",
+  partyFilterAllLabel: "All customers",
+  docLabel: "Invoice",
+  docHrefBase: "/invoices",
+  amountLabel: "Sales",
+  settledLabel: "Received",
+  outstandingLabel: "Outstanding",
+  outstandingHint: "still to collect",
+  fileStem: "sales",
+  emptyLabel: "No sales in this period.",
+  countNoun: "Invoices",
+};
+
+export default async function SalesReportPage() {
   const session = await getServerSession();
   if (!(await can(session!.tenantId, session!.roleId, "accounts", "view"))) redirect("/dashboard");
 
@@ -27,25 +44,25 @@ export default async function AccountsPage() {
     orderBy: { date: "desc" },
   });
 
-  const sales = invoices.map((inv) => {
+  const rows = invoices.map((inv) => {
     const total = Number(inv.total);
-    const received = round2(inv.payments.reduce((sum, p) => sum + Number(p.amount), 0));
+    const settled = round2(inv.payments.reduce((sum, p) => sum + Number(p.amount), 0));
     return {
       id: inv.id,
       number: inv.number,
       date: inv.date.toISOString(),
-      customerId: inv.customer.id,
-      customerName: inv.customer.name,
+      partyId: inv.customer.id,
+      partyName: inv.customer.name,
       status: inv.status,
       total,
-      received,
-      outstanding: round2(Math.max(total - received, 0)),
+      settled,
+      outstanding: round2(Math.max(total - settled, 0)),
     };
   });
 
-  const customers = [...new Map(sales.map((s) => [s.customerId, s.customerName])).entries()]
+  const parties = [...new Map(rows.map((r) => [r.partyId, r.partyName])).entries()]
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  return <AccountsDashboard sales={sales} customers={customers} />;
+  return <ReportDashboard rows={rows} parties={parties} config={CONFIG} />;
 }

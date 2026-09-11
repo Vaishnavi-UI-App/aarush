@@ -27,9 +27,9 @@ function fullMoney(n: number): string {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default function MonthlySalesChart({ data }: { data: MonthPoint[] }) {
+export default function MonthlyBarChart({ data, emptyLabel, ariaLabel }: { data: MonthPoint[]; emptyLabel: string; ariaLabel: string }) {
   if (data.length === 0 || data.every((d) => d.total === 0)) {
-    return <div className="afs-empty">No sales in this period.</div>;
+    return <div className="afs-empty">{emptyLabel}</div>;
   }
 
   const plotW = WIDTH - PAD_LEFT - PAD_RIGHT;
@@ -46,7 +46,7 @@ export default function MonthlySalesChart({ data }: { data: MonthPoint[] }) {
   const labelEvery = Math.ceil(data.length / 12);
 
   return (
-    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label="Sales by month">
+    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} width="100%" role="img" aria-label={ariaLabel}>
       {Array.from({ length: steps + 1 }, (_, i) => {
         const value = (niceMax / steps) * i;
         const yy = y(value);

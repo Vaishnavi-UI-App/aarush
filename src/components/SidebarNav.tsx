@@ -170,6 +170,7 @@ const links: NavLink[] = [
     label: "Accounts",
     children: [
       { href: "/accounts/sales", label: "Sales", pages: ["accounts"] },
+      { href: "/accounts/purchases", label: "Purchases", pages: ["accounts"] },
       { href: "/banking", label: "Banking", pages: ["banking"] },
     ],
   },
