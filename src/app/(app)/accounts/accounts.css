@@ -143,3 +143,91 @@
   font-weight: 700;
   background: #f7f9fc;
 }
+
+.ac-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ac-toolbar-actions .afs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* GSTR-1 export modal */
+.gstr1-modal {
+  width: 460px;
+}
+.gstr1-field {
+  position: relative;
+  margin-bottom: 14px;
+}
+.gstr1-field input {
+  width: 100%;
+}
+.gstr1-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  margin-top: 4px;
+  padding: 4px;
+  max-height: 210px;
+  overflow-y: auto;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #d7dbe6;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(13, 31, 61, 0.14);
+}
+.gstr1-options button {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: #1f2a44;
+  text-align: left;
+  cursor: pointer;
+}
+.gstr1-options button:hover,
+.gstr1-options button.active {
+  background: #eef2fb;
+}
+.gstr1-empty {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #8a93a6;
+}
+.gstr1-dates {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.gstr1-dates .ac-field {
+  flex: 1 1 150px;
+}
+.gstr1-dates .ac-field input {
+  width: 100%;
+  min-width: 0;
+}
+.gstr1-error {
+  margin-top: 12px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: #fdecec;
+  color: #b3261e;
+  font-size: 13px;
+}
+.gstr1-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}

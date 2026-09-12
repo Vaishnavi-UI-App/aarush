@@ -21,6 +21,7 @@ const CONFIG: ReportConfig = {
   fileStem: "sales",
   emptyLabel: "No sales in this period.",
   countNoun: "Invoices",
+  showGstr1Export: true,
 };
 
 export default async function SalesReportPage() {

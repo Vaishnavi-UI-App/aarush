@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import MonthlyBarChart, { MonthPoint } from "./MonthlyBarChart";
+import Gstr1ExportModal from "./Gstr1ExportModal";
 
 /** One billed document -- a sale invoice or a purchase bill. The two reports differ
  * only in wording and where their links point, so they share this shape. */
@@ -39,6 +40,8 @@ export interface ReportConfig {
   fileStem: string;
   emptyLabel: string;
   countNoun: string;
+  /** Sales only -- GSTR-1 reports outward supplies, so it has no meaning on purchases. */
+  showGstr1Export?: boolean;
 }
 
 type Preset = "thisMonth" | "lastMonth" | "thisFy" | "lastFy" | "all" | "custom";
@@ -121,6 +124,7 @@ export default function ReportDashboard({
   const [partyId, setPartyId] = useState("all");
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("months");
+  const [gstr1Open, setGstr1Open] = useState(false);
 
   const range = preset === "custom" ? custom : rangeFor(preset, today);
 
@@ -219,10 +223,35 @@ export default function ReportDashboard({
           <h1 className="afs-page-title">{config.title}</h1>
           <p className="afs-page-subtitle">{config.subtitle}</p>
         </div>
-        <button type="button" className="afs-btn afs-btn-gold" onClick={exportCurrentTab}>
-          ⬇ Export this view
-        </button>
+        <div className="ac-toolbar-actions">
+          {config.showGstr1Export && (
+            <button type="button" className="afs-btn" onClick={() => setGstr1Open(true)}>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M14 2H6v20h12V6z" />
+                <path d="M14 2v4h4" />
+                <path d="M9 13l3 3 3-3" />
+                <path d="M12 10v6" />
+              </svg>
+              Export GSTR-1
+            </button>
+          )}
+          <button type="button" className="afs-btn afs-btn-gold" onClick={exportCurrentTab}>
+            ⬇ Export this view
+          </button>
+        </div>
       </div>
+
+      {gstr1Open && <Gstr1ExportModal customers={parties} onClose={() => setGstr1Open(false)} />}
 
       <div className="afs-card ac-filters">
         <div className="ac-presets">
