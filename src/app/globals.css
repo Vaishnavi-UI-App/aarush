@@ -48,17 +48,20 @@ a {
   }
 }
 
-/* Visually hides the page scrollbar on specific routes (Expenses, Track) that opted in
-   via a "hide-scrollbar-page" marker somewhere in their content, without touching every
-   other page -- html is the element that actually scrolls in this layout (the app shell
-   doesn't have its own inner scroll container), so :has() on it is what lets this stay
-   scoped instead of a global rule. Scrolling itself still works, just without a visible
-   track/thumb. */
-html:has(.hide-scrollbar-page) {
+/* Scrollbars are hidden app-wide -- the chrome was distracting on pages that only just
+   overflow. This covers inner scroll containers (wide tables, the sidebar) as well as the
+   page itself, since html is what actually scrolls in this layout. Scrolling is untouched:
+   wheel, trackpad, touch, keyboard and drag all still work -- only the visible track and
+   thumb go away. */
+*,
+html,
+body {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* old Edge/IE */
 }
 
-html:has(.hide-scrollbar-page)::-webkit-scrollbar {
+*::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Android WebView */
 }
