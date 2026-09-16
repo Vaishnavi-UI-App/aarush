@@ -184,16 +184,28 @@ const links: NavLink[] = [
   { href: "/settings/company", label: "Organization Details", ownerOnly: true },
 ];
 
+/** First letters of the first two words, e.g. "Salim Pathan" -> "SP". Falls back to the
+ * first two characters for a single-word name or an email address. */
+function initialsOf(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return (words[0] ?? "?").slice(0, 2).toUpperCase();
+}
+
 export default function SidebarNav({
   logoUrl,
   tenantName,
   pageAccess,
   manageUsers,
+  userName,
+  roleName,
 }: {
   logoUrl: string;
   tenantName: string;
   pageAccess: Record<PageKey, PagePermissionSet>;
   manageUsers: boolean;
+  userName: string;
+  roleName: string | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -290,10 +302,50 @@ export default function SidebarNav({
           )}
         </nav>
         <div className="afs-sidebar-footer">
-          <Link href="/profile" className={pathname.startsWith("/profile") ? "active" : ""} style={{ display: "block", marginBottom: 10 }}>
-            My Profile
+          <Link
+            href="/profile"
+            className={`afs-user-card${pathname.startsWith("/profile") ? " active" : ""}`}
+            aria-label={`My profile -- ${userName}`}
+          >
+            <span className="afs-user-avatar" aria-hidden="true">
+              {initialsOf(userName)}
+            </span>
+            <span className="afs-user-meta">
+              <span className="afs-user-name">{userName}</span>
+              {roleName && <span className="afs-user-role">{roleName}</span>}
+            </span>
+            <svg
+              className="afs-user-chevron"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
           </Link>
-          <button onClick={logout} type="button">
+
+          <button onClick={logout} type="button" className="afs-signout">
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <path d="M16 17l5-5-5-5" />
+              <path d="M21 12H9" />
+            </svg>
             Sign out
           </button>
         </div>

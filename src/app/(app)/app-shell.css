@@ -135,42 +135,114 @@
 }
 
 .afs-sidebar-footer {
-  padding: 12px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  font-size: 12px;
+  padding: 10px 12px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.afs-sidebar-footer form button {
-  background: none;
-  border: none;
-  color: #f2c2c2;
-  cursor: pointer;
-  font-size: 12px;
-  padding: 0;
+/* Identity card -- the whole row is the link through to the profile page, so the name
+   and role double as the label for it instead of sitting there as dead text. */
+.afs-user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-/* The actual current markup for both "My Profile" and "Sign out" -- a plain <a> and a
-   bare <button>, neither wrapped in a <form> -- so they need their own rule rather than
-   relying on the (stale) form-scoped one above. */
-.afs-sidebar-footer > a,
-.afs-sidebar-footer > button {
-  display: block;
-  background: none;
-  border: none;
-  color: #d7deee;
-  cursor: pointer;
+.afs-user-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.afs-user-card.active {
+  background: rgba(201, 154, 46, 0.16);
+  border-color: rgba(201, 154, 46, 0.45);
+}
+
+.afs-user-avatar {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #e8c66a 0%, #c99a2e 100%);
+  color: #12203c;
   font-size: 12.5px;
-  padding: 0;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
-.afs-sidebar-footer > a:hover,
-.afs-sidebar-footer > button:hover {
+/* min-width:0 lets a long name ellipsize instead of forcing the row wider. */
+.afs-user-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.afs-user-name {
   color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.afs-sidebar-footer > a.active {
+.afs-user-card.active .afs-user-name {
   color: var(--afs-gold, #c99a2e);
-  font-weight: 600;
+}
+
+.afs-user-role {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.afs-user-chevron {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.afs-user-card:hover .afs-user-chevron {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.afs-signout {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  /* Comfortably tappable on a phone -- most of these users are on handsets, and the
+     padding alone left this row at 35px, under the ~44px touch-target guidance. */
+  min-height: 42px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: none;
+  color: #efb0b0;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.afs-signout:hover {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ff9b9b;
 }
 
 .afs-main {
