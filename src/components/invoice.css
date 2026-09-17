@@ -315,6 +315,26 @@ table {
   height: 30px;
 }
 
+/* Seller's block only -- the receiver's signature line below stays an empty space for
+   the customer to sign by hand. */
+.sign-cell .sign-space {
+  height: auto;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.sign-stamp {
+  height: 88px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  /* The scan is ink on white paper. Multiply drops the white away so the stamp sits on
+     the invoice rather than in a visible white box over the ruled cell. */
+  mix-blend-mode: multiply;
+}
+
 .terms-table td {
   border: 1px solid #000;
   padding: 5px 8px;

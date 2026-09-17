@@ -13,6 +13,10 @@ function money(n: number): string {
 // fit on the same page instead of spilling onto an otherwise-empty page 2.
 const MIN_ITEM_ROWS = 2;
 
+/** The company's signature and round stamp, printed over the Authorised Signatory line.
+ * Lives in /public alongside the logo; swap the file to change it on every document. */
+const SIGNATURE_STAMP_URL = "/stamp-sign.jpeg";
+
 export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const { seller, billedTo, shippedTo, items, bank } = invoice;
   const hasIgst = (invoice.totalIgst ?? 0) > 0;
@@ -273,7 +277,12 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
             <td className="sign-cell">
               <div>Certified that the particular given above are true and correct for,</div>
               <div className="bold">For, {seller.name}</div>
-              <div className="sign-space" />
+              <div className="sign-space">
+                {/* eslint-disable-next-line @next/next/no-img-element -- same as the
+                    logo above: this template is also rendered to PDF headlessly, where
+                    next/image's optimisation pipeline isn't available. */}
+                <img src={SIGNATURE_STAMP_URL} alt="" className="sign-stamp" />
+              </div>
               <div className="right">Authorised Signatory</div>
             </td>
           </tr>
