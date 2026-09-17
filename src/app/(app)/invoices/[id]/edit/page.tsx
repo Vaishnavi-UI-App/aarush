@@ -93,6 +93,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           initialValues={{
             date: dateInputValue(invoice.date),
             discount: Number(invoice.discount).toString(),
+            discountPercent: invoice.discountPercent !== null ? Number(invoice.discountPercent).toString() : "",
+            discountReason: invoice.discountReason ?? "",
             poNumber: invoice.poNumber ?? "",
             poDate: dateInputValue(invoice.poDate),
             vehicleNumber: invoice.vehicleNumber ?? "",

@@ -608,10 +608,24 @@
   min-width: 160px;
 }
 
+/* For free-text fields that need more room than an even share of the row, e.g. the
+   reason a discount was given. */
+.afs-form-field-wide {
+  flex: 2.5 1 260px;
+}
+
 .afs-form-field label {
   font-size: 12px;
   font-weight: 600;
   color: #445;
+}
+
+/* A field the app is computing for you (the rupee discount while a percentage drives
+   it) -- still readable, but visibly not yours to type in. */
+.afs-form-field input[readonly] {
+  background: #f2f4f8;
+  color: #55607a;
+  cursor: not-allowed;
 }
 
 .afs-form-field input,

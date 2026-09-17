@@ -629,6 +629,13 @@ model Invoice {
 
   subtotal Decimal @db.Decimal(14, 2)
   discount Decimal @default(0) @db.Decimal(14, 2)
+  // The percentage the discount was entered as, when it was entered that way -- the
+  // rupee amount above stays the source of truth for every calculation, this is kept
+  // so the invoice can print "Less : Discount (5%)" and so editing the invoice can
+  // show back the number that was actually typed. Null for a flat rupee discount.
+  discountPercent Decimal? @db.Decimal(5, 2)
+  // Why the discount was given, printed on the invoice next to the amount.
+  discountReason  String?
   cgst     Decimal @default(0) @db.Decimal(14, 2)
   sgst     Decimal @default(0) @db.Decimal(14, 2)
   igst     Decimal @default(0) @db.Decimal(14, 2)

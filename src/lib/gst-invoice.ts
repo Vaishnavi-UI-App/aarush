@@ -7,6 +7,34 @@ export function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
+export interface ResolvedDiscount {
+  amount: number;
+  /** Non-null only when the discount was expressed as a percentage, so the invoice can
+   * print "(5%)" and the edit form can show back the number that was typed. */
+  percent: number | null;
+}
+
+/**
+ * Works out the rupee discount from either a percentage of the taxable value or a flat
+ * amount. A percentage takes precedence when both arrive, since that's the field the
+ * user was last working in.
+ *
+ * The result is capped at the taxable value -- a discount larger than the goods would
+ * otherwise produce a negative invoice total -- and the percentage is clamped to 0-100.
+ */
+export function resolveDiscount(
+  subtotal: number,
+  input: { discount?: number; discountPercent?: number | null }
+): ResolvedDiscount {
+  const pct = input.discountPercent;
+  if (pct !== undefined && pct !== null && Number.isFinite(pct) && pct > 0) {
+    const percent = Math.min(pct, 100);
+    return { amount: round2(Math.min((subtotal * percent) / 100, subtotal)), percent };
+  }
+  const flat = Number.isFinite(input.discount ?? 0) ? (input.discount ?? 0) : 0;
+  return { amount: round2(Math.min(Math.max(flat, 0), subtotal)), percent: null };
+}
+
 export interface TaxSplit {
   cgst: number;
   sgst: number;
@@ -164,6 +192,10 @@ export interface CreateSaleInvoiceInput extends DispatchDetailsInput {
   customerId: string;
   lines: InvoiceLineInput[];
   discount?: number;
+  /** Discount as a percentage of the taxable value. Takes precedence over `discount`. */
+  discountPercent?: number | null;
+  /** Free text shown on the invoice explaining why the discount was given. */
+  discountReason?: string | null;
   dueDate?: Date;
   /** SALE creates a real GST liability and posts to the ledger. PROFORMA and QUOTATION
    * are both quotes: they still show GST-inclusive pricing to the customer, but are
@@ -190,6 +222,8 @@ async function createSaleInvoiceInTx(tx: Prisma.TransactionClient, input: Create
     customerId,
     lines,
     discount = 0,
+    discountPercent,
+    discountReason,
     dueDate,
     type = "SALE",
     isServiceInvoice = false,
@@ -230,7 +264,8 @@ async function createSaleInvoiceInTx(tx: Prisma.TransactionClient, input: Create
     customer.stateCode
   );
 
-  const discountAmount = round2(discount);
+  const resolvedDiscount = resolveDiscount(subtotal, { discount, discountPercent });
+  const discountAmount = resolvedDiscount.amount;
   const total = round2(subtotal - discountAmount + cgstTotal + sgstTotal + igstTotal);
 
   const invoice = await tx.invoice.create({
@@ -246,6 +281,8 @@ async function createSaleInvoiceInTx(tx: Prisma.TransactionClient, input: Create
       status: type === "PROFORMA" || type === "QUOTATION" ? "DRAFT" : "SENT",
       subtotal,
       discount: discountAmount,
+      discountPercent: resolvedDiscount.percent,
+      discountReason: discountAmount > 0 ? discountReason?.trim() || null : null,
       cgst: cgstTotal,
       sgst: sgstTotal,
       igst: igstTotal,
@@ -360,6 +397,10 @@ export interface UpdateSaleInvoiceInput extends DispatchDetailsInput {
   invoiceId: string;
   lines: InvoiceLineInput[];
   discount?: number;
+  /** Discount as a percentage of the taxable value. Takes precedence over `discount`. */
+  discountPercent?: number | null;
+  /** Free text shown on the invoice explaining why the discount was given. */
+  discountReason?: string | null;
   dueDate?: Date;
   /** The invoice's own date. Must stay within the original date's financial year --
    * the invoice number's FY segment (e.g. "24-25") is fixed at creation and would go
@@ -398,6 +439,8 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
     invoiceId,
     lines,
     discount = 0,
+    discountPercent,
+    discountReason,
     dueDate,
     date,
     customerId,
@@ -460,7 +503,8 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
       customer.stateCode
     );
 
-    const discountAmount = round2(discount);
+    const resolvedDiscount = resolveDiscount(subtotal, { discount, discountPercent });
+    const discountAmount = resolvedDiscount.amount;
     const total = round2(subtotal - discountAmount + cgstTotal + sgstTotal + igstTotal);
 
     await tx.invoiceLine.deleteMany({ where: { invoiceId } });
@@ -473,6 +517,8 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
         dueDate,
         subtotal,
         discount: discountAmount,
+        discountPercent: resolvedDiscount.percent,
+        discountReason: discountAmount > 0 ? discountReason?.trim() || null : null,
         cgst: cgstTotal,
         sgst: sgstTotal,
         igst: igstTotal,
@@ -586,6 +632,12 @@ export async function convertProformaToSale(
       customerId: proforma.customerId,
       type: "SALE",
       discount: discountShare,
+      // A percentage survives proration untouched: the share is
+      // discount x selectedTaxable / proformaTaxable, and the discount was itself
+      // pct% of proformaTaxable, so the share is exactly pct% of selectedTaxable.
+      // Passing it through keeps the converted invoice printing "(5%)" and its reason.
+      discountPercent: proforma.discountPercent !== null ? Number(proforma.discountPercent) : null,
+      discountReason: proforma.discountReason,
       dueDate: proforma.dueDate ?? undefined,
       poNumber: proforma.poNumber ?? undefined,
       poDate: proforma.poDate ?? undefined,

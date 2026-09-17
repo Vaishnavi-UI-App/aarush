@@ -76,6 +76,8 @@ export interface InvoiceFormInitialValues {
    * invoices are always dated today, see createSaleInvoiceInTx. */
   date?: string;
   discount: string;
+  discountPercent?: string;
+  discountReason?: string;
   poNumber: string;
   poDate: string;
   vehicleNumber: string;
@@ -127,6 +129,8 @@ export default function CreateInvoiceForm({
   );
   const [date, setDate] = useState(initialValues?.date ?? "");
   const [discount, setDiscount] = useState(initialValues?.discount ?? "0");
+  const [discountPercent, setDiscountPercent] = useState(initialValues?.discountPercent ?? "");
+  const [discountReason, setDiscountReason] = useState(initialValues?.discountReason ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -303,10 +307,15 @@ export default function CreateInvoiceForm({
     }
     subtotal = round2(subtotal);
     tax = round2(tax);
-    const discountAmount = round2(Number(discount) || 0);
+    // A percentage, when entered, drives the rupee figure -- mirrors resolveDiscount on
+    // the server so what's previewed here is what gets saved.
+    const pct = Number(discountPercent);
+    const usingPercent = discountPercent.trim() !== "" && Number.isFinite(pct) && pct > 0;
+    const rawDiscount = usingPercent ? (subtotal * Math.min(pct, 100)) / 100 : Number(discount) || 0;
+    const discountAmount = round2(Math.min(Math.max(rawDiscount, 0), subtotal));
     const total = round2(subtotal - discountAmount + tax);
-    return { subtotal, tax, discountAmount, total };
-  }, [lines, discount]);
+    return { subtotal, tax, discountAmount, total, usingPercent };
+  }, [lines, discount, discountPercent]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -315,6 +324,8 @@ export default function CreateInvoiceForm({
     try {
       const body: Record<string, unknown> = {
         discount: Number(discount) || 0,
+        discountPercent: totals.usingPercent ? Number(discountPercent) : null,
+        discountReason: discountReason.trim() || null,
         poNumber: poNumber || undefined,
         poDate: poDate || undefined,
         vehicleNumber: vehicleNumber || undefined,
@@ -389,8 +400,43 @@ export default function CreateInvoiceForm({
           </div>
         )}
         <div className="afs-form-field">
+          <label>Discount %</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            placeholder="e.g. 5"
+            value={discountPercent}
+            onChange={(e) => {
+              setDiscountPercent(e.target.value);
+              // Typing a percentage takes over the rupee box, so the two can never sit
+              // there disagreeing about what the discount is.
+              if (e.target.value.trim() !== "") setDiscount("0");
+            }}
+          />
+        </div>
+        <div className="afs-form-field">
           <label>Discount (Rs.)</label>
-          <input type="number" min="0" step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={totals.usingPercent ? totals.discountAmount.toFixed(2) : discount}
+            readOnly={totals.usingPercent}
+            title={totals.usingPercent ? "Calculated from the percentage above" : undefined}
+            onChange={(e) => setDiscount(e.target.value)}
+          />
+        </div>
+        <div className="afs-form-field afs-form-field-wide">
+          <label>Reason for discount</label>
+          <input
+            type="text"
+            maxLength={120}
+            placeholder="e.g. Festive offer, bulk order, early payment"
+            value={discountReason}
+            onChange={(e) => setDiscountReason(e.target.value)}
+          />
         </div>
         <div className="afs-form-field">
           <label>Tax treatment</label>
@@ -746,7 +792,11 @@ export default function CreateInvoiceForm({
           <span>Rs. {totals.subtotal.toFixed(2)}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
-          <span>Discount</span>
+          <span>
+            Discount
+            {totals.usingPercent && ` (${Number(discountPercent)}%)`}
+            {discountReason.trim() && <span style={{ color: "#667", fontStyle: "italic" }}> — {discountReason.trim()}</span>}
+          </span>
           <span>- Rs. {totals.discountAmount.toFixed(2)}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>

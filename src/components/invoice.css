@@ -348,3 +348,11 @@ table {
     padding: 0;
   }
 }
+
+/* The reason a discount was given, printed beside it on the totals line -- lighter and
+   not bold so the amount still leads. */
+.discount-reason {
+  font-weight: 400;
+  font-style: italic;
+  color: #444;
+}

@@ -28,6 +28,8 @@ interface CreateInvoiceBody extends Omit<DispatchDetailsInput, "poDate"> {
   customerId: string;
   lines: InvoiceLineInput[];
   discount?: number;
+  discountPercent?: number | null;
+  discountReason?: string | null;
   dueDate?: string;
   poDate?: string;
   type?: BillableInvoiceType;
@@ -66,6 +68,8 @@ export async function POST(request: NextRequest) {
       customerId: body.customerId,
       lines: body.lines,
       discount: body.discount,
+      discountPercent: body.discountPercent,
+      discountReason: body.discountReason,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
       type: body.type,
       isServiceInvoice: body.isServiceInvoice,

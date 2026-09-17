@@ -85,6 +85,10 @@ export interface InvoiceData {
   /** Subtracted from the total after tax, so it prints between the taxable amount and
    * the tax lines and the column still adds up. Omitted from the bill when zero. */
   discount?: number;
+  /** Set only when the discount was entered as a percentage -- prints as "(5%)". */
+  discountPercent?: number | null;
+  /** Why the discount was given, printed beside the amount. */
+  discountReason?: string | null;
   totalCgst: number;
   totalSgst: number;
   totalIgst?: number;

@@ -36,6 +36,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 interface UpdateInvoiceBody extends Omit<DispatchDetailsInput, "poDate"> {
   lines: InvoiceLineInput[];
   discount?: number;
+  discountPercent?: number | null;
+  discountReason?: string | null;
   dueDate?: string;
   poDate?: string;
   date?: string;
@@ -70,6 +72,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       invoiceId: id,
       lines: body.lines,
       discount: body.discount,
+      discountPercent: body.discountPercent,
+      discountReason: body.discountReason,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
       date: body.date ? new Date(body.date) : undefined,
       customerId: body.customerId,

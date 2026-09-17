@@ -96,6 +96,8 @@ export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Ten
 
     taxableAmount: Number(invoice.subtotal),
     discount: Number(invoice.discount ?? 0),
+    discountPercent: invoice.discountPercent != null ? Number(invoice.discountPercent) : null,
+    discountReason: invoice.discountReason ?? null,
     totalCgst: Number(invoice.cgst),
     totalSgst: Number(invoice.sgst),
     totalIgst: Number(invoice.igst),

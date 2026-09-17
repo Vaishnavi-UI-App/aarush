@@ -16,6 +16,8 @@ const MIN_ITEM_ROWS = 2;
 export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const { seller, billedTo, shippedTo, items, bank } = invoice;
   const hasIgst = (invoice.totalIgst ?? 0) > 0;
+  // "5" not "5.00", but "2.5" keeps its half.
+  const trimPercent = (p: number) => (Number.isInteger(p) ? String(p) : String(Number(p.toFixed(2))));
   // No dead "Less : Discount  Rs. 0.00" line on the great majority of bills that carry
   // no discount at all.
   const hasDiscount = (invoice.discount ?? 0) > 0;
@@ -205,7 +207,11 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
           </tr>
           {hasDiscount && (
             <tr>
-              <td colSpan={summaryColSpan} className="right bold">Less : Discount</td>
+              <td colSpan={summaryColSpan} className="right bold">
+                Less : Discount
+                {invoice.discountPercent != null && invoice.discountPercent > 0 && ` (${trimPercent(invoice.discountPercent)}%)`}
+                {invoice.discountReason && <span className="discount-reason"> — {invoice.discountReason}</span>}
+              </td>
               <td className="right bold">- Rs. {money(invoice.discount ?? 0)}</td>
             </tr>
           )}
