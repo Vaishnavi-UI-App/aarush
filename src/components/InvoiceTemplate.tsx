@@ -206,14 +206,22 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
             <td className="right bold">Rs. {money(invoice.taxableAmount)}</td>
           </tr>
           {hasDiscount && (
-            <tr>
-              <td colSpan={summaryColSpan} className="right bold">
-                Less : Discount
-                {invoice.discountPercent != null && invoice.discountPercent > 0 && ` (${trimPercent(invoice.discountPercent)}%)`}
-                {invoice.discountReason && <span className="discount-reason"> — {invoice.discountReason}</span>}
-              </td>
-              <td className="right bold">- Rs. {money(invoice.discount ?? 0)}</td>
-            </tr>
+            <>
+              <tr>
+                <td colSpan={summaryColSpan} className="right bold">
+                  Less : Discount
+                  {invoice.discountPercent != null && invoice.discountPercent > 0 && ` (${trimPercent(invoice.discountPercent)}%)`}
+                  {invoice.discountReason && <span className="discount-reason"> — {invoice.discountReason}</span>}
+                </td>
+                <td className="right bold">- Rs. {money(invoice.discount ?? 0)}</td>
+              </tr>
+              {/* What's left after the discount -- and the figure the GST below is
+                  charged on, so the customer can follow the arithmetic down the column. */}
+              <tr>
+                <td colSpan={summaryColSpan} className="right bold">Total</td>
+                <td className="right bold">Rs. {money(invoice.taxableAmount - (invoice.discount ?? 0))}</td>
+              </tr>
+            </>
           )}
           <tr>
             <td colSpan={summaryColSpan} className="right bold">Add:CGST</td>
@@ -229,10 +237,9 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
               <td className="right bold">Rs. {money(invoice.totalIgst ?? 0)}</td>
             </tr>
           )}
-          <tr>
-            <td colSpan={summaryColSpan} className="right bold">TOTAL</td>
-            <td className="right bold">Rs. {invoice.grandTotal.toFixed(1)}</td>
-          </tr>
+          {/* No TOTAL row here -- the grand total is right below in the amount-in-words
+              strip, and printing it twice (the second time unformatted) only invited the
+              reader to wonder which of the two was the real one. */}
         </tbody>
       </table>
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession, SessionError } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
+import { round2 } from "@/lib/gst-invoice";
 import {
   Gstr1Invoice,
   buildB2b,
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
           unit: true,
           qty: true,
           taxableValue: true,
+          discountAmount: true,
           taxRate: true,
           cgstAmount: true,
           sgstAmount: true,
@@ -118,7 +120,9 @@ export async function POST(request: NextRequest) {
       description: l.description,
       unit: l.unit,
       qty: Number(l.qty),
-      taxableValue: Number(l.taxableValue),
+      // The value GST was actually charged on: a discount shown on the invoice is
+      // excluded from the value of supply, so the return must report it net.
+      taxableValue: round2(Number(l.taxableValue) - Number(l.discountAmount)),
       taxRate: Number(l.taxRate),
       cgstAmount: Number(l.cgstAmount),
       sgstAmount: Number(l.sgstAmount),

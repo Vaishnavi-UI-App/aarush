@@ -727,6 +727,11 @@ model InvoiceLine {
   qty          Decimal @db.Decimal(12, 3)
   rate         Decimal @db.Decimal(14, 2)
   taxableValue Decimal @db.Decimal(14, 2)
+  // This line's share of the invoice-level discount, spread across lines in proportion
+  // to their value. GST is charged on taxableValue minus this, since a discount shown
+  // on the invoice comes off the transaction value before tax -- so the line's own tax
+  // amounts below are the tax on the discounted figure, not on taxableValue.
+  discountAmount Decimal @default(0) @db.Decimal(14, 2)
   taxRate      Decimal @db.Decimal(5, 2)
   cgstAmount   Decimal @default(0) @db.Decimal(14, 2)
   sgstAmount   Decimal @default(0) @db.Decimal(14, 2)

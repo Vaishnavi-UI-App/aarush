@@ -313,8 +313,20 @@ export default function CreateInvoiceForm({
     const usingPercent = discountPercent.trim() !== "" && Number.isFinite(pct) && pct > 0;
     const rawDiscount = usingPercent ? (subtotal * Math.min(pct, 100)) / 100 : Number(discount) || 0;
     const discountAmount = round2(Math.min(Math.max(rawDiscount, 0), subtotal));
-    const total = round2(subtotal - discountAmount + tax);
-    return { subtotal, tax, discountAmount, total, usingPercent };
+
+    // Tax is charged on what's left after the discount, so it has to be recomputed
+    // against each line's discounted share rather than taken from the gross above.
+    const netFactor = subtotal > 0 ? (subtotal - discountAmount) / subtotal : 0;
+    tax = round2(
+      lines.reduce((sum, l) => {
+        const taxable = round2((Number(l.qty) || 0) * (Number(l.rate) || 0));
+        return sum + round2((taxable * netFactor * (Number(l.taxRate) || 0)) / 100);
+      }, 0)
+    );
+
+    const netTaxable = round2(subtotal - discountAmount);
+    const total = round2(netTaxable + tax);
+    return { subtotal, tax, discountAmount, netTaxable, total, usingPercent };
   }, [lines, discount, discountPercent]);
 
   async function onSubmit(e: React.FormEvent) {
@@ -799,6 +811,12 @@ export default function CreateInvoiceForm({
           </span>
           <span>- Rs. {totals.discountAmount.toFixed(2)}</span>
         </div>
+        {totals.discountAmount > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6, fontWeight: 600 }}>
+            <span>Total (taxed on this)</span>
+            <span>Rs. {totals.netTaxable.toFixed(2)}</span>
+          </div>
+        )}
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
           <span>{sameState ? "CGST + SGST" : "IGST"}</span>
           <span>Rs. {totals.tax.toFixed(2)}</span>
