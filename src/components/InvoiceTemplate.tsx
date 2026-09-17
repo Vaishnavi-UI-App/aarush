@@ -16,6 +16,9 @@ const MIN_ITEM_ROWS = 2;
 export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const { seller, billedTo, shippedTo, items, bank } = invoice;
   const hasIgst = (invoice.totalIgst ?? 0) > 0;
+  // No dead "Less : Discount  Rs. 0.00" line on the great majority of bills that carry
+  // no discount at all.
+  const hasDiscount = (invoice.discount ?? 0) > 0;
   const summaryColSpan = hasIgst ? 13 : 11;
   const blankRows = Math.max(0, MIN_ITEM_ROWS - items.length);
   const documentTitle =
@@ -200,6 +203,12 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
             <td colSpan={summaryColSpan} className="right bold">Taxable Amount</td>
             <td className="right bold">Rs. {money(invoice.taxableAmount)}</td>
           </tr>
+          {hasDiscount && (
+            <tr>
+              <td colSpan={summaryColSpan} className="right bold">Less : Discount</td>
+              <td className="right bold">- Rs. {money(invoice.discount ?? 0)}</td>
+            </tr>
+          )}
           <tr>
             <td colSpan={summaryColSpan} className="right bold">Add:CGST</td>
             <td className="right bold">Rs. {money(invoice.totalCgst)}</td>

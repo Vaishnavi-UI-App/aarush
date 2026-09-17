@@ -82,6 +82,9 @@ export interface InvoiceData {
   items: InvoiceLineItem[];
 
   taxableAmount: number;
+  /** Subtracted from the total after tax, so it prints between the taxable amount and
+   * the tax lines and the column still adds up. Omitted from the bill when zero. */
+  discount?: number;
   totalCgst: number;
   totalSgst: number;
   totalIgst?: number;
