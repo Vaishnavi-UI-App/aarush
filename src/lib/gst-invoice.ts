@@ -83,9 +83,25 @@ export interface InvoiceLineInput {
 
 /** Shared by invoice create and edit: turns raw line inputs into priced line rows plus
  * the document-level subtotal/tax totals they roll up to. */
-export function computeInvoiceLines(lines: InvoiceLineInput[], sellerStateCode: string, buyerStateCode: string) {
+export function computeInvoiceLines(
+  lines: InvoiceLineInput[],
+  sellerStateCode: string,
+  buyerStateCode: string,
+  /** Invoice-level discount in rupees, spread across the lines before tax is worked out. */
+  discountAmount = 0
+) {
   const gross = lines.map((line) => round2(line.qty * line.rate));
   const subtotal = round2(gross.reduce((sum, v) => sum + v, 0));
+
+  // Spread the discount over the lines in proportion to their value, then hand the last
+  // line whatever paise the rounding left over, so the shares add back to the discount
+  // exactly and the invoice can't drift by a paisa from the sum of its own lines.
+  const discount = round2(Math.min(Math.max(discountAmount, 0), subtotal));
+  const shares = gross.map((v) => (subtotal > 0 ? round2((discount * v) / subtotal) : 0));
+  if (shares.length > 0) {
+    const spread = round2(shares.reduce((sum, v) => sum + v, 0));
+    shares[shares.length - 1] = round2(shares[shares.length - 1] + (discount - spread));
+  }
 
   let cgstTotal = 0;
   let sgstTotal = 0;
@@ -93,11 +109,12 @@ export function computeInvoiceLines(lines: InvoiceLineInput[], sellerStateCode: 
 
   const lineData = lines.map((line, i) => {
     const taxableValue = gross[i];
-    // GST is charged on the line's full value. Any invoice-level discount is a deduction
-    // from the total after tax, not a reduction of the tax base -- so a line's CGST/SGST
-    // is always exactly its rate applied to the Taxable Value printed beside it.
-    const split = calculateTaxSplit(taxableValue, line.taxRate, sellerStateCode, buyerStateCode);
-    const lineTotal = round2(taxableValue + split.cgst + split.sgst + split.igst);
+    const lineDiscount = shares[i];
+    // GST is charged on what the customer actually pays for the line. A discount shown
+    // on the invoice is excluded from the value of supply (CGST Act s.15(3)(a)), so the
+    // tax base is the line's value less its share of that discount.
+    const split = calculateTaxSplit(round2(taxableValue - lineDiscount), line.taxRate, sellerStateCode, buyerStateCode);
+    const lineTotal = round2(taxableValue - lineDiscount + split.cgst + split.sgst + split.igst);
 
     cgstTotal += split.cgst;
     sgstTotal += split.sgst;
@@ -117,10 +134,7 @@ export function computeInvoiceLines(lines: InvoiceLineInput[], sellerStateCode: 
       qty: line.qty,
       rate: line.rate,
       taxableValue,
-      // No longer spread across lines: a discount comes off the total after tax. Kept at
-      // zero so invoices raised on 17 Sep 2026 (which did carry shares) still print the
-      // way they were calculated.
-      discountAmount: 0,
+      discountAmount: lineDiscount,
       taxRate: line.taxRate,
       cgstAmount: split.cgst,
       sgstAmount: split.sgst,
@@ -129,9 +143,31 @@ export function computeInvoiceLines(lines: InvoiceLineInput[], sellerStateCode: 
     };
   });
 
+  // Each line rounds its own half-and-half split, and on a long invoice those roundings
+  // all lean the same way -- CGST ended up 6 paise above SGST on a ten-line bill, which
+  // is the sort of thing a customer checking the figures will query. Move the drift onto
+  // one line's split (its own CGST+SGST, and so its total, are unchanged) so the invoice
+  // shows the two halves equal, give or take the odd paisa that can't be halved.
+  const cgstSum = round2(cgstTotal);
+  const sgstSum = round2(sgstTotal);
+  if (cgstSum !== sgstSum) {
+    const target = round2((cgstSum + sgstSum) / 2);
+    const shift = round2(target - cgstSum);
+    const last = [...lineData].reverse().find((l) => l.cgstAmount + l.sgstAmount > 0 && l.igstAmount === 0);
+    if (last) {
+      last.cgstAmount = round2(last.cgstAmount + shift);
+      last.sgstAmount = round2(last.sgstAmount - shift);
+      cgstTotal = round2(cgstSum + shift);
+      sgstTotal = round2(sgstSum - shift);
+    }
+  }
+
   return {
     lineData,
     subtotal,
+    /** Taxable value less the discount -- the figure GST was actually charged on. */
+    netTaxable: round2(subtotal - discount),
+    discount,
     cgstTotal: round2(cgstTotal),
     sgstTotal: round2(sgstTotal),
     igstTotal: round2(igstTotal),
@@ -270,17 +306,20 @@ async function createSaleInvoiceInTx(tx: Prisma.TransactionClient, input: Create
   const date = new Date();
   const number = await nextInvoiceNumber(tx, tenantId, tenant.invoicePrefix, type, date);
 
+  // Two passes: the discount is a percentage of the taxable value, and the tax is a
+  // percentage of what's left after it, so the gross has to be known before either.
+  const gross = computeInvoiceLines(lines, tenant.stateCode, customer.stateCode);
+  const resolvedDiscount = resolveDiscount(gross.subtotal, { discount, discountPercent });
+  const discountAmount = resolvedDiscount.amount;
+
   const { lineData, subtotal, cgstTotal, sgstTotal, igstTotal } = computeInvoiceLines(
     lines,
     tenant.stateCode,
-    customer.stateCode
+    customer.stateCode,
+    discountAmount
   );
 
-  // The discount is a percentage of the taxable value but comes off the total after tax,
-  // so it never changes what GST is charged on.
-  const resolvedDiscount = resolveDiscount(subtotal, { discount, discountPercent });
-  const discountAmount = resolvedDiscount.amount;
-  const total = round2(subtotal + cgstTotal + sgstTotal + igstTotal - discountAmount);
+  const total = round2(subtotal - discountAmount + cgstTotal + sgstTotal + igstTotal);
 
   const invoice = await tx.invoice.create({
     data: {
@@ -514,16 +553,19 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
       siteId ? tx.site.findFirstOrThrow({ where: { id: siteId, tenantId } }) : Promise.resolve(null),
     ]);
 
+    // Same two passes as the create path -- see the comment there.
+    const gross = computeInvoiceLines(lines, tenant.stateCode, customer.stateCode);
+    const resolvedDiscount = resolveDiscount(gross.subtotal, { discount, discountPercent });
+    const discountAmount = resolvedDiscount.amount;
+
     const { lineData, subtotal, cgstTotal, sgstTotal, igstTotal } = computeInvoiceLines(
       lines,
       tenant.stateCode,
-      customer.stateCode
+      customer.stateCode,
+      discountAmount
     );
 
-    // Same as the create path: the discount comes off the total after tax.
-    const resolvedDiscount = resolveDiscount(subtotal, { discount, discountPercent });
-    const discountAmount = resolvedDiscount.amount;
-    const total = round2(subtotal + cgstTotal + sgstTotal + igstTotal - discountAmount);
+    const total = round2(subtotal - discountAmount + cgstTotal + sgstTotal + igstTotal);
 
     await tx.invoiceLine.deleteMany({ where: { invoiceId } });
 
