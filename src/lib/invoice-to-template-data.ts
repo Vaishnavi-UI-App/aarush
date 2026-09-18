@@ -24,6 +24,7 @@ export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Ten
     unit: line.unit,
     rate: Number(line.rate),
     taxableValue: Number(line.taxableValue),
+    discountAmount: Number(line.discountAmount ?? 0),
     cgstRate: Number(line.taxRate) > 0 && Number(line.cgstAmount) > 0 ? Number(line.taxRate) / 2 : 0,
     cgstAmount: Number(line.cgstAmount),
     sgstRate: Number(line.taxRate) > 0 && Number(line.sgstAmount) > 0 ? Number(line.taxRate) / 2 : 0,

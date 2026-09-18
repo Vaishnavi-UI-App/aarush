@@ -7,6 +7,9 @@ export interface InvoiceLineItem {
   unit: string;
   rate: number;
   taxableValue: number;
+  /** This line's share of the invoice discount. GST is charged on taxableValue minus
+   * this, so the invoice has to print it or the row can't be reconciled by eye. */
+  discountAmount?: number;
   cgstRate: number;
   cgstAmount: number;
   sgstRate: number;
