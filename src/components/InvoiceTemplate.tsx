@@ -25,10 +25,11 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   // No dead "Less : Discount  Rs. 0.00" line on the great majority of bills that carry
   // no discount at all.
   const hasDiscount = (invoice.discount ?? 0) > 0;
-  // Whether the discount was spread over the lines and taxed out of the total (how
-  // invoices are raised now) or simply deducted after tax was charged on the full value
-  // (how they were raised before 17 Sep 2026). Each has to print the way it was actually
-  // calculated, or the figures on the page won't add up for the reader.
+  // A discount is a deduction from the total after tax -- GST is charged on the full
+  // taxable value. The one exception is invoices raised on 17 Sep 2026, when the
+  // discount was briefly spread over the lines and taxed out; those carry per-line
+  // shares and have to keep printing the way they were actually calculated, or their
+  // own figures won't add up for whoever is holding the paper.
   const lineDiscountTotal = items.reduce((sum, i) => sum + (i.discountAmount ?? 0), 0);
   const discountIsPerLine = lineDiscountTotal > 0;
 
@@ -256,10 +257,19 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
               <td className="right bold">Rs. {money(invoice.totalIgst ?? 0)}</td>
             </tr>
           )}
-          {/* Raised before 17 Sep 2026, when GST was charged on the full taxable value
-              and the discount came off afterwards. Printing it in that order is the only
-              way this invoice's own figures add up. */}
-          {hasDiscount && !discountIsPerLine && <tr>{discountRow}</tr>}
+          {/* GST is charged on the full taxable value, so the discount comes off the
+              total afterwards: taxable, plus tax, total, less discount. */}
+          {hasDiscount && !discountIsPerLine && (
+            <>
+              <tr>
+                <td colSpan={summaryColSpan} className="right bold">Total</td>
+                <td className="right bold">
+                  Rs. {money(invoice.taxableAmount + invoice.totalCgst + invoice.totalSgst + (invoice.totalIgst ?? 0))}
+                </td>
+              </tr>
+              <tr>{discountRow}</tr>
+            </>
+          )}
           {/* No TOTAL row here -- the grand total is right below in the amount-in-words
               strip, and printing it twice (the second time unformatted) only invited the
               reader to wonder which of the two was the real one. */}
