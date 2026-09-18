@@ -87,6 +87,7 @@ export interface InvoiceFormInitialValues {
   placeOfSupplySite: string;
   siteId: string;
   paymentTerms: string;
+  termsAndConditions?: string;
   shipToSameAsBilling: boolean;
   shipToName: string;
   shipToAddress: string;
@@ -104,6 +105,7 @@ export default function CreateInvoiceForm({
   editInvoiceId,
   initialValues,
   sites: initialSites,
+  defaultTerms,
 }: {
   type: "SALE" | "PROFORMA" | "QUOTATION";
   /** SALE only: same form/behavior as any other sale invoice, just prints "Service Tax
@@ -119,6 +121,9 @@ export default function CreateInvoiceForm({
   editInvoiceId?: string;
   initialValues?: InvoiceFormInitialValues;
   sites: Site[];
+  /** Company-wide Terms & Conditions from Settings -- the starting point for a new
+   * invoice, which the user can then change for this particular customer. */
+  defaultTerms: string;
 }) {
   const router = useRouter();
   const isEdit = !!editInvoiceId;
@@ -157,6 +162,9 @@ export default function CreateInvoiceForm({
   const [newSiteError, setNewSiteError] = useState<string | null>(null);
   const [savingNewSite, setSavingNewSite] = useState(false);
   const [paymentTerms, setPaymentTerms] = useState(initialValues?.paymentTerms ?? "");
+  // Seeded from the company default so a new invoice starts with the usual wording;
+  // editing it here only affects this one invoice.
+  const [termsAndConditions, setTermsAndConditions] = useState(initialValues?.termsAndConditions ?? defaultTerms);
 
   const [shipToSameAsBilling, setShipToSameAsBilling] = useState(initialValues?.shipToSameAsBilling ?? true);
   const [shipToName, setShipToName] = useState(initialValues?.shipToName ?? "");
@@ -338,6 +346,7 @@ export default function CreateInvoiceForm({
         placeOfSupplySite: placeOfSupplySite || undefined,
         siteId: siteId || undefined,
         paymentTerms: paymentTerms || undefined,
+        termsAndConditions: termsAndConditions.trim() || null,
         shipToSameAsBilling,
         shipToName: shipToSameAsBilling ? undefined : shipToName || undefined,
         shipToAddress: shipToSameAsBilling ? undefined : shipToAddress || undefined,
@@ -537,6 +546,41 @@ export default function CreateInvoiceForm({
             ))}
           </datalist>
         </div>
+      </div>
+
+      <div className="afs-form-field" style={{ marginBottom: 14 }}>
+        <label>
+          Terms and Conditions
+          <span style={{ fontWeight: 400, color: "#667", marginLeft: 6 }}>
+            — one per line, printed at the bottom of this invoice
+          </span>
+        </label>
+        <textarea
+          rows={4}
+          value={termsAndConditions}
+          onChange={(e) => setTermsAndConditions(e.target.value)}
+          placeholder={"100% ADVANCE PAYMENT BEFORE DELIVERY.\nGST EXTRA."}
+          style={{ fontFamily: "inherit", resize: "vertical" }}
+        />
+        {termsAndConditions !== defaultTerms && (
+          <button
+            type="button"
+            onClick={() => setTermsAndConditions(defaultTerms)}
+            style={{
+              alignSelf: "flex-start",
+              marginTop: 6,
+              padding: 0,
+              border: 0,
+              background: "none",
+              color: "#1f4fa3",
+              fontSize: 12,
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            Reset to the company terms
+          </button>
+        )}
       </div>
 
       <div className="afs-form-field" style={{ marginBottom: 10 }}>

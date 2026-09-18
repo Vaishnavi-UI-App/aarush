@@ -86,6 +86,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       placeOfSupplySite: body.placeOfSupplySite,
       siteId: body.siteId,
       paymentTerms: body.paymentTerms,
+      termsAndConditions: body.termsAndConditions,
       shipToSameAsBilling: body.shipToSameAsBilling,
       shipToName: body.shipToName,
       shipToAddress: body.shipToAddress,

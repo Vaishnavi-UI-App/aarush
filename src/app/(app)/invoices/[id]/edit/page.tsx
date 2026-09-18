@@ -90,6 +90,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
           defaultCustomerId={invoice.customerId}
           editInvoiceId={invoice.id}
           sites={sites.map((s) => ({ id: s.id, name: s.name }))}
+          defaultTerms={tenant.invoiceTerms ?? ""}
           initialValues={{
             date: dateInputValue(invoice.date),
             discount: Number(invoice.discount).toString(),
@@ -104,6 +105,9 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
             placeOfSupplySite: invoice.placeOfSupplySite ?? "",
             siteId: invoice.siteId ?? "",
             paymentTerms: invoice.paymentTerms ?? "",
+            // Undefined (not "") when the invoice never had its own terms, so the form falls
+            // back to the company default instead of showing an empty box.
+            termsAndConditions: invoice.termsAndConditions ?? undefined,
             shipToSameAsBilling: invoice.shipToSameAsBilling,
             shipToName: invoice.shipToName ?? "",
             shipToAddress: invoice.shipToAddress ?? "",

@@ -113,6 +113,11 @@ export function toInvoiceTemplateData(invoice: InvoiceWithRelations, tenant: Ten
       branchName: tenant.bankBranch ?? "",
     },
 
-    terms: tenant.invoiceTerms ? tenant.invoiceTerms.split("\n") : [],
+    // This invoice's own terms if it was given any, otherwise the company-wide default
+    // from Settings -- so older invoices and untouched ones keep printing as before.
+    terms: (() => {
+      const source = invoice.termsAndConditions ?? tenant.invoiceTerms;
+      return source ? source.split("\n").filter((line) => line.trim() !== "") : [];
+    })(),
   };
 }

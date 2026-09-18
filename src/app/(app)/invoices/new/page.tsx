@@ -58,6 +58,7 @@ export default async function NewInvoicePage({
           }))}
           defaultCustomerId={customerId}
           sites={sites.map((s) => ({ id: s.id, name: s.name }))}
+          defaultTerms={tenant.invoiceTerms ?? ""}
         />
       </div>
     </div>

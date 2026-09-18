@@ -188,6 +188,9 @@ export interface DispatchDetailsInput {
   siteId?: string;
   /** Free text shown on the printed invoice, e.g. "Due on Receipt", "Net 30", "Net 60". */
   paymentTerms?: string;
+  /** This invoice's own Terms & Conditions block, one line per entry. Empty or omitted
+   * leaves it on the company-wide default from Settings. */
+  termsAndConditions?: string | null;
   shipToSameAsBilling?: boolean;
   shipToName?: string;
   shipToAddress?: string;
@@ -244,6 +247,7 @@ async function createSaleInvoiceInTx(tx: Prisma.TransactionClient, input: Create
     placeOfSupplySite,
     siteId,
     paymentTerms,
+    termsAndConditions,
     shipToSameAsBilling = true,
     shipToName,
     shipToAddress,
@@ -306,6 +310,8 @@ async function createSaleInvoiceInTx(tx: Prisma.TransactionClient, input: Create
       deliveredThrough,
       placeOfSupplySite,
       paymentTerms,
+      // Blank means "use the company terms", not "this invoice has none".
+      termsAndConditions: termsAndConditions?.trim() || null,
       shipToSameAsBilling,
       shipToName: shipToSameAsBilling ? undefined : shipToName,
       shipToAddress: shipToSameAsBilling ? undefined : shipToAddress,
@@ -463,6 +469,7 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
     placeOfSupplySite,
     siteId,
     paymentTerms,
+    termsAndConditions,
     shipToSameAsBilling = true,
     shipToName,
     shipToAddress,
@@ -543,6 +550,7 @@ export async function updateSaleInvoice(input: UpdateSaleInvoiceInput) {
         placeOfSupplySite,
         siteId,
         paymentTerms,
+        termsAndConditions: termsAndConditions?.trim() || null,
         shipToSameAsBilling,
         shipToName: shipToSameAsBilling ? null : shipToName,
         shipToAddress: shipToSameAsBilling ? null : shipToAddress,

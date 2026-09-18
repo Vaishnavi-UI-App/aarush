@@ -622,6 +622,10 @@ model Invoice {
   status       InvoiceStatus @default(DRAFT)
   // Free text shown on the printed invoice, e.g. "Due on Receipt", "Net 30", "Net 60".
   paymentTerms String?
+  // This invoice's own Terms & Conditions block, one line per entry. Null means fall
+  // back to the company-wide Tenant.invoiceTerms -- so the default keeps working and
+  // only invoices that were deliberately edited carry their own wording.
+  termsAndConditions String?
   // A SALE invoice for services rather than goods -- same numbering series, same GST/
   // ledger treatment as any other SALE invoice, purely a printed-heading distinction
   // ("Service Tax Invoice" vs "Tax Invoice") for the business's own record-keeping.
