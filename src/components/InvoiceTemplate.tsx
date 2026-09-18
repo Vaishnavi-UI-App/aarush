@@ -33,7 +33,10 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   const lineDiscountTotal = items.reduce((sum, i) => sum + (i.discountAmount ?? 0), 0);
   const discountIsPerLine = lineDiscountTotal > 0;
 
-  const summaryColSpan = (hasIgst ? 13 : 11) + (discountIsPerLine ? 1 : 0);
+  // The per-line discount share is deliberately not a column on the printed bill -- it
+  // still drives the tax (see computeInvoiceLines) and still shows as one "Less :
+  // Discount" line in the summary below, but the item table stays as it was.
+  const summaryColSpan = hasIgst ? 13 : 11;
 
   // Same cells whichever side of the tax lines this row ends up on.
   const discountRow = (
@@ -159,7 +162,6 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
             <th rowSpan={2}>Unit</th>
             <th rowSpan={2}>Rate</th>
             <th rowSpan={2}>Taxable Value</th>
-            {discountIsPerLine && <th rowSpan={2}>Discount</th>}
             <th colSpan={2}>CGST</th>
             <th colSpan={2}>SGST</th>
             {hasIgst && <th colSpan={2}>IGST</th>}
@@ -191,7 +193,6 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
               <td className="center">{item.unit}</td>
               <td className="right">{money(item.rate)}</td>
               <td className="right highlight">{money(item.taxableValue)}</td>
-              {discountIsPerLine && <td className="right">- {money(item.discountAmount ?? 0)}</td>}
               <td className="center">{item.cgstRate.toFixed(2)}%</td>
               <td className="right">{item.cgstAmount.toFixed(2)}</td>
               <td className="center">{item.sgstRate.toFixed(2)}%</td>
@@ -214,7 +215,6 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
               <td></td>
               <td></td>
               <td></td>
-              {discountIsPerLine && <td></td>}
               <td></td>
               <td></td>
               <td></td>
