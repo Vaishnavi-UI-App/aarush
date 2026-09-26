@@ -489,6 +489,21 @@
   box-sizing: border-box;
 }
 
+/* The browser's up/down spinners claim ~15px inside an already narrow numeric cell --
+   in the Qty column that left barely one digit of room, so a quantity of 52 rendered
+   as "5" and a bit of the 2. Nobody steps a quantity of 1230 up one at a time anyway;
+   the value is always typed. Dropping them gives Qty, Rate and Tax % that width back. */
+.afs-lineitem-table input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.afs-lineitem-table input[type="number"]::-webkit-outer-spin-button,
+.afs-lineitem-table input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .afs-table tr:hover td {
   background: #f8f9fd;
 }

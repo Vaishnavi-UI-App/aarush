@@ -289,7 +289,7 @@ export default function CreatePurchaseForm({
             <th style={{ minWidth: 180 }}>Item</th>
             <th style={{ minWidth: 220 }}>Description</th>
             <th style={{ width: 140 }}>HSN/SAC</th>
-            <th style={{ width: 70 }}>Qty</th>
+            <th style={{ width: 92 }}>Qty</th>
             <th style={{ width: 100 }}>Rate</th>
             <th style={{ width: 90 }}>Tax %</th>
             <th style={{ width: 100 }}>Taxable</th>

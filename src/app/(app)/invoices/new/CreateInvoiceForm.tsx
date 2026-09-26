@@ -635,7 +635,7 @@ export default function CreateInvoiceForm({
             <th style={{ minWidth: 220 }}>Description</th>
             <th style={{ width: 140 }}>HSN/SAC</th>
             <th style={{ width: 100 }}>Unit</th>
-            <th style={{ width: 70 }}>Qty</th>
+            <th style={{ width: 92 }}>Qty</th>
             <th style={{ width: 100 }}>Rate</th>
             <th style={{ width: 90 }}>Tax %</th>
             <th style={{ width: 100 }}>Taxable</th>
