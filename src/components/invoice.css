@@ -13,6 +13,14 @@
   margin: 0 auto;
   padding: 16px;
   background: #fff;
+  /* Shaded behind the item-table header row and the Taxable Value cells. */
+  --invoice-accent: #d9e6f5;
+}
+
+/* Proforma invoices print in peach instead of the tax invoice's blue, so the two can't
+   be mistaken for each other at a glance on a desk. */
+.invoice-page.invoice-proforma {
+  --invoice-accent: #ffd7b4;
 }
 
 .invoice-logo-watermark {
@@ -219,7 +227,7 @@ table {
 }
 
 .items-table th {
-  background: #d9e6f5;
+  background: var(--invoice-accent);
   font-size: 10px;
   text-align: center;
 }
@@ -255,7 +263,7 @@ table {
 }
 
 .items-table .highlight {
-  background: #d9e6f5;
+  background: var(--invoice-accent);
 }
 
 .words-table td {

@@ -60,7 +60,7 @@ export default function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
           : "TAX INVOICE";
 
   return (
-    <div className="invoice-page">
+    <div className={`invoice-page${invoice.documentType === "PROFORMA" ? " invoice-proforma" : ""}`}>
       <img src={seller.logoUrl} alt="" aria-hidden="true" className="invoice-logo-watermark" />
       {invoice.watermark && <div className="invoice-watermark">{invoice.watermark}</div>}
       <div className="title-row">{documentTitle}</div>
