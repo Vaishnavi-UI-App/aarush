@@ -46,20 +46,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { customerId } = body;
-  if (!customerId) return NextResponse.json({ error: "Select a customer" }, { status: 400 });
-
   const from = dayBoundary(body.fromDate ?? "", false);
   const to = dayBoundary(body.toDate ?? "", true);
   if (!from || !to) return NextResponse.json({ error: "Enter a valid from and to date" }, { status: 400 });
   if (from > to) return NextResponse.json({ error: "From date must be on or before the to date" }, { status: 400 });
-
-  // Scoped by tenantId, so one tenant can't pull another's customer by guessing an id.
-  const customer = await prisma.customer.findFirst({
-    where: { id: customerId, tenantId: session.tenantId },
-    select: { name: true, gstin: true, stateCode: true },
-  });
-  if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
   const company = await prisma.tenant.findUnique({
     where: { id: session.tenantId },
@@ -74,13 +64,15 @@ export async function POST(request: NextRequest) {
   const invoices = await prisma.invoice.findMany({
     where: {
       tenantId: session.tenantId,
-      customerId,
       type: "SALE",
       archivedAt: null,
       status: { not: "DRAFT" },
       date: { gte: from, lte: to },
     },
     include: {
+      // The return spans every customer for the period, so each invoice brings its own
+      // buyer along -- that decides which sheet it lands on and whose GSTIN is reported.
+      customer: { select: { name: true, gstin: true, stateCode: true } },
       lines: {
         select: {
           hsnCode: true,
@@ -101,7 +93,7 @@ export async function POST(request: NextRequest) {
 
   if (invoices.length === 0) {
     return NextResponse.json(
-      { error: `No invoices for ${customer.name} between ${body.fromDate} and ${body.toDate}.` },
+      { error: `No invoices were raised between ${body.fromDate} and ${body.toDate}.` },
       { status: 404 }
     );
   }
@@ -111,9 +103,10 @@ export async function POST(request: NextRequest) {
     date: inv.date,
     total: Number(inv.total),
     cancelled: inv.status === "CANCELLED",
+    customer: { name: inv.customer.name, gstin: inv.customer.gstin, stateCode: inv.customer.stateCode },
     // Place of supply is where the goods went: the ship-to state when it differs from
     // the billing address, otherwise the customer's own state.
-    placeOfSupplyStateCode: inv.shipToStateCode || customer.stateCode,
+    placeOfSupplyStateCode: inv.shipToStateCode || inv.customer.stateCode,
     reverseCharge: inv.reverseCharge,
     lines: inv.lines.map((l) => ({
       hsnCode: l.hsnCode,
@@ -135,35 +128,27 @@ export async function POST(request: NextRequest) {
   const live = issued.filter((i) => !i.cancelled);
   if (live.length === 0) {
     return NextResponse.json(
-      { error: `Every invoice for ${customer.name} in this period is cancelled, so there is nothing to report.` },
+      { error: `Every invoice in this period is cancelled, so there is nothing to report.` },
       { status: 404 }
     );
   }
 
   const byType = { b2b: [] as Gstr1Invoice[], b2cl: [] as Gstr1Invoice[], b2cs: [] as Gstr1Invoice[] };
-  for (const inv of live) byType[classifyInvoice(inv, customer, company.stateCode)].push(inv);
-
-  // A registered customer is always B2B; an unregistered one can land in both B2CL and
-  // B2CS across a period, so the sheet named here is just the dominant one, used to
-  // decide whether the HSN summary is the b2b or the b2c flavour.
-  const supplyType = byType.b2b.length ? "b2b" : byType.b2cl.length >= byType.b2cs.length && byType.b2cl.length ? "b2cl" : "b2cs";
+  for (const inv of live) byType[classifyInvoice(inv, company.stateCode)].push(inv);
 
   const workbook = await buildGstr1Workbook({
     company,
-    customer,
     fromDate: from,
     toDate: to,
     invoices: live,
-    supplyType,
-    b2b: buildB2b(byType.b2b, customer),
+    b2b: buildB2b(byType.b2b),
     b2cl: buildB2cl(byType.b2cl),
     b2cs: buildB2cs(byType.b2cs),
     hsn: buildHsnSummary(live),
     docs: buildDocsSummary(issued),
   });
 
-  const safeName = customer.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "customer";
-  const filename = `${safeName}_GSTR1_${body.fromDate}_to_${body.toDate}.xlsx`;
+  const filename = `GSTR1_${body.fromDate}_to_${body.toDate}.xlsx`;
 
   return new NextResponse(new Uint8Array(workbook), {
     headers: {

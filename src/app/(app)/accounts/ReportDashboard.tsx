@@ -251,7 +251,7 @@ export default function ReportDashboard({
         </div>
       </div>
 
-      {gstr1Open && <Gstr1ExportModal customers={parties} onClose={() => setGstr1Open(false)} />}
+      {gstr1Open && <Gstr1ExportModal onClose={() => setGstr1Open(false)} />}
 
       <div className="afs-card ac-filters">
         <div className="ac-presets">

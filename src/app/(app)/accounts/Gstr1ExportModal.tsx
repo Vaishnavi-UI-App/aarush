@@ -1,50 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 function isoDay(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Picks a customer and a period and pulls down that customer's GSTR-1 workbook.
+/** Pulls down the GSTR-1 workbook for a period. The return is filed for the whole
+ * business rather than one buyer, so the only thing to choose is the period -- every
+ * customer billed in it is included, each on the sheet its supply type belongs to.
  * Defaults to the current calendar month, since GSTR-1 is filed month by month. */
-export default function Gstr1ExportModal({
-  customers,
-  onClose,
-}: {
-  customers: { id: string; name: string }[];
-  onClose: () => void;
-}) {
+export default function Gstr1ExportModal({ onClose }: { onClose: () => void }) {
   const today = useMemo(() => new Date(), []);
-  const [customerId, setCustomerId] = useState("");
-  const [query, setQuery] = useState("");
-  const [listOpen, setListOpen] = useState(false);
   const [fromDate, setFromDate] = useState(() => isoDay(new Date(today.getFullYear(), today.getMonth(), 1)));
   const [toDate, setToDate] = useState(() => isoDay(today));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
-
-  const selected = customers.find((c) => c.id === customerId) ?? null;
-
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const pool = q ? customers.filter((c) => c.name.toLowerCase().includes(q)) : customers;
-    return pool.slice(0, 50);
-  }, [customers, query]);
-
-  useEffect(() => {
-    function onDown(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setListOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, []);
 
   const dateOrderWrong = Boolean(fromDate && toDate && fromDate > toDate);
 
   async function generate() {
-    if (!customerId) return setError("Pick a customer first.");
     if (dateOrderWrong) return setError("From date must be on or before the to date.");
 
     setBusy(true);
@@ -53,7 +28,7 @@ export default function Gstr1ExportModal({
       const res = await fetch("/api/reports/customer-gstr1", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId, fromDate, toDate }),
+        body: JSON.stringify({ fromDate, toDate }),
       });
 
       if (!res.ok) {
@@ -83,46 +58,7 @@ export default function Gstr1ExportModal({
     <div className="afs-modal-backdrop" onClick={onClose}>
       <div className="afs-modal gstr1-modal" onClick={(e) => e.stopPropagation()}>
         <h2>Export GSTR-1</h2>
-        <p>One customer&apos;s outward supplies for a period, as a GST offline tool workbook.</p>
-
-        <div className="ac-field gstr1-field" ref={boxRef}>
-          <label htmlFor="gstr1-customer">Customer</label>
-          <input
-            id="gstr1-customer"
-            type="text"
-            autoComplete="off"
-            placeholder="Search customers..."
-            value={listOpen ? query : selected?.name ?? ""}
-            onFocus={() => {
-              setListOpen(true);
-              setQuery("");
-            }}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setListOpen(true);
-            }}
-          />
-          {listOpen && (
-            <ul className="gstr1-options">
-              {matches.length === 0 && <li className="gstr1-empty">No customers match.</li>}
-              {matches.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    className={c.id === customerId ? "active" : ""}
-                    onClick={() => {
-                      setCustomerId(c.id);
-                      setListOpen(false);
-                      setError(null);
-                    }}
-                  >
-                    {c.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <p>Every customer&apos;s outward supplies for a period, as a GST offline tool workbook.</p>
 
         <div className="gstr1-dates">
           <div className="ac-field">
@@ -142,12 +78,7 @@ export default function Gstr1ExportModal({
           <button type="button" className="afs-btn" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button
-            type="button"
-            className="afs-btn afs-btn-gold"
-            onClick={generate}
-            disabled={busy || !customerId || dateOrderWrong}
-          >
+          <button type="button" className="afs-btn afs-btn-gold" onClick={generate} disabled={busy || dateOrderWrong}>
             {busy ? "Generating..." : "Generate"}
           </button>
         </div>

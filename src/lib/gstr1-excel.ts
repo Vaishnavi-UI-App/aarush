@@ -7,7 +7,6 @@ import {
   B2csRow,
   DocsSummary,
   Gstr1Company,
-  Gstr1Customer,
   Gstr1Invoice,
   HsnRow,
   formatGstDate,
@@ -17,12 +16,10 @@ import {
 
 export interface Gstr1Workbook {
   company: Gstr1Company;
-  customer: Gstr1Customer;
   fromDate: Date;
   toDate: Date;
   /** Invoices that belong in the tax sheets -- issued, not cancelled. */
   invoices: Gstr1Invoice[];
-  supplyType: "b2b" | "b2cl" | "b2cs";
   b2b: B2bRow[];
   b2cl: B2clRow[];
   b2cs: B2csRow[];
@@ -90,10 +87,10 @@ function addCoverSheet(wb: ExcelJS.Workbook, data: Gstr1Workbook) {
   sheet.getCell("A5").font = { bold: true, size: 12 };
   sheet.getCell("A6").value = `Dated: ${formatGstDate(data.fromDate)}-${formatGstDate(data.toDate)}`;
 
-  sheet.getCell("A8").value = `Customer: ${data.customer.name}`;
+  // The return covers every customer for the period, so the cover sheet names the
+  // count rather than one buyer; each row below carries its own GSTIN and name.
+  sheet.getCell("A8").value = `Customers: all (${new Set(data.invoices.map((i) => i.customer.name)).size} billed in this period)`;
   sheet.getCell("A8").font = { bold: true };
-  sheet.getCell("A9").value = `GSTIN: ${data.customer.gstin || "Unregistered"}`;
-  sheet.getCell("A10").value = `State: ${stateName(data.customer.stateCode)}`;
 
   sheet.getCell("A13").value = "Sales";
   sheet.getCell("A13").font = { bold: true, size: 11 };
@@ -137,8 +134,8 @@ function addCoverSheet(wb: ExcelJS.Workbook, data: Gstr1Workbook) {
   for (const inv of data.invoices) {
     for (const r of rateRowsFor(inv)) {
       sheet.addRow([
-        data.customer.gstin || "",
-        data.customer.name,
+        inv.customer.gstin || "",
+        inv.customer.name,
         normalizeStateCode(inv.placeOfSupplyStateCode),
         stateName(inv.placeOfSupplyStateCode),
         inv.number,
@@ -189,7 +186,9 @@ function addB2bSheet(wb: ExcelJS.Workbook, data: Gstr1Workbook) {
 
   sheet.addRow(["No. of Recipients", "No. of Invoices", "Total Invoice Value", "Total Taxable", "Total Cess"]);
   styleHeader(sheet.getRow(2));
-  sheet.addRow([data.b2b.length ? 1 : 0, invoiceNumbers.size, invoiceValue, totalTaxable, totalCess]);
+  // Recipients is the number of distinct buyers on this sheet, not a hardcoded one.
+  const recipients = new Set(data.b2b.map((r) => r.gstin)).size;
+  sheet.addRow([recipients, invoiceNumbers.size, invoiceValue, totalTaxable, totalCess]);
   sheet.getRow(3).font = { bold: true };
 
   sheet.addRow([
@@ -286,10 +285,10 @@ function addB2csSheet(wb: ExcelJS.Workbook, data: Gstr1Workbook) {
 }
 
 function addHsnSheet(wb: ExcelJS.Workbook, data: Gstr1Workbook) {
-  // The portal keeps outward HSN summaries separate for registered and unregistered
-  // recipients, so the sheet is named after which one this customer is.
-  const name = data.supplyType === "b2b" ? "hsn(b2b)" : "hsn(b2c)";
-  const sheet = wb.addWorksheet(name);
+  // One HSN summary across every outward supply in the period -- that is what table 12
+  // of the return asks for, and with all customers in scope there is no single b2b or
+  // b2c flavour to name it after.
+  const sheet = wb.addWorksheet("hsn");
   setWidths(sheet, [14, 30, 10, 14, 16, 10, 16, 18, 16, 18, 14]);
 
   const sum = (pick: (r: HsnRow) => number) => round2(data.hsn.reduce((s, r) => s + pick(r), 0));

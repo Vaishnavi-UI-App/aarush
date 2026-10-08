@@ -36,6 +36,10 @@ export interface Gstr1Invoice {
   number: string;
   date: Date;
   total: number;
+  /** The invoice's own buyer. The return covers the whole period across every customer,
+   * so each invoice has to carry who it was raised to -- that decides which sheet it
+   * lands on and whose GSTIN goes on the B2B row. */
+  customer: Gstr1Customer;
   /** CANCELLED invoices are counted in the documents summary but kept out of the tax
    * sheets -- they were issued, so the series has to account for them, but no supply
    * took place. */
@@ -108,7 +112,8 @@ export interface DocsSummary {
  * than silently dropped. */
 const CESS = 0;
 
-export function classifyInvoice(invoice: Gstr1Invoice, customer: Gstr1Customer, companyStateCode: string): SupplyType {
+export function classifyInvoice(invoice: Gstr1Invoice, companyStateCode: string): SupplyType {
+  const customer = invoice.customer;
   if (customer.gstin && customer.gstin.trim()) return "b2b";
   const interState = normalizeStateCode(invoice.placeOfSupplyStateCode) !== normalizeStateCode(companyStateCode);
   if (interState && invoice.total > B2CL_THRESHOLD) return "b2cl";
@@ -141,12 +146,12 @@ export function rateRowsFor(invoice: Gstr1Invoice): RateRow[] {
     .sort((a, b) => a.rate - b.rate);
 }
 
-export function buildB2b(invoices: Gstr1Invoice[], customer: Gstr1Customer): B2bRow[] {
+export function buildB2b(invoices: Gstr1Invoice[]): B2bRow[] {
   return invoices.flatMap((inv) =>
     rateRowsFor(inv).map((r) => ({
       ...r,
-      gstin: customer.gstin ?? "",
-      receiverName: customer.name,
+      gstin: inv.customer.gstin ?? "",
+      receiverName: inv.customer.name,
       invoiceNumber: inv.number,
       invoiceDate: inv.date,
       invoiceValue: round2(inv.total),
