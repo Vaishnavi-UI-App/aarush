@@ -626,6 +626,11 @@ model Invoice {
   // back to the company-wide Tenant.invoiceTerms -- so the default keeps working and
   // only invoices that were deliberately edited carry their own wording.
   termsAndConditions String?
+  // The GST portal JSON this invoice was last exported in. Kept so the app can warn
+  // before putting the same bill in a second return file, and name the one it is
+  // already in. Null means it has never been exported.
+  gstJsonName String?
+  gstJsonAt   DateTime?
   // A SALE invoice for services rather than goods -- same numbering series, same GST/
   // ledger treatment as any other SALE invoice, purely a printed-heading distinction
   // ("Service Tax Invoice" vs "Tax Invoice") for the business's own record-keeping.

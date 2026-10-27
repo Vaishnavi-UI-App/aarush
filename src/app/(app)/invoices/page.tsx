@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import InvoiceRowActions from "./InvoiceRowActions";
-
-function badgeClass(status: string) {
-  return `afs-badge afs-badge-${status.toLowerCase()}`;
-}
+import InvoiceTable, { InvoiceRow } from "./InvoiceTable";
 
 export default async function InvoicesPage() {
   const session = await getServerSession();
@@ -20,6 +16,21 @@ export default async function InvoicesPage() {
     }),
     prisma.invoice.count({ where: { tenantId: session!.tenantId, archivedAt: { not: null } } }),
   ]);
+
+  const rows: InvoiceRow[] = invoices.map((inv) => ({
+    id: inv.id,
+    number: inv.number,
+    typeLabel:
+      inv.type === "PROFORMA" ? "Proforma" : inv.type === "QUOTATION" ? "Quotation" : inv.isServiceInvoice ? "Service" : "Sale",
+    customerName: inv.customer.name,
+    date: new Date(inv.date).toLocaleDateString("en-IN"),
+    total: Number(inv.total).toFixed(2),
+    status: inv.status,
+    // A GST return reports outward supplies, so only issued sale invoices can be picked.
+    eligible: inv.type === "SALE" && inv.status !== "DRAFT",
+    gstJsonName: inv.gstJsonName,
+    convertedTo: inv.saleInvoicesFromProforma,
+  }));
 
   return (
     <div>
@@ -47,55 +58,12 @@ export default async function InvoicesPage() {
         </div>
       </div>
 
+
       <div className="afs-card" style={{ marginTop: 20 }}>
         {invoices.length === 0 ? (
           <div className="afs-empty">No invoices yet.</div>
         ) : (
-          <table className="afs-table">
-            <thead>
-              <tr>
-                <th>Number</th>
-                <th>Type</th>
-                <th>Customer</th>
-                <th>Date</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((inv) => (
-                <tr key={inv.id}>
-                  <td data-label="Number">
-                    <Link href={`/invoices/${inv.id}`}>{inv.number}</Link>
-                  </td>
-                  <td data-label="Type">
-                    {inv.type === "PROFORMA" ? "Proforma" : inv.type === "QUOTATION" ? "Quotation" : inv.isServiceInvoice ? "Service" : "Sale"}
-                  </td>
-                  <td data-label="Customer">{inv.customer.name}</td>
-                  <td data-label="Date">{new Date(inv.date).toLocaleDateString("en-IN")}</td>
-                  <td data-label="Total">Rs. {Number(inv.total).toFixed(2)}</td>
-                  <td data-label="Status">
-                    <span className={badgeClass(inv.status)}>{inv.status.replace("_", " ")}</span>
-                  </td>
-                  <td>
-                    <InvoiceRowActions invoiceId={inv.id} />
-                    {inv.saleInvoicesFromProforma.length > 0 && (
-                      <div style={{ fontSize: 12, color: "#667", marginTop: 4 }}>
-                        Converted →{" "}
-                        {inv.saleInvoicesFromProforma.map((s, i) => (
-                          <span key={s.id}>
-                            {i > 0 && ", "}
-                            <Link href={`/invoices/${s.id}`}>{s.number}</Link>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <InvoiceTable invoices={rows} />
         )}
       </div>
     </div>
