@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     where: { id: { in: ids }, tenantId: session.tenantId, archivedAt: null },
     include: {
       customer: { select: { name: true, gstin: true, stateCode: true } },
+      gstJsonExport: { select: { fileName: true, createdAt: true } },
       lines: {
         select: {
           hsnCode: true, description: true, unit: true, qty: true,
@@ -129,15 +130,15 @@ export async function POST(request: NextRequest) {
 
   // Bills already in a JSON: reported back so the user sees which file, then can go
   // ahead if they meant to.
-  const already = invoices.filter((i) => i.gstJsonName);
+  const already = invoices.filter((i) => i.gstJsonExport);
   if (already.length > 0 && !body.confirmed) {
     return NextResponse.json(
       {
         needsConfirm: true,
         alreadyExported: already.map((i) => ({
           number: i.number,
-          jsonName: i.gstJsonName,
-          at: i.gstJsonAt,
+          jsonName: i.gstJsonExport!.fileName,
+          at: i.gstJsonExport!.createdAt,
         })),
       },
       { status: 409 }
@@ -179,15 +180,32 @@ export async function POST(request: NextRequest) {
   }
 
   const fileName = gstJsonFileName(company.gstin, periods[0]);
+  const payload = JSON.stringify(json);
 
-  // Stamp the bills only once the file is known to be good, so a rejected attempt
-  // never marks anything as exported.
-  await prisma.invoice.updateMany({
-    where: { id: { in: invoices.map((i) => i.id) }, tenantId: session.tenantId },
-    data: { gstJsonName: fileName, gstJsonAt: new Date() },
+  // Saved and linked in one transaction, only once the file is known to be good -- a
+  // rejected attempt never marks anything as exported, and the file is kept in the
+  // system so anyone in the tenant can fetch it again rather than it existing only in
+  // this user's downloads folder.
+  await prisma.$transaction(async (tx) => {
+    const saved = await tx.gstJsonExport.create({
+      data: {
+        tenantId: session.tenantId,
+        fileName,
+        period: periods[0],
+        invoiceCount: invoices.length,
+        byteSize: bytes,
+        payload,
+        createdById: session.userId,
+      },
+      select: { id: true },
+    });
+    await tx.invoice.updateMany({
+      where: { id: { in: invoices.map((i) => i.id) }, tenantId: session.tenantId },
+      data: { gstJsonExportId: saved.id },
+    });
   });
 
-  return new NextResponse(JSON.stringify(json), {
+  return new NextResponse(payload, {
     headers: {
       "Content-Type": "application/json",
       "Content-Disposition": `attachment; filename="${fileName}"`,

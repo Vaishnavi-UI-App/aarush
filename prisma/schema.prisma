@@ -66,6 +66,7 @@ model Tenant {
   attendanceAuditLogs     AttendanceAuditLog[]
   companyDocuments        CompanyDocument[]
   attendanceRegularizations AttendanceRegularization[]
+  gstJsonExports            GstJsonExport[]
   payslips                  Payslip[]
   payrollConfig             PayrollConfig?
 
@@ -211,6 +212,7 @@ model User {
   payslips                 Payslip[]                  @relation("PayslipOwner")
   payslipsFinalized        Payslip[]                  @relation("PayslipFinalizedBy")
   deliveryChallansCreated  DeliveryChallan[]          @relation("DeliveryChallansCreated")
+  gstJsonExports           GstJsonExport[]
 
   @@index([tenantId])
   @@index([roleId])
@@ -626,11 +628,11 @@ model Invoice {
   // back to the company-wide Tenant.invoiceTerms -- so the default keeps working and
   // only invoices that were deliberately edited carry their own wording.
   termsAndConditions String?
-  // The GST portal JSON this invoice was last exported in. Kept so the app can warn
-  // before putting the same bill in a second return file, and name the one it is
-  // already in. Null means it has never been exported.
-  gstJsonName String?
-  gstJsonAt   DateTime?
+  // The GST portal JSON this invoice was last written into. Null means it has never
+  // been exported. The file itself lives on GstJsonExport so anyone in the tenant can
+  // download it again, not just whoever happened to create it.
+  gstJsonExportId String?
+  gstJsonExport   GstJsonExport? @relation(fields: [gstJsonExportId], references: [id], onDelete: SetNull)
   // A SALE invoice for services rather than goods -- same numbering series, same GST/
   // ledger treatment as any other SALE invoice, purely a printed-heading distinction
   // ("Service Tax Invoice" vs "Tax Invoice") for the business's own record-keeping.
@@ -1289,4 +1291,32 @@ model Payslip {
   @@unique([tenantId, userId, year, month])
   @@index([tenantId, year, month])
   @@map("payslips")
+}
+
+/// A GST portal JSON that was generated from a set of bills. The file is kept here
+/// rather than only landing in the creator's downloads folder, so whoever actually
+/// files the return can fetch the exact same file later -- the accountant who uploads
+/// it is rarely the person who pressed the button.
+model GstJsonExport {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  fileName String
+  /// Return period the file covers, MMYYYY -- one JSON is always one month.
+  period   String
+  invoiceCount Int
+  byteSize     Int
+  /// The JSON itself, stored as text like the app's other uploads. Capped at 3MB by
+  /// the route that writes it, so it stays comfortably inside a Postgres text column.
+  payload  String @db.Text
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  invoices Invoice[]
+
+  @@index([tenantId, createdAt])
+  @@map("gst_json_exports")
 }

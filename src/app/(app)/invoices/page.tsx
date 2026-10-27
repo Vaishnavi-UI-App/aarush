@@ -5,16 +5,18 @@ import InvoiceTable, { InvoiceRow } from "./InvoiceTable";
 
 export default async function InvoicesPage() {
   const session = await getServerSession();
-  const [invoices, archivedCount] = await Promise.all([
+  const [invoices, archivedCount, jsonFileCount] = await Promise.all([
     prisma.invoice.findMany({
       where: { tenantId: session!.tenantId, archivedAt: null },
       include: {
         customer: { select: { name: true } },
         saleInvoicesFromProforma: { select: { id: true, number: true } },
+        gstJsonExport: { select: { fileName: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
     prisma.invoice.count({ where: { tenantId: session!.tenantId, archivedAt: { not: null } } }),
+    prisma.gstJsonExport.count({ where: { tenantId: session!.tenantId } }),
   ]);
 
   const rows: InvoiceRow[] = invoices.map((inv) => ({
@@ -28,7 +30,7 @@ export default async function InvoicesPage() {
     status: inv.status,
     // A GST return reports outward supplies, so only issued sale invoices can be picked.
     eligible: inv.type === "SALE" && inv.status !== "DRAFT",
-    gstJsonName: inv.gstJsonName,
+    gstJsonName: inv.gstJsonExport?.fileName ?? null,
     convertedTo: inv.saleInvoicesFromProforma,
   }));
 
@@ -40,6 +42,9 @@ export default async function InvoicesPage() {
           <p className="afs-page-subtitle">Sales invoices, quotations, and proforma quotes</p>
         </div>
         <div className="afs-page-header-actions">
+          <Link href="/invoices/gst-json" style={{ fontSize: 13 }}>
+            GST JSON files {jsonFileCount > 0 ? `(${jsonFileCount})` : ""}
+          </Link>
           <Link href="/invoices/archived" style={{ fontSize: 13 }}>
             Archive {archivedCount > 0 ? `(${archivedCount})` : ""}
           </Link>
